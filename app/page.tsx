@@ -15,9 +15,7 @@ export default function Home() {
             Wiener Linien, <em className="text-brand italic">live</em>
           </p>
         </div>
-        <div className="pointer-events-auto">
-          <ThemeToggle />
-        </div>
+        <ThemeToggle className="pointer-events-auto" />
       </header>
     </div>
   );
