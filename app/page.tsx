@@ -1,12 +1,24 @@
+import { Map } from "@/components/map";
+import { ThemeToggle } from "@/components/theme-toggle";
+
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col bg-white font-sans dark:bg-black">
-      <header className="p-6">
-        <span className="text-lg font-semibold tracking-tight text-black dark:text-zinc-50">
-          bim
-        </span>
+    <div className="relative h-full w-full">
+      <Map />
+
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between p-6">
+        <div className="pointer-events-auto">
+          <h1 className="text-2xl leading-none tracking-tight text-foreground">
+            bim
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Wiener Linien, <em className="text-brand italic">live</em>
+          </p>
+        </div>
+        <div className="pointer-events-auto">
+          <ThemeToggle />
+        </div>
       </header>
-      <main className="flex flex-1 flex-col" />
     </div>
   );
 }

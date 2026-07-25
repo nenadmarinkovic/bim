@@ -13,9 +13,18 @@ surface trams in traffic.
 
 ```bash
 npm install
-npm run ingest        # build the static data layer (~80 MB download, cached 12h)
+cp .env.example .env.local   # add your Mapbox token
+npm run ingest               # build the static data layer (~80 MB download, cached 12h)
 npm run dev
 ```
+
+`NEXT_PUBLIC_MAPBOX_TOKEN` is required for the map to render; without it the map
+area explains what is missing rather than failing. The base style follows the
+colour theme (`light-v11` / `dark-v11`), and `/api/stops` serves the ingested
+stop index as GeoJSON — 4,432 points, which is what the map draws today.
+
+Type is Hanken Grotesk with Newsreader italic for brand accents, self-hosted
+from `public/fonts` and sharing the token scale used in nomos.
 
 ## Data
 
