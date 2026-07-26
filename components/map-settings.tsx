@@ -9,16 +9,18 @@ import { VEHICLES_LABEL_LAYER } from "@/components/vehicle-layer";
 import { STOPS_LAYER } from "@/lib/vehicles/layer-ids";
 import { cn } from "@/lib/utils";
 
-const OPTIONS = [
+const LAYER_OPTIONS = [
   { key: "lines", label: "Line numbers", layer: VEHICLES_LABEL_LAYER },
   { key: "stops", label: "Stops", layer: STOPS_LAYER },
 ] as const;
 
 export function MapSettings({
   getMap,
+  onPlacesChange,
   className,
 }: {
   getMap: () => mapboxgl.Map | null;
+  onPlacesChange: (on: boolean) => void;
   className?: string;
 }) {
   const id = useId();
@@ -26,6 +28,7 @@ export function MapSettings({
     lines: true,
     stops: true,
   });
+  const [places, setPlaces] = useState(false);
 
   const apply = useCallback(
     (layer: string, on: boolean) => {
@@ -43,8 +46,11 @@ export function MapSettings({
         className,
       )}
     >
-      {OPTIONS.map((option) => (
-        <div key={option.key} className="flex items-center justify-between gap-6">
+      {LAYER_OPTIONS.map((option) => (
+        <div
+          key={option.key}
+          className="flex items-center justify-between gap-6"
+        >
           <Label
             htmlFor={`${id}-${option.key}`}
             className="cursor-pointer text-xs text-foreground"
@@ -62,6 +68,24 @@ export function MapSettings({
           />
         </div>
       ))}
+
+      <div className="flex items-center justify-between gap-6">
+        <Label
+          htmlFor={`${id}-places`}
+          className="cursor-pointer text-xs text-foreground"
+        >
+          Places
+        </Label>
+        <Switch
+          id={`${id}-places`}
+          size="sm"
+          checked={places}
+          onCheckedChange={(on) => {
+            setPlaces(on);
+            onPlacesChange(on);
+          }}
+        />
+      </div>
     </div>
   );
 }

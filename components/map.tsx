@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { MapControls } from "./map-controls";
 import { MapSettings } from "./map-settings";
+import { enablePlaces, placePopupHtml, setPlaceVisibility } from "./places";
 import { STOPS_LAYER, STOPS_SOURCE } from "@/lib/vehicles/layer-ids";
 import { CAMERA, MAX_PITCH, STEPHANSDOM } from "@/lib/map-camera";
 import { POLL_MS } from "./use-vehicles";
@@ -118,6 +119,9 @@ export function MapView() {
   const tweens = useRef<Map<string, Tween>>(new Map());
   const popup = useRef<mapboxgl.Popup | null>(null);
   const selected = useRef<string | null>(null);
+  const placePopup = useRef<mapboxgl.Popup | null>(null);
+  const disablePlaces = useRef<(() => void) | null>(null);
+  const stopPlaceVisibility = useRef<(() => void) | null>(null);
 
   // Read via ref so theme changes don't re-run init and tear the map down.
   const theme = useRef(resolvedTheme);
@@ -146,8 +150,8 @@ export function MapView() {
           theme: "faded",
           lightPreset: lightPresetFor(theme.current),
           show3dObjects: true,
-          show3dTrees: false,
           showPointOfInterestLabels: false,
+          showLandmarkIcons: false,
           showTransitLabels: false,
           showRoadLabels: false,
           showPlaceLabels: true,
@@ -175,6 +179,15 @@ export function MapView() {
       selected.current = null;
     });
 
+    placePopup.current = new mapboxgl.Popup({
+      closeButton: true,
+      closeOnClick: false,
+      offset: 14,
+      className: "bim-popup bim-popup-place",
+      focusAfterOpen: false,
+      maxWidth: "260px",
+    });
+
     bindVehicleSelection(instance, (id) => {
       selected.current = id;
       if (!id) popup.current?.remove();
@@ -186,9 +199,44 @@ export function MapView() {
     map.current = instance;
 
     return () => {
+      disablePlaces.current?.();
+      disablePlaces.current = null;
+      stopPlaceVisibility.current?.();
+      stopPlaceVisibility.current = null;
       instance.remove();
       map.current = null;
     };
+  }, []);
+
+  // Places are opt-in: the interactions and the basemap labels they need are
+  // both attached only while the toggle is on.
+  const setPlacesEnabled = useCallback((on: boolean) => {
+    const instance = map.current;
+    if (!instance) return;
+
+    if (!on) {
+      disablePlaces.current?.();
+      disablePlaces.current = null;
+      placePopup.current?.remove();
+      stopPlaceVisibility.current?.();
+      stopPlaceVisibility.current = setPlaceVisibility(instance, false);
+      return;
+    }
+
+    if (!disablePlaces.current) {
+      disablePlaces.current = enablePlaces(instance, (place) => {
+        if (!place) {
+          placePopup.current?.remove();
+          return;
+        }
+        placePopup.current
+          ?.setLngLat(place.lngLat)
+          .setHTML(placePopupHtml(place))
+          .addTo(instance);
+      });
+    }
+    stopPlaceVisibility.current?.();
+    stopPlaceVisibility.current = setPlaceVisibility(instance, true);
   }, []);
 
   useEffect(() => {
@@ -250,8 +298,7 @@ export function MapView() {
       );
 
       const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
-        | mapboxgl.GeoJSONSource
-        | undefined;
+        mapboxgl.GeoJSONSource | undefined;
       extrusions?.setData(
         toExtrusionCollection(tweens.current, now, theme.current === "dark"),
       );
@@ -298,6 +345,7 @@ export function MapView() {
       />
       <MapSettings
         getMap={() => map.current}
+        onPlacesChange={setPlacesEnabled}
         className="absolute bottom-8 left-4 z-10"
       />
       {(error || vehicleError) && (

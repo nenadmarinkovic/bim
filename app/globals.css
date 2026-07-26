@@ -334,6 +334,23 @@ span.text-brand.italic {
 .bim-popup.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
   margin-left: -1px;
 }
+.bim-popup-place .mapboxgl-popup-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 1.7rem 0.65rem 0.8rem;
+}
+.bim-popup-kind {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: color-mix(in oklch, var(--foreground) 55%, transparent);
+}
+.bim-popup-detail {
+  margin-top: 0.25rem;
+  color: color-mix(in oklch, var(--foreground) 78%, transparent);
+}
+
 .bim-popup .mapboxgl-popup-close-button {
   color: color-mix(in oklch, var(--foreground) 60%, transparent);
   font-size: 1rem;
