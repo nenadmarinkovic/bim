@@ -5,8 +5,29 @@ import { ThemeColorSync } from "@/components/theme-color-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "bim",
+  title: "Bim",
   description: "A live map of the Wiener Linien network.",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      {
+        url: "/favicon.svg",
+        type: "image/svg+xml",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/favicon-dark.svg",
+        type: "image/svg+xml",
+        media: "(prefers-color-scheme: dark)",
+      },
+      { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
+    ],
+    apple: {
+      url: "/apple-touch-icon.png",
+      sizes: "180x180",
+      type: "image/png",
+    },
+  },
 };
 
 export async function generateViewport(): Promise<Viewport> {

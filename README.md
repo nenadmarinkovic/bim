@@ -1,4 +1,4 @@
-# bim
+# Bim
 
 A live map of the Wiener Linien network.
 

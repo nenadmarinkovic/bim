@@ -10,10 +10,16 @@ import { useVehiclesContext } from "./vehicles-provider";
 import {
   VEHICLES_SOURCE,
   addVehicleLayers,
-  bindVehiclePopup,
+  bindVehicleSelection,
+  describeVehicle,
   setVehicleTheme,
 } from "./vehicle-layer";
-import { reconcile, toFeatureCollection, type Tween } from "@/lib/vehicles/animate";
+import {
+  reconcile,
+  sample,
+  toFeatureCollection,
+  type Tween,
+} from "@/lib/vehicles/animate";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -80,6 +86,8 @@ export function MapView() {
   const [error, setError] = useState<string | null>(null);
   const { data, error: vehicleError } = useVehiclesContext();
   const tweens = useRef<Map<string, Tween>>(new Map());
+  const popup = useRef<mapboxgl.Popup | null>(null);
+  const selected = useRef<string | null>(null);
 
   // Read via ref so theme changes don't re-run init and tear the map down.
   const theme = useRef(resolvedTheme);
@@ -129,12 +137,21 @@ export function MapView() {
     instance.on("load", addLayers);
     instance.on("style.load", addLayers);
 
-    const popup = new mapboxgl.Popup({
-      closeButton: false,
+    popup.current = new mapboxgl.Popup({
+      closeButton: true,
+      closeOnClick: false,
       offset: 12,
       className: "bim-popup",
+      focusAfterOpen: false,
     });
-    bindVehiclePopup(instance, popup);
+    popup.current.on("close", () => {
+      selected.current = null;
+    });
+
+    bindVehicleSelection(instance, (id) => {
+      selected.current = id;
+      if (!id) popup.current?.remove();
+    });
     instance.on("error", (event) => {
       setError(event.error?.message ?? "Mapbox failed to load.");
     });
@@ -186,6 +203,17 @@ export function MapView() {
       performance.now(),
       POLL_MS,
     );
+
+    const id = selected.current;
+    if (!id) return;
+    const vehicle = data.vehicles.find((v) => v.id === id);
+    // Gone from the snapshot means the trip ended, so there is nothing to follow.
+    if (!vehicle) {
+      popup.current?.remove();
+      selected.current = null;
+      return;
+    }
+    popup.current?.setHTML(describeVehicle(vehicle));
   }, [data]);
 
   // ~25 fps: rebuilding the GeoJSON is the cost, and the difference is
@@ -209,6 +237,16 @@ export function MapView() {
         VEHICLES_SOURCE,
       ) as mapboxgl.GeoJSONSource;
       source.setData(toFeatureCollection(tweens.current, now));
+
+      const id = selected.current;
+      if (!id) return;
+      const tween = tweens.current.get(id);
+      if (!tween) return;
+      const at = sample(tween, now);
+      if (!popup.current?.isOpen()) {
+        popup.current?.setHTML(describeVehicle(tween.vehicle)).addTo(instance);
+      }
+      popup.current?.setLngLat([at.lon, at.lat]);
     };
 
     frame = requestAnimationFrame(draw);

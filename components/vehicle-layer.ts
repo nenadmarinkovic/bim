@@ -1,5 +1,6 @@
 import type { FeatureCollection, Point } from "geojson";
 import type mapboxgl from "mapbox-gl";
+import type { Vehicle } from "@/lib/vehicles/types";
 
 export const VEHICLES_SOURCE = "vehicles";
 export const VEHICLES_LAYER = "vehicles-dots";
@@ -91,11 +92,14 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
   });
 }
 
-function describe(properties: Record<string, unknown>): string {
-  const delay = Number(properties.delay ?? 0);
-  const certainty = String(properties.certainty);
-  const stops = Number(properties.stopsFromReport);
+const escape = (value: unknown) =>
+  String(value).replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!,
+  );
 
+export function describeVehicle(vehicle: Vehicle): string {
+  const { delay } = vehicle;
   const lateness =
     delay === 0
       ? "on time"
@@ -104,26 +108,33 @@ function describe(properties: Record<string, unknown>): string {
         : `${Math.round(-delay / 60) || "<1"} min early`;
 
   const basis =
-    certainty === "measured"
+    vehicle.certainty === "measured"
       ? "measured at this stop"
-      : certainty === "interpolated"
-        ? `interpolated, ${stops} stop${stops === 1 ? "" : "s"} from a measured one`
+      : vehicle.certainty === "interpolated"
+        ? `interpolated, ${vehicle.stopsFromReport} stop${vehicle.stopsFromReport === 1 ? "" : "s"} from a measured one`
         : "timetable only — no live data";
 
   return [
-    `<strong>${properties.line}</strong> → ${properties.towards}`,
+    `<strong>${escape(vehicle.line)}</strong> → ${escape(vehicle.towards)}`,
     `${lateness} · ${basis}`,
   ].join("<br/>");
 }
 
-export function bindVehiclePopup(map: mapboxgl.Map, popup: mapboxgl.Popup) {
+export function bindVehicleSelection(
+  map: mapboxgl.Map,
+  onSelect: (id: string | null) => void,
+) {
   map.on("click", VEHICLES_LAYER, (event) => {
-    const feature = event.features?.[0];
-    if (!feature) return;
-    popup
-      .setLngLat(event.lngLat)
-      .setHTML(describe(feature.properties ?? {}))
-      .addTo(map);
+    const id = event.features?.[0]?.properties?.id;
+    if (typeof id === "string") {
+      // Stops the map-wide handler below from immediately clearing this.
+      event.preventDefault();
+      onSelect(id);
+    }
+  });
+
+  map.on("click", (event) => {
+    if (!event.defaultPrevented) onSelect(null);
   });
 
   map.on("mouseenter", VEHICLES_LAYER, () => {

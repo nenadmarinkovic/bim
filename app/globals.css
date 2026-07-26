@@ -294,9 +294,54 @@ span.text-brand.italic {
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.45;
-  padding: 0.5rem 0.7rem;
+  padding: 0.5rem 1.6rem 0.5rem 0.7rem;
 }
-.bim-popup .mapboxgl-popup-tip {
-  border-top-color: var(--popover);
+/* Mapbox colours one border edge per anchor, and the popup re-anchors as the
+   vehicle it follows nears a viewport edge — so all eight need covering. */
+.bim-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+.bim-popup.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
+.bim-popup.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
   border-bottom-color: var(--popover);
+}
+.bim-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+.bim-popup.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
+.bim-popup.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip {
+  border-top-color: var(--popover);
+}
+.bim-popup.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  border-right-color: var(--popover);
+}
+.bim-popup.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  border-left-color: var(--popover);
+}
+
+/* The tip sits flush against the content, so the content's 1px border draws a
+   seam across the base of the triangle. Overlap by 1px to cover it — the tip
+   already has z-index 1, so it paints on top. */
+.bim-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+.bim-popup.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
+.bim-popup.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
+  margin-bottom: -1px;
+}
+.bim-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+.bim-popup.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
+.bim-popup.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip {
+  margin-top: -1px;
+}
+.bim-popup.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  margin-right: -1px;
+}
+.bim-popup.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  margin-left: -1px;
+}
+.bim-popup .mapboxgl-popup-close-button {
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+.bim-popup .mapboxgl-popup-close-button:hover {
+  background: transparent;
+  color: var(--foreground);
 }
