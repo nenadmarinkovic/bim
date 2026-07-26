@@ -38,7 +38,9 @@ export function SiteNav({ className }: { className?: string }) {
           <DialogHeader>
             <div className="grid gap-1">
               <DialogTitle className="text-xl font-semibold">Bim</DialogTitle>
-              <p className="text-xs text-foreground">Wiener Linien, live</p>
+              <p className="text-sm font-medium text-foreground">
+                Unofficial live map of the Wiener Linien network.
+              </p>
             </div>
             <DialogDescription className="text-foreground">
               Wiener Linien publishes no vehicle positions. Every tram, bus and
@@ -48,28 +50,59 @@ export function SiteNav({ className }: { className?: string }) {
             </DialogDescription>
           </DialogHeader>
 
+          <p className="text-sm text-foreground">
+            Bim is an observatory for the network rather than a trip planner. It
+            is built on Wiener Linien&rsquo;s open data and is not affiliated
+            with them.
+          </p>
+
           <div className="rounded-xl border border-foreground/10 bg-foreground/3 p-4">
-            <p className="mb-2 text-xs font-medium tracking-wide text-foreground uppercase">
+            <p className="mb-2 text-sm font-medium tracking-wide text-foreground uppercase">
               How much to trust a vehicle
             </p>
-            <p className="text-xs text-foreground">
-              It varies — Wiener Linien only measures departures at part of the
+            <p className="text-sm text-foreground">
+              It varies. Wiener Linien only measures departures at part of the
               network. Click any vehicle to see whether its position was just
               measured at a stop, interpolated between reporting stops, or is
               running on the timetable alone.
             </p>
           </div>
 
-          <p className="text-xs text-foreground">
-            Positions are accurate to roughly one stop-to-stop segment — near
+          <p className="text-sm text-foreground">
+            Positions are accurate to roughly one stop-to-stop segment: near
             exact on the U-Bahn, looser for a tram in traffic.
           </p>
+
+          <div className="grid gap-2 border-t border-foreground/10 pt-4">
+            <p className="text-sm text-foreground/70">
+              Data from Wiener Linien and Stadt Wien open data, with track
+              geometry from a community GTFS conversion (CC BY 4.0).
+            </p>
+            <p className="text-sm text-foreground">
+              <a
+                href="https://github.com/nenadmarinkovic/bim"
+                target="_blank"
+                rel="noreferrer noopener"
+                className={LINK}
+              >
+                Open-source
+              </a>{" "}
+              project by{" "}
+              <a
+                href="https://nenadmarinkovic.com"
+                target="_blank"
+                rel="noreferrer noopener"
+                className={LINK}
+              >
+                Nenad Marinković
+              </a>
+              .
+            </p>
+          </div>
 
           <DialogFooter showCloseButton className={FOOTER} />
         </DialogContent>
       </Dialog>
-
-      <span className="h-4 w-px bg-foreground/20" />
 
       <Dialog>
         <DialogTrigger className={NAV_LINK}>Login</DialogTrigger>

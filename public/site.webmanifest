@@ -1,7 +1,7 @@
 {
   "name": "Bim",
   "short_name": "Bim",
-  "description": "A live map of the Wiener Linien network.",
+  "description": "An unofficial live map of the Wiener Linien network, built on open data.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

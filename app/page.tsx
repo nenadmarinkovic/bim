@@ -16,7 +16,7 @@ export default function Home() {
           </h1>
           <span className="h-5 w-px shrink-0 bg-foreground/20" />
           <span className="shrink-0 text-sm font-medium text-foreground">
-            Wiener Linien Live Map
+            Live transit map for Vienna
           </span>
           <span className="h-5 w-px shrink-0 bg-foreground/20" />
           <SiteNav />

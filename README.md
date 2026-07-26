@@ -30,13 +30,13 @@ from `public/fonts` and sharing the token scale used in nomos.
 
 ### Sources
 
-| Source                                   | What it gives                                       |
-| ---------------------------------------- | --------------------------------------------------- |
-| `wienerlinien-ogd-haltepunkte.csv`       | StopID (the real-time key) → DIVA, name, coordinates |
-| `wienerlinien-ogd-haltestellen.csv`      | DIVA → stop name and coordinates                     |
-| `wienerlinien-ogd-linien.csv`            | LineID → line name, mode, real-time support          |
-| `wienerlinien-ogd-fahrwegverlaeufe.csv`  | LineID + PatternID → ordered StopID sequence         |
-| GTFS zip (zuugle-services, CC BY 4.0)    | `stops.txt`, `routes.txt`, `trips.txt`, `shapes.txt` |
+| Source                                  | What it gives                                        |
+| --------------------------------------- | ---------------------------------------------------- |
+| `wienerlinien-ogd-haltepunkte.csv`      | StopID (the real-time key) → DIVA, name, coordinates |
+| `wienerlinien-ogd-haltestellen.csv`     | DIVA → stop name and coordinates                     |
+| `wienerlinien-ogd-linien.csv`           | LineID → line name, mode, real-time support          |
+| `wienerlinien-ogd-fahrwegverlaeufe.csv` | LineID + PatternID → ordered StopID sequence         |
+| GTFS zip (zuugle-services, CC BY 4.0)   | `stops.txt`, `routes.txt`, `trips.txt`, `shapes.txt` |
 
 `haltepunkte.csv` is not listed in the OGD documentation, and the documented
 `steige.csv` is a 449-row stub mapping StopID to a platform letter. Without
@@ -90,7 +90,7 @@ Two consequences worth knowing:
   feed supplies them.** Driving off the timetable rather than off the feed means
   coverage gaps do not blank the map — vehicles the feed omits keep moving on
   schedule and are marked `realtime: false`, drawn hollower and counted
-  separately as *estimated*.
+  separately as _estimated_.
 - **The feed repeats each trip across several entities** — commonly four — so
   updates are merged per `trip_id`. Without that, one vehicle is drawn once per
   duplicate at identical coordinates.
@@ -112,11 +112,11 @@ So accuracy is not uniform, and the map says so. Each vehicle reports a
 `certainty`, which drives its opacity, and clicking one explains how its
 position was arrived at:
 
-| `certainty`    | Meaning                                              | Opacity |
-| -------------- | ---------------------------------------------------- | ------- |
-| `measured`     | between two stops the feed just reported on           | 1.0     |
-| `interpolated` | live data, but in an unmonitored stretch              | 0.7     |
-| `scheduled`    | no live data for this trip at all — timetable only    | 0.4     |
+| `certainty`    | Meaning                                            | Opacity |
+| -------------- | -------------------------------------------------- | ------- |
+| `measured`     | between two stops the feed just reported on        | 1.0     |
+| `interpolated` | live data, but in an unmonitored stretch           | 0.7     |
+| `scheduled`    | no live data for this trip at all — timetable only | 0.4     |
 
 Delays are **interpolated between reported stops** rather than held constant
 until the next one. Holding lets the error accumulate across the unmonitored
@@ -136,11 +136,11 @@ drawn still rolling.
 **The community GTFS-RT feed is lossy.** It is a conversion of Wiener Linien's
 own monitor API, and comparing the two on line 12:
 
-|                              | GTFS-RT feed | Monitor API directly |
-| ---------------------------- | ------------ | -------------------- |
-| Stops reporting a delay      | ~27%         | 36 of 36             |
-| Departures carrying `timeReal` | —          | 211 of 212 (100%)    |
-| Vehicles with live data      | 30%          | —                    |
+|                                | GTFS-RT feed | Monitor API directly |
+| ------------------------------ | ------------ | -------------------- |
+| Stops reporting a delay        | ~27%         | 36 of 36             |
+| Departures carrying `timeReal` | —            | 211 of 212 (100%)    |
+| Vehicles with live data        | 30%          | —                    |
 
 The monitor API is stop-based and carries no trip id, but every departure comes
 with `timePlanned`, which **is** the GTFS scheduled time. That makes matching a
@@ -197,3 +197,43 @@ which is the only check that proves more than internal consistency. Last run:
 the API reports (the gap is stop centroid vs. platform).
 
 Artifacts land in `data/` and downloads cache in `.cache/`; both are gitignored.
+
+## Deployment
+
+Bim runs as an ordinary Next.js server behind a reverse proxy on a Hetzner VPS.
+
+Node 24 (the ingest scripts are TypeScript executed directly by `node`, which
+needs 22.6 or newer). Budget ~1 GB of disk: `data/` is ~42 MB once built, and
+`.cache/` grows to a few hundred MB of raw downloads — it is safe to delete
+between ingests.
+
+```bash
+npm ci
+npm run ingest    # data/ is gitignored, so it must be built on the server
+npm run build
+npm run start     # binds :3000 — put nginx or Caddy in front for TLS
+```
+
+`NEXT_PUBLIC_MAPBOX_TOKEN` has to be present **at build time**, not just at
+runtime: Next inlines `NEXT_PUBLIC_*` into the client bundle, so setting it only
+in the service environment is too late and the map renders its "token missing"
+state instead. `MISTRAL_API_KEY` is read on the server per request and can live
+in the service environment; without it, place descriptions are omitted and
+nothing else changes.
+
+### Keeping the timetable fresh
+
+`npm run ingest` builds a static snapshot. Wiener Linien reissue the timetable,
+and a stale `data/` places vehicles on trips that no longer run — so re-run it on
+a schedule, weekly is ample, and **restart the app afterwards**:
+
+```
+# example — refresh the timetable, then restart
+0 4 * * 1 cd /srv/bim && npm run ingest && systemctl restart bim
+```
+
+The restart is not optional. `lib/vehicles/schedule.ts` and
+`app/api/stops/route.ts` both memoise their parse in module scope for the life of
+the process, so re-ingesting without restarting leaves the old timetable serving.
+Restarting also drops the in-process place-description cache, which refills on
+demand.

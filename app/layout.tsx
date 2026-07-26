@@ -5,8 +5,9 @@ import { ThemeColorSync } from "@/components/theme-color-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bim - Wiener Linien Live Map",
-  description: "A live map of the Wiener Linien network.",
+  title: "Bim — live transit map for Vienna",
+  description:
+    "An unofficial live map of the Wiener Linien network, built on open data.",
   manifest: "/site.webmanifest",
   icons: {
     icon: [
