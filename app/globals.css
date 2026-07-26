@@ -27,7 +27,6 @@
     U+2215, U+FEFF, U+FFFD;
 }
 
-/* Newsreader — used only for brand-accented text (.text-brand) */
 @font-face {
   font-family: "Newsreader";
   font-style: italic;
@@ -198,8 +197,6 @@
   }
 }
 
-/* Editorial emphasis (brand-colored <em> and italic display spans) keeps the
-   Newsreader italic display face. Links and nav using text-brand stay Hanken. */
 em.text-brand,
 .text-brand.italic,
 span.text-brand.italic {
@@ -246,9 +243,6 @@ span.text-brand.italic {
   background-color: #4a5580;
 }
 
-/* Frosted chrome floating over the map. The saturation boost is what stops the
-   blur reading as flat grey — it keeps the colour of whatever is underneath,
-   which is what makes it look like glass rather than a translucent panel. */
 .glass {
   background: color-mix(in oklch, var(--popover) 72%, transparent);
   backdrop-filter: blur(28px) saturate(180%);
@@ -268,22 +262,13 @@ span.text-brand.italic {
     inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 
-/* Dialog-weight glass: the same material as the control panels, but more
-   opaque, since a modal has to carry body text rather than a few labels. */
 .glass-sheet {
-  /* Same material and mix as the header control, so a dialog and a control
-     panel are visibly the same surface. */
   background: color-mix(in oklch, var(--popover) 72%, transparent);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
 }
 
 .dark .glass-sheet {
-  /* Same painted colour as the control panels — rgb(28,33,52) — but at 85%
-     alpha instead of 58%, so body text reads. Matching the panel needs more
-     black in the mix, not just more popover: raising the popover share alone
-     lightens the result to rgb(39,47,73). */
-  /* Same 80% as light, with the mix solved to keep the panels' colour. */
   background: color-mix(in oklch, var(--sheet) 52.5%, #00000094);
 }
 
@@ -300,8 +285,6 @@ span.text-brand.italic {
   display: none;
 }
 
-/* Mapbox ships its own chrome; fold it into the type system so the attribution
-   and controls do not read as a foreign widget. */
 .mapboxgl-ctrl-attrib,
 .mapboxgl-ctrl .mapboxgl-ctrl-logo {
   display: none;
@@ -318,8 +301,7 @@ span.text-brand.italic {
   line-height: 1.45;
   padding: 0.5rem 1.6rem 0.5rem 0.7rem;
 }
-/* Mapbox colours one border edge per anchor, and the popup re-anchors as the
-   vehicle it follows nears a viewport edge — so all eight need covering. */
+
 .bim-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
 .bim-popup.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
 .bim-popup.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
@@ -337,9 +319,6 @@ span.text-brand.italic {
   border-left-color: var(--popover);
 }
 
-/* The tip sits flush against the content, so the content's 1px border draws a
-   seam across the base of the triangle. Overlap by 1px to cover it — the tip
-   already has z-index 1, so it paints on top. */
 .bim-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
 .bim-popup.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
 .bim-popup.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
@@ -371,6 +350,18 @@ span.text-brand.italic {
 .bim-popup-detail {
   margin-top: 0.25rem;
   color: color-mix(in oklch, var(--foreground) 78%, transparent);
+}
+.bim-popup-detail[data-pending="true"] {
+  color: color-mix(in oklch, var(--foreground) 45%, transparent);
+  font-style: italic;
+}
+.bim-popup-source {
+  margin-top: 0.4rem;
+  align-self: flex-start;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--foreground) 45%, transparent);
 }
 
 .bim-vehicle-popup {

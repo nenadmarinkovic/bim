@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback, useId, useState } from "react";
-import type mapboxgl from "mapbox-gl";
-
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -10,11 +8,6 @@ import { VEHICLES_LABEL_LAYER } from "@/components/vehicle-layer";
 import { STOPS_LAYER } from "@/lib/vehicles/layer-ids";
 import { cn } from "@/lib/utils";
 
-/**
- * The off state needs its own track colour. shadcn uses `bg-input`, which in
- * light is oklch(0.922) — a 1.2:1 contrast against the pale glass panel, so an
- * unchecked switch was all but invisible.
- */
 const SWITCH_TRACK =
   "data-unchecked:bg-foreground/25 dark:data-unchecked:bg-foreground/25";
 
@@ -38,12 +31,30 @@ export function MapSettings({
     stops: true,
   });
   const [places, setPlaces] = useState(false);
+  const [streets, setStreets] = useState(false);
 
   const apply = useCallback(
     (layer: string, on: boolean) => {
       const map = getMap();
       if (!map?.getLayer(layer)) return;
       map.setLayoutProperty(layer, "visibility", on ? "visible" : "none");
+    },
+    [getMap],
+  );
+
+  const applyConfig = useCallback(
+    (property: string, value: boolean) => {
+      const map = getMap();
+      if (!map) return;
+      let attempts = 0;
+      const push = () => {
+        if (!map.isStyleLoaded()) {
+          if (attempts++ < 120) requestAnimationFrame(push);
+          return;
+        }
+        map.setConfigProperty("basemap", property, value);
+      };
+      push();
     },
     [getMap],
   );
@@ -94,6 +105,25 @@ export function MapSettings({
           onCheckedChange={(on) => {
             setPlaces(on);
             onPlacesChange(on);
+          }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-6">
+        <Label
+          htmlFor={`${id}-streets`}
+          className="cursor-pointer text-xs text-foreground"
+        >
+          Streets
+        </Label>
+        <Switch
+          id={`${id}-streets`}
+          size="sm"
+          className={SWITCH_TRACK}
+          checked={streets}
+          onCheckedChange={(on) => {
+            setStreets(on);
+            applyConfig("showRoadLabels", on);
           }}
         />
       </div>

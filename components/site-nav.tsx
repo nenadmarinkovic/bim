@@ -38,9 +38,9 @@ export function SiteNav({ className }: { className?: string }) {
           <DialogHeader>
             <div className="grid gap-1">
               <DialogTitle className="text-xl font-semibold">Bim</DialogTitle>
-              <p className="text-xs text-foreground/50">Wiener Linien, live</p>
+              <p className="text-xs text-foreground">Wiener Linien, live</p>
             </div>
-            <DialogDescription>
+            <DialogDescription className="text-foreground">
               Wiener Linien publishes no vehicle positions. Every tram, bus and
               U-Bahn here is placed by taking its timetable, bending it by the
               delay reported at nearby stops, and sliding it along the real
@@ -49,10 +49,10 @@ export function SiteNav({ className }: { className?: string }) {
           </DialogHeader>
 
           <div className="rounded-xl border border-foreground/10 bg-foreground/3 p-4">
-            <p className="mb-2 text-xs font-medium tracking-wide text-foreground/50 uppercase">
+            <p className="mb-2 text-xs font-medium tracking-wide text-foreground uppercase">
               How much to trust a vehicle
             </p>
-            <p className="text-xs text-foreground/70">
+            <p className="text-xs text-foreground">
               It varies — Wiener Linien only measures departures at part of the
               network. Click any vehicle to see whether its position was just
               measured at a stop, interpolated between reporting stops, or is
@@ -60,7 +60,7 @@ export function SiteNav({ className }: { className?: string }) {
             </p>
           </div>
 
-          <p className="text-xs text-foreground/50">
+          <p className="text-xs text-foreground">
             Positions are accurate to roughly one stop-to-stop segment — near
             exact on the U-Bahn, looser for a tram in traffic.
           </p>

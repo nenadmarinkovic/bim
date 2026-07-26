@@ -23,8 +23,6 @@ export function useVehicles(getViewport?: () => string | null): VehiclesState {
 
     async function tick() {
       try {
-        // The bbox both trims the payload and tells the server which vehicles
-        // need their track geometry attached.
         const bbox = getViewport?.();
         const response = await fetch(
           bbox ? `/api/vehicles?bbox=${bbox}` : "/api/vehicles",

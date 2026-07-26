@@ -38,13 +38,46 @@ export type Place = {
   kind: string;
   detail: string;
   lngLat: mapboxgl.LngLatLike;
+  pending?: boolean;
+  described?: boolean;
 };
 
-const titleCase = (value: string) =>
-  value.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const MINOR = new Set(["and", "or", "of", "the"]);
 
-function dummyDetail(title: string, kind: string): string {
-  return `A ${kind.toLowerCase()} in Vienna. Details for ${title} will be filled in from a live source.`;
+// Mapbox's "_like" suffix ("park_like") reads as a word once the underscore
+// goes, which captioned a park "Park Like".
+const titleCase = (value: string) =>
+  value
+    .replace(/_like$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w+/g, (word, at: number) =>
+      at > 0 && MINOR.has(word.toLowerCase())
+        ? word.toLowerCase()
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    );
+
+// The whole of the German switch, when it comes.
+const LANG = "en";
+
+type Detail = { title: string; extract: string };
+
+async function fetchDetail(
+  place: Place,
+  signal: AbortSignal,
+): Promise<Detail | null> {
+  const query = new URLSearchParams({
+    name: place.title,
+    kind: place.kind,
+    lang: LANG,
+  });
+
+  try {
+    const response = await fetch(`/api/place?${query}`, { signal });
+    if (!response.ok) return null;
+    return (await response.json()) as Detail;
+  } catch {
+    return null;
+  }
 }
 
 type FeatureLike = { properties?: Record<string, unknown> | null };
@@ -69,7 +102,7 @@ function describe(
       fallbackKind,
   );
 
-  return { title, kind, detail: dummyDetail(title, kind), lngLat };
+  return { title, kind, detail: "Looking up…", lngLat, pending: true };
 }
 
 export function placePopupHtml(place: Place): string {
@@ -78,11 +111,23 @@ export function placePopupHtml(place: Place): string {
       /[&<>"]/g,
       (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!,
     );
-  return [
+  const rows = [
     `<strong>${escape(place.title)}</strong>`,
     `<span class="bim-popup-kind">${escape(place.kind)}</span>`,
-    `<span class="bim-popup-detail">${escape(place.detail)}</span>`,
-  ].join("");
+  ];
+
+  if (place.detail) {
+    rows.push(
+      `<span class="bim-popup-detail"${place.pending ? ' data-pending="true"' : ""}>${escape(place.detail)}</span>`,
+    );
+  }
+
+  // Generated text is marked, not passed off as sourced.
+  if (place.described) {
+    rows.push(`<span class="bim-popup-source">AI summary</span>`);
+  }
+
+  return rows.join("");
 }
 
 export function enablePlaces(
@@ -91,13 +136,38 @@ export function enablePlaces(
 ): () => void {
   const targets = resolveTargets(map);
 
+  // Clicks outrun the network; a stale response would caption the wrong place.
+  let ticket = 0;
+  let inFlight: AbortController | null = null;
+
   const click =
     (fallbackKind: string) =>
     (event: { feature?: FeatureLike; lngLat: mapboxgl.LngLat }) => {
       if (!event.feature) return false;
       const place = describe(event.feature, fallbackKind, event.lngLat);
       if (!place) return false;
+
+      const mine = ++ticket;
+      inFlight?.abort();
+      inFlight = new AbortController();
+
       onSelect(place);
+
+      void fetchDetail(place, inFlight.signal).then((detail) => {
+        if (mine !== ticket) return;
+        onSelect(
+          detail
+            ? {
+                ...place,
+                detail: detail.extract,
+                pending: false,
+                described: true,
+              }
+            : // Declined or failed: drop the line rather than show filler.
+              { ...place, detail: "", pending: false },
+        );
+      });
+
       return true;
     };
 
@@ -147,6 +217,10 @@ export function enablePlaces(
   }
 
   return () => {
+    // So a late response cannot reopen the popup after Places is switched off.
+    ticket++;
+    inFlight?.abort();
+
     for (const id of Object.values(IDS)) {
       try {
         map.removeInteraction(id);

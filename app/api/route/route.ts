@@ -1,13 +1,5 @@
 import { loadSchedule, MissingArtifactError } from "@/lib/vehicles/schedule";
 
-/**
- * The path a single trip runs, as a coordinate list.
- *
- * The shape a trip references often extends past the trip itself — a short
- * working shares geometry with the full line — so it is trimmed to the
- * distance range the trip actually covers, using the same
- * `shape_dist_traveled` values that position the vehicle.
- */
 export async function GET(request: Request) {
   const tripId = new URL(request.url).searchParams.get("trip");
   if (!tripId) {
