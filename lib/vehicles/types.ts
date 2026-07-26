@@ -14,6 +14,17 @@ export type Vehicle = {
 
   realtime: boolean;
   certainty: Certainty;
+  /** True while the vehicle is in tunnel — U-Bahn only, from OSM. */
+  underground: boolean;
+  /**
+   * The stretch of track around the vehicle: flat [lon, lat, ...] with the
+   * matching shape distances in `pd`, and the vehicle's own distance in `d`.
+   * Sent only for vehicles in view — it is what lets the body bend along a
+   * curve instead of being drawn as a rigid box on the chord.
+   */
+  path?: number[];
+  pd?: number[];
+  d?: number;
   stopsFromReport: number;
 };
 

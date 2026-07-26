@@ -10,7 +10,7 @@ export type VehiclesState = {
   error: string | null;
 };
 
-export function useVehicles(): VehiclesState {
+export function useVehicles(getViewport?: () => string | null): VehiclesState {
   const [state, setState] = useState<VehiclesState>({
     data: null,
     error: null,
@@ -23,10 +23,16 @@ export function useVehicles(): VehiclesState {
 
     async function tick() {
       try {
-        const response = await fetch("/api/vehicles", {
-          signal: controller.signal,
-          cache: "no-store",
-        });
+        // The bbox both trims the payload and tells the server which vehicles
+        // need their track geometry attached.
+        const bbox = getViewport?.();
+        const response = await fetch(
+          bbox ? `/api/vehicles?bbox=${bbox}` : "/api/vehicles",
+          {
+            signal: controller.signal,
+            cache: "no-store",
+          },
+        );
 
         if (!response.ok) {
           const body = await response.json().catch(() => ({}));
@@ -57,7 +63,7 @@ export function useVehicles(): VehiclesState {
       controller.abort();
       if (timer.current) clearTimeout(timer.current);
     };
-  }, []);
+  }, [getViewport]);
 
   return state;
 }

@@ -24,9 +24,12 @@ export type Schedule = {
 
 export class MissingArtifactError extends Error {}
 
+export type UndergroundRanges = Record<string, [number, number][]>;
+
 let loading: Promise<{
   schedule: Schedule;
   shapes: Record<string, Shape>;
+  underground: UndergroundRanges;
 }> | null = null;
 
 async function readArtifact<T>(name: string): Promise<T> {
@@ -43,11 +46,13 @@ async function readArtifact<T>(name: string): Promise<T> {
 
 export function loadSchedule() {
   loading ??= (async () => {
-    const [schedule, shapes] = await Promise.all([
+    const [schedule, shapes, underground] = await Promise.all([
       readArtifact<Schedule>("schedule.json"),
       readArtifact<Record<string, Shape>>("shapes.json"),
+      // Optional: the map still works without tunnel data.
+      readArtifact<UndergroundRanges>("underground.json").catch(() => ({})),
     ]);
-    return { schedule, shapes };
+    return { schedule, shapes, underground };
   })();
   return loading;
 }

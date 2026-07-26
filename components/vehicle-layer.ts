@@ -120,19 +120,7 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
         1,
       ],
     },
-    paint: {
-      // Opacity carries confidence — see Certainty.
-      "icon-opacity": [
-        "match",
-        ["get", "certainty"],
-        "measured",
-        1,
-        "interpolated",
-        0.75,
-        0.45,
-      ],
-      "icon-opacity-transition": { duration: 180 },
-    },
+    paint: {},
   });
 
   // The line number is what actually tells you what you are looking at: every
@@ -167,15 +155,6 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
     paint: {
       "text-color": ["get", "color"],
       "text-halo-width": 0,
-      "text-opacity": [
-        "match",
-        ["get", "certainty"],
-        "measured",
-        1,
-        "interpolated",
-        0.85,
-        0.6,
-      ],
     },
   });
 }

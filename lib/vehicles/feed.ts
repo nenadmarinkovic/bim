@@ -1,6 +1,7 @@
 import GtfsRealtimeBindings from "gtfs-realtime-bindings";
 import { loadSchedule, loadStops, serviceDayStart } from "./schedule.ts";
 import { delaysForTrip, placeTrip } from "./position.ts";
+import { DIMENSIONS } from "./colors.ts";
 import { sweepMonitor } from "./monitor.ts";
 import type { Vehicle } from "./types.ts";
 
@@ -122,12 +123,46 @@ async function getMonitorAnchors(
   return monitorCache?.anchors ?? new Map();
 }
 
-export async function vehiclesAt(nowMs = Date.now()): Promise<Vehicle[]> {
-  const [{ schedule, shapes }, feedDelays, monitorDelays] = await Promise.all([
-    loadSchedule(),
-    getDelays().catch(() => new Map<string, StopDelay[]>()),
-    getMonitorAnchors(nextTargets).catch(() => new Map<string, StopDelay[]>()),
-  ]);
+export type Viewport = {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+};
+
+/** Enough track either side to cover the body plus a poll interval of travel. */
+const PATH_MARGIN_M = 220;
+
+/** Slices the shape around a vehicle so the client can bend the body along it. */
+function localPath(
+  shape: { c: number[]; d: number[] },
+  distance: number,
+  halfLength: number,
+) {
+  const from = distance - halfLength - PATH_MARGIN_M;
+  const to = distance + halfLength + PATH_MARGIN_M;
+  const path: number[] = [];
+  const pd: number[] = [];
+  for (let i = 0; i < shape.d.length; i++) {
+    if (shape.d[i] < from || shape.d[i] > to) continue;
+    path.push(shape.c[i * 2], shape.c[i * 2 + 1]);
+    pd.push(shape.d[i]);
+  }
+  return pd.length >= 2 ? { path, pd } : null;
+}
+
+export async function vehiclesAt(
+  nowMs = Date.now(),
+  view?: Viewport,
+): Promise<Vehicle[]> {
+  const [{ schedule, shapes, underground }, feedDelays, monitorDelays] =
+    await Promise.all([
+      loadSchedule(),
+      getDelays().catch(() => new Map<string, StopDelay[]>()),
+      getMonitorAnchors(nextTargets).catch(
+        () => new Map<string, StopDelay[]>(),
+      ),
+    ]);
 
   const delayMap = new Map<string, StopDelay[]>(feedDelays);
   for (const [tripId, anchors] of monitorDelays) {
@@ -191,6 +226,31 @@ export async function vehiclesAt(nowMs = Date.now()): Promise<Vehicle[]> {
       const nextStop = trip.p[state.fromStop + 1];
       if (nextStop) upcomingGtfsStops.add(nextStop);
 
+      // A lookup against precomputed distance ranges — the same
+      // shape_dist_traveled that placed the vehicle in the first place.
+      const tunnels = underground[trip.s];
+      const inTunnel = tunnels
+        ? tunnels.some(
+            ([from, to]) => state.distance >= from && state.distance <= to,
+          )
+        : false;
+
+      // Only vehicles in view carry their track slice; sending it for the whole
+      // network would multiply the payload for geometry nobody can see.
+      const lon = Number(state.lon.toFixed(5));
+      const lat = Number(state.lat.toFixed(5));
+      const inView =
+        view &&
+        lon >= view.west &&
+        lon <= view.east &&
+        lat >= view.south &&
+        lat <= view.north;
+      if (view && !inView) continue;
+
+      const local = inView
+        ? localPath(shape, state.distance, DIMENSIONS[mode].length / 2)
+        : null;
+
       vehicles.push({
         id: tripId,
         line: route?.name ?? trip.r,
@@ -205,6 +265,8 @@ export async function vehiclesAt(nowMs = Date.now()): Promise<Vehicle[]> {
         stopsFromReport: Number.isFinite(stopsFromReport)
           ? stopsFromReport
           : -1,
+        underground: inTunnel,
+        ...(local ? { path: local.path, pd: local.pd, d: state.distance } : {}),
       });
     }
   }

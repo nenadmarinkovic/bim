@@ -39,25 +39,6 @@ const SHEET = "glass-sheet gap-5 p-6";
 /** The footer bleeds to the sheet edge, so its negative margins track the padding. */
 const FOOTER = "-mx-6 -mb-6 bg-transparent p-6";
 
-/** Mirrors the opacity tiers the map draws, so the legend cannot drift from it. */
-const CERTAINTY = [
-  {
-    label: "Measured",
-    opacity: "opacity-100",
-    detail: "Just passed a stop that reported it",
-  },
-  {
-    label: "Interpolated",
-    opacity: "opacity-70",
-    detail: "Live data, but between reporting stops",
-  },
-  {
-    label: "Scheduled",
-    opacity: "opacity-40",
-    detail: "No live data — timetable only",
-  },
-];
-
 export function SiteNav({ className }: { className?: string }) {
   return (
     <nav className={cn("flex shrink-0 items-center gap-3", className)}>
@@ -78,28 +59,15 @@ export function SiteNav({ className }: { className?: string }) {
           </DialogHeader>
 
           <div className="rounded-xl border border-foreground/10 bg-foreground/3 p-4">
-            <p className="mb-3 text-xs font-medium tracking-wide text-foreground/50 uppercase">
+            <p className="mb-2 text-xs font-medium tracking-wide text-foreground/50 uppercase">
               How much to trust a vehicle
             </p>
-            <ul className="grid gap-2.5">
-              {CERTAINTY.map((tier) => (
-                <li key={tier.label} className="flex items-center gap-2.5">
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "size-2.5 shrink-0 rounded-full bg-brand",
-                      tier.opacity,
-                    )}
-                  />
-                  <span className="text-sm font-medium text-foreground">
-                    {tier.label}
-                  </span>
-                  <span className="ml-auto text-right text-xs text-foreground/55">
-                    {tier.detail}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-xs text-foreground/70">
+              It varies — Wiener Linien only measures departures at part of the
+              network. Click any vehicle to see whether its position was just
+              measured at a stop, interpolated between reporting stops, or is
+              running on the timetable alone.
+            </p>
           </div>
 
           <p className="text-xs text-foreground/50">

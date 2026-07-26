@@ -10,6 +10,7 @@ import {
 } from "./sources.ts";
 import { extractEntries } from "./unzip.ts";
 import { buildTrips, previousServiceDate, serviceDate } from "./trips.ts";
+import { buildUndergroundRanges, fetchWays } from "./underground.ts";
 import {
   classifyMatch,
   gtfsGroupKey,
@@ -323,6 +324,23 @@ async function main() {
     lines,
   });
   await writeArtifact("shapes.json", shapes);
+  console.log("\nunderground sections");
+  const metroShapes = new Set<string>();
+  for (const trip of Object.values(schedule.trips)) {
+    if (schedule.routes[trip.r]?.type === 1) metroShapes.add(trip.s);
+  }
+  const ways = await fetchWays();
+  const underground = buildUndergroundRanges(shapes, metroShapes, ways);
+  console.log(`  osm subway ways ${ways.length}`);
+  console.log(`  metro shapes ${metroShapes.size}, with tunnel ${underground.stats.shapes}`);
+  console.log(
+    `  points matched ${underground.stats.pointsMatched}, unmatched ${underground.stats.pointsUnmatched}`,
+  );
+  console.log(
+    `  tunnel ${underground.stats.undergroundKm} km of ${underground.stats.totalKm} km metro shape`,
+  );
+
+  await writeArtifact("underground.json", underground.ranges);
   await writeArtifact("schedule.json", {
     date,
     generatedAt: new Date().toISOString(),
@@ -365,6 +383,7 @@ async function main() {
       patterns: lines.reduce((n, l) => n + Object.keys(l.patterns).length, 0),
     },
     shapes: { total: Object.keys(shapes).length, points },
+    underground: underground.stats,
     schedule: {
       date,
       trips: tripCount,

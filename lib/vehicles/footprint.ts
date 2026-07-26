@@ -4,11 +4,72 @@ import {
   GLASS,
   ROOF,
   ROOF_THICKNESS,
+  undergroundColour,
   vehicleColour,
 } from "./colors.ts";
-import { sample, type Cull, type Tween } from "./animate.ts";
+import { alongPath, sample, type Cull, type Tween } from "./animate.ts";
 
 const METRES_PER_DEGREE = 111_320;
+
+/**
+ * The body swept along the track, so a 35 m tram or a 111 m U-Bahn set bends
+ * round a curve instead of being drawn as a rigid box across the chord. Walks
+ * the centreline from tail to nose and offsets each point sideways by half the
+ * width, which is what an articulated vehicle actually does.
+ */
+function sweptFootprint(
+  path: number[],
+  pd: number[],
+  distance: number,
+  length: number,
+  width: number,
+): Polygon | null {
+  const tail = distance - length / 2;
+  const nose = distance + length / 2;
+  if (nose < pd[0] || tail > pd[pd.length - 1]) return null;
+
+  const centres: { lon: number; lat: number }[] = [];
+  const push = (at: number) => {
+    const p = alongPath(path, pd, at);
+    if (p) centres.push({ lon: p.lon, lat: p.lat });
+  };
+
+  push(tail);
+  for (let i = 0; i < pd.length; i++) {
+    if (pd[i] > tail && pd[i] < nose) {
+      centres.push({ lon: path[i * 2], lat: path[i * 2 + 1] });
+    }
+  }
+  push(nose);
+  if (centres.length < 2) return null;
+
+  const half = width / 2;
+  const left: [number, number][] = [];
+  const right: [number, number][] = [];
+
+  for (let i = 0; i < centres.length; i++) {
+    const prev = centres[Math.max(0, i - 1)];
+    const next = centres[Math.min(centres.length - 1, i + 1)];
+    const lat = centres[i].lat;
+    const scale = Math.cos((lat * Math.PI) / 180);
+
+    // Perpendicular to the local direction, in metres, then back to degrees.
+    let dx = (next.lon - prev.lon) * scale;
+    let dy = next.lat - prev.lat;
+    const len = Math.hypot(dx, dy) || 1;
+    dx /= len;
+    dy /= len;
+
+    const offLon = (-dy * half) / (METRES_PER_DEGREE * scale);
+    const offLat = (dx * half) / METRES_PER_DEGREE;
+
+    left.push([centres[i].lon + offLon, centres[i].lat + offLat]);
+    right.push([centres[i].lon - offLon, centres[i].lat - offLat]);
+  }
+
+  const ring = [...left, ...right.reverse()];
+  return { type: "Polygon", coordinates: [[...ring, ring[0]]] };
+}
 
 function footprint(
   lon: number,
@@ -40,18 +101,6 @@ function footprint(
   return { type: "Polygon", coordinates: [[...ring, ring[0]]] };
 }
 
-/** Certainty is carried in the fill alpha, since fill-extrusion opacity is not data-driven. */
-const ALPHA: Record<string, number> = {
-  measured: 1,
-  interpolated: 0.78,
-  scheduled: 0.5,
-};
-
-function withAlpha(hex: string, alpha: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-}
-
 export function toExtrusionCollection(
   tweens: Map<string, Tween>,
   now: number,
@@ -61,7 +110,8 @@ export function toExtrusionCollection(
   const features: Feature<Polygon>[] = [];
 
   for (const tween of tweens.values()) {
-    const { lon, lat, bearing } = sample(tween, now);
+    const at = sample(tween, now);
+    const { lon, lat, bearing } = at;
     if (
       cull &&
       (lon < cull.west ||
@@ -73,11 +123,23 @@ export function toExtrusionCollection(
     }
     const { vehicle } = tween;
     const size = DIMENSIONS[vehicle.mode];
-    const alpha = ALPHA[vehicle.certainty] ?? 0.5;
+    const tint = (hex: string) =>
+      vehicle.underground ? undergroundColour(hex, dark) : hex;
+
+    const swept =
+      vehicle.path && vehicle.pd && at.distance !== undefined
+        ? sweptFootprint(
+            vehicle.path,
+            vehicle.pd,
+            at.distance,
+            size.length,
+            size.width,
+          )
+        : null;
 
     features.push({
       type: "Feature",
-      geometry: footprint(lon, lat, bearing, size.length, size.width),
+      geometry: swept ?? footprint(lon, lat, bearing, size.length, size.width),
       properties: {
         id: vehicle.id,
         line: vehicle.line,
@@ -92,12 +154,9 @@ export function toExtrusionCollection(
         windowTop: size.windowTop,
         height: size.height,
         roofTop: size.height + ROOF_THICKNESS,
-        color: withAlpha(
-          vehicleColour(vehicle.mode, vehicle.line, dark),
-          alpha,
-        ),
-        glass: withAlpha(dark ? GLASS.dark : GLASS.light, alpha),
-        roof: withAlpha(dark ? ROOF.dark : ROOF.light, alpha),
+        color: tint(vehicleColour(vehicle.mode, vehicle.line, dark)),
+        glass: tint(dark ? GLASS.dark : GLASS.light),
+        roof: tint(dark ? ROOF.dark : ROOF.light),
       },
     });
   }

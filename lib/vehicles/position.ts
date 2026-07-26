@@ -88,6 +88,8 @@ export type VehicleState = {
   fromStop: number;
   delay: number;
   segmentProgress: number;
+  /** Distance along the shape, in the same units as the tunnel ranges. */
+  distance: number;
 };
 
 export function placeTrip(
@@ -127,5 +129,6 @@ export function placeTrip(
     fromStop: lo,
     delay: delays[lo],
     segmentProgress: progress,
+    distance,
   };
 }

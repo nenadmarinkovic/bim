@@ -373,6 +373,41 @@ span.text-brand.italic {
   color: color-mix(in oklch, var(--foreground) 78%, transparent);
 }
 
+.bim-vehicle-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.bim-popup-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+.bim-popup-actions button {
+  flex: 1;
+  cursor: pointer;
+  border: 1px solid color-mix(in oklch, var(--foreground) 14%, transparent);
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--foreground) 5%, transparent);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.25rem 0.6rem;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+  white-space: nowrap;
+}
+.bim-popup-actions button:hover {
+  background: color-mix(in oklch, var(--foreground) 12%, transparent);
+}
+.bim-popup-actions button[data-active="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--background);
+}
+
 .bim-popup .mapboxgl-popup-close-button {
   color: color-mix(in oklch, var(--foreground) 60%, transparent);
   font-size: 1rem;

@@ -8,6 +8,15 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { MapControls } from "./map-controls";
 import { MapSettings } from "./map-settings";
 import { enablePlaces, placePopupHtml, setPlaceVisibility } from "./places";
+import { buildVehiclePopup } from "./vehicle-popup";
+import {
+  addRouteLayers,
+  clearRoute,
+  showRoute,
+  type TripRoute,
+} from "./vehicle-route";
+import { vehicleColour } from "@/lib/vehicles/colors";
+import type { Vehicle } from "@/lib/vehicles/types";
 import { STOPS_LAYER, STOPS_SOURCE } from "@/lib/vehicles/layer-ids";
 import {
   CAMERA,
@@ -16,14 +25,13 @@ import {
   STEPHANSDOM,
 } from "@/lib/map-camera";
 import { POLL_MS } from "./use-vehicles";
-import { useVehiclesContext } from "./vehicles-provider";
+import { useVehiclesContext, useViewportReporter } from "./vehicles-provider";
 import {
   SPRITE_TO_3D_ZOOM,
   VEHICLES_3D_SOURCE,
   VEHICLES_SOURCE,
   addVehicleLayers,
   bindVehicleSelection,
-  describeVehicle,
   setVehicleTheme,
 } from "./vehicle-layer";
 import {
@@ -35,6 +43,10 @@ import {
 import { toExtrusionCollection } from "@/lib/vehicles/footprint";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
+/** Bird's-eye chase camera: high enough to read the street, tilted enough to see ahead. */
+const FOLLOW_PITCH = 62;
+const FOLLOW_MIN_ZOOM = 16.5;
 
 const STYLE = "mapbox://styles/mapbox/standard";
 
@@ -116,16 +128,66 @@ function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
   });
 }
 
+type PopupContext = {
+  map: mapboxgl.Map;
+  popup: mapboxgl.Popup;
+  following: { current: string | null };
+  routeTrip: { current: string | null };
+  dark: boolean;
+};
+
+/**
+ * Module scope, not a hook: the button handlers re-render the popup so their
+ * own labels update, and a `useCallback` that referenced itself would be
+ * reading a binding before it exists.
+ */
+function renderVehiclePopup(ctx: PopupContext, vehicle: Vehicle) {
+  const { map, popup, following, routeTrip, dark } = ctx;
+
+  popup.setDOMContent(
+    buildVehiclePopup(vehicle, {
+      routeShown: routeTrip.current === vehicle.id,
+      following: following.current === vehicle.id,
+      onToggleRoute: () => {
+        if (routeTrip.current === vehicle.id) {
+          routeTrip.current = null;
+          clearRoute(map);
+          renderVehiclePopup(ctx, vehicle);
+          return;
+        }
+        fetch(`/api/route?trip=${encodeURIComponent(vehicle.id)}`)
+          .then((response) => (response.ok ? response.json() : null))
+          .then((route: TripRoute | null) => {
+            if (!route) return;
+            routeTrip.current = vehicle.id;
+            const base = vehicleColour(vehicle.mode, vehicle.line, dark);
+            showRoute(map, route, base, dark ? "#141a2e" : "#ffffff");
+            renderVehiclePopup(ctx, vehicle);
+          })
+          .catch(() => {});
+      },
+      onToggleFollow: () => {
+        following.current =
+          following.current === vehicle.id ? null : vehicle.id;
+        renderVehiclePopup(ctx, vehicle);
+      },
+    }),
+  );
+}
+
 export function MapView() {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const { resolvedTheme } = useTheme();
   const [error, setError] = useState<string | null>(null);
   const { data, error: vehicleError } = useVehiclesContext();
+  const reportViewport = useViewportReporter();
   const tweens = useRef<Map<string, Tween>>(new Map());
   const popup = useRef<mapboxgl.Popup | null>(null);
   const selected = useRef<string | null>(null);
   const placePopup = useRef<mapboxgl.Popup | null>(null);
+  const following = useRef<string | null>(null);
+  const routeTrip = useRef<string | null>(null);
   const disablePlaces = useRef<(() => void) | null>(null);
   const stopPlaceVisibility = useRef<(() => void) | null>(null);
 
@@ -170,6 +232,7 @@ export function MapView() {
 
     const addLayers = () => {
       addStopsLayer(instance, theme.current);
+      addRouteLayers(instance);
       addVehicleLayers(instance, theme.current === "dark");
       applyMapTheme(instance, theme.current === "dark");
     };
@@ -198,7 +261,12 @@ export function MapView() {
 
     bindVehicleSelection(instance, (id) => {
       selected.current = id;
-      if (!id) popup.current?.remove();
+      if (!id) {
+        popup.current?.remove();
+        following.current = null;
+        routeTrip.current = null;
+        clearRoute(instance);
+      }
     });
     instance.on("error", (event) => {
       setError(event.error?.message ?? "Mapbox failed to load.");
@@ -280,7 +348,19 @@ export function MapView() {
       selected.current = null;
       return;
     }
-    popup.current?.setHTML(describeVehicle(vehicle));
+    const instance = map.current;
+    if (instance && popup.current) {
+      renderVehiclePopup(
+        {
+          map: instance,
+          popup: popup.current,
+          following,
+          routeTrip,
+          dark: theme.current === "dark",
+        },
+        vehicle,
+      );
+    }
   }, [data]);
 
   useEffect(() => {
@@ -318,6 +398,16 @@ export function MapView() {
           })()
         : undefined;
 
+      // Publish it for the next poll, so the server knows which vehicles need
+      // their track geometry attached.
+      if (cull) {
+        reportViewport(
+          [cull.west, cull.south, cull.east, cull.north]
+            .map((n) => n.toFixed(4))
+            .join(","),
+        );
+      }
+
       const source = instance.getSource(
         VEHICLES_SOURCE,
       ) as mapboxgl.GeoJSONSource;
@@ -346,20 +436,47 @@ export function MapView() {
         );
       }
 
+      // Follow rides the same interpolated position the vehicle is drawn at, so
+      // the camera cannot lag behind its own subject. jumpTo, not easeTo: an
+      // easing per frame would fight the next frame's target and judder.
+      const followId = following.current;
+      if (followId) {
+        const followed = tweens.current.get(followId);
+        if (followed) {
+          const at = sample(followed, now);
+          instance.jumpTo({
+            center: [at.lon, at.lat],
+            bearing: at.bearing,
+            pitch: FOLLOW_PITCH,
+            zoom: Math.max(instance.getZoom(), FOLLOW_MIN_ZOOM),
+          });
+        }
+      }
+
       const id = selected.current;
       if (!id) return;
       const tween = tweens.current.get(id);
       if (!tween) return;
       const at = sample(tween, now);
       if (!popup.current?.isOpen()) {
-        popup.current?.setHTML(describeVehicle(tween.vehicle)).addTo(instance);
+        renderVehiclePopup(
+          {
+            map: instance,
+            popup: popup.current!,
+            following,
+            routeTrip,
+            dark: theme.current === "dark",
+          },
+          tween.vehicle,
+        );
+        popup.current?.addTo(instance);
       }
       popup.current?.setLngLat([at.lon, at.lat]);
     };
 
     frame = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [reportViewport]);
 
   if (!TOKEN) {
     return (

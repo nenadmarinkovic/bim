@@ -113,3 +113,22 @@ export const ROOF_THICKNESS = 0.18;
 /** The window band and roof are white — what Vienna's fleet actually looks like. */
 export const GLASS = { light: "#f4f6f9", dark: "#e6ebf3" } as const;
 export const ROOF = { light: "#ffffff", dark: "#f2f5fa" } as const;
+
+/**
+ * A vehicle in tunnel is drawn washed out, because it genuinely cannot be seen
+ * from the street. Mixing toward an achromatic target desaturates without
+ * rotating hue, so a dimmed U3 still reads as U3 orange — mixing toward the
+ * navy basemap instead dragged greens and reds up to 15 degrees off.
+ */
+const UNDERGROUND_MUTE = 0.55;
+const TOWARD = { light: [255, 255, 255], dark: [23, 23, 25] } as const;
+
+export function undergroundColour(hex: string, dark: boolean): string {
+  const n = parseInt(hex.slice(1), 16);
+  const base = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  const target = TOWARD[dark ? "dark" : "light"];
+  const mixed = base.map((c, i) =>
+    Math.round(c + (target[i] - c) * UNDERGROUND_MUTE),
+  );
+  return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
+}
