@@ -44,9 +44,13 @@ import { toExtrusionCollection } from "@/lib/vehicles/footprint";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-/** Bird's-eye chase camera: high enough to read the street, tilted enough to see ahead. */
-const FOLLOW_PITCH = 62;
-const FOLLOW_MIN_ZOOM = 16.5;
+/**
+ * Chase camera. Past roughly 60 degrees the horizon enters frame, and at 72 the
+ * sky sits well above it — riding along with the city ahead rather than looking
+ * down at a street. Capped below MAX_PITCH so the compass can still recover.
+ */
+const FOLLOW_PITCH = 72;
+const FOLLOW_MIN_ZOOM = 17.2;
 
 const STYLE = "mapbox://styles/mapbox/standard";
 

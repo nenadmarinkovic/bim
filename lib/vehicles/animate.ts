@@ -11,6 +11,8 @@ export type Tween = {
   toBearing: number;
   /** Distance along `vehicle.path` at the start of the tween, when known. */
   fromDistance?: number;
+  /** Where it should end up — not always the reported distance; see reconcile. */
+  toDistance?: number;
   startedAt: number;
   duration: number;
 };
@@ -34,6 +36,15 @@ const TURN_MS = 1400;
 
 /** Below this the vehicle is effectively stopped, and its heading is meaningless. */
 const MOVING_METRES = 1.5;
+
+/**
+ * Positions come from the timetable bent by the reported delay, so when a delay
+ * is revised the computed point can land behind where the vehicle already is.
+ * Nothing on the network reverses, so a small correction is absorbed by holding
+ * station until the schedule catches up, rather than animating a reversal.
+ * Past this the correction is too large to wait out and is applied at once.
+ */
+const BACKWARD_HOLD_M = 180;
 
 /** Compass heading from one point to another, in degrees. */
 function headingBetween(
@@ -87,11 +98,20 @@ export function reconcile(
 
     // With track geometry, interpolate along the rails rather than across the
     // chord — the vehicle then follows the curve instead of cutting it.
-    const priorDistance = prior?.vehicle.d;
     const fromDistance =
-      !jumped && vehicle.d !== undefined && priorDistance !== undefined
-        ? priorDistance
-        : vehicle.d;
+      !jumped && at?.distance !== undefined ? at.distance : vehicle.d;
+
+    let toDistance = vehicle.d;
+    let reversed = false;
+    if (fromDistance !== undefined && toDistance !== undefined) {
+      const backwards = fromDistance - toDistance;
+      if (backwards > 0 && backwards <= BACKWARD_HOLD_M) {
+        // Hold position; the vehicle waits instead of rolling back.
+        toDistance = fromDistance;
+      } else if (backwards > BACKWARD_HOLD_M) {
+        reversed = true;
+      }
+    }
 
     next.set(vehicle.id, {
       vehicle,
@@ -100,8 +120,9 @@ export function reconcile(
       fromBearing,
       toBearing,
       fromDistance,
+      toDistance,
       startedAt: now,
-      duration: jumped ? 0 : duration,
+      duration: jumped || reversed ? 0 : duration,
     });
   }
 
@@ -142,9 +163,15 @@ export function sample(tween: Tween, now: number) {
   const t =
     tween.duration > 0 ? Math.min(Math.max(elapsed / tween.duration, 0), 1) : 1;
 
-  const { path, pd, d } = tween.vehicle;
-  if (path && pd && d !== undefined && tween.fromDistance !== undefined) {
-    const distance = tween.fromDistance + (d - tween.fromDistance) * t;
+  const { path, pd } = tween.vehicle;
+  if (
+    path &&
+    pd &&
+    tween.toDistance !== undefined &&
+    tween.fromDistance !== undefined
+  ) {
+    const distance =
+      tween.fromDistance + (tween.toDistance - tween.fromDistance) * t;
     const on = alongPath(path, pd, distance);
     if (on) return { ...on, distance };
   }
