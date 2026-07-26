@@ -90,7 +90,7 @@ Two consequences worth knowing:
   feed supplies them.** Driving off the timetable rather than off the feed means
   coverage gaps do not blank the map — vehicles the feed omits keep moving on
   schedule and are marked `realtime: false`, drawn hollower and counted
-  separately as *geschätzt*.
+  separately as *estimated*.
 - **The feed repeats each trip across several entities** — commonly four — so
   updates are merged per `trip_id`. Without that, one vehicle is drawn once per
   duplicate at identical coordinates.

@@ -5,7 +5,7 @@ import { ThemeColorSync } from "@/components/theme-color-sync";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bim",
+  title: "Bim - Wiener Linien Live Map",
   description: "A live map of the Wiener Linien network.",
   manifest: "/site.webmanifest",
   icons: {
@@ -31,18 +31,17 @@ export const metadata: Metadata = {
 };
 
 export async function generateViewport(): Promise<Viewport> {
-  // Cookie set by ThemeColorSync; stops the iOS notch flashing the OS colour.
   const pref = (await cookies()).get("theme-color")?.value;
   const base: Viewport = {
     viewportFit: "cover",
   };
-  if (pref === "dark") return { ...base, themeColor: "#000000" };
+  if (pref === "dark") return { ...base, themeColor: "#242c45" };
   if (pref === "light") return { ...base, themeColor: "#fafafa" };
   return {
     ...base,
     themeColor: [
       { media: "(prefers-color-scheme: light)", color: "#fafafa" },
-      { media: "(prefers-color-scheme: dark)", color: "#000000" },
+      { media: "(prefers-color-scheme: dark)", color: "#242c45" },
     ],
   };
 }
@@ -50,7 +49,7 @@ export async function generateViewport(): Promise<Viewport> {
 const THEME_COLOR_SCRIPT = `(function(){try{
 var t=localStorage.getItem("theme");
 if(t!=="dark"&&t!=="light"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}
-var color=t==="dark"?"#000000":"#fafafa";
+var color=t==="dark"?"#242c45":"#fafafa";
 var metas=document.querySelectorAll('meta[name="theme-color"]');
 for(var i=0;i<metas.length;i++){
 if(i===0){metas[i].setAttribute("content",color);metas[i].setAttribute("media","all");}
@@ -66,7 +65,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="antialiased">
       <head>
-        {/* next/script does not inline here, so this stays a raw tag. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_COLOR_SCRIPT }} />
         <link
           rel="preload"

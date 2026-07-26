@@ -173,39 +173,39 @@
 }
 
 .dark {
-  --background: #000000;
+  --background: #242c45;
   --foreground: #ffffff;
-  --card: oklch(0.18 0.012 234);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0.012 234);
-  --popover-foreground: oklch(0.985 0 0);
-  --field: oklch(0.23 0.012 234);
+  --card: #2a3350;
+  --card-foreground: #ffffff;
+  --popover: #2a3350;
+  --popover-foreground: #ffffff;
+  --field: #303a5b;
   --brand: #ffff01;
   --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --primary-foreground: #242c45;
+  --secondary: #303a5b;
+  --secondary-foreground: #ffffff;
+  --muted: #303a5b;
+  --muted-foreground: #a8b0ca;
+  --accent: #303a5b;
+  --accent-foreground: #ffffff;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: rgb(255 255 255 / 12%);
+  --input: rgb(255 255 255 / 16%);
+  --ring: #7b86a8;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar: #2a3350;
+  --sidebar-foreground: #ffffff;
   --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #303a5b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 12%);
+  --sidebar-ring: #7b86a8;
 }
 
 @layer base {
@@ -247,7 +247,7 @@ span.text-brand.italic {
   scrollbar-color: #d4d2cc transparent;
 }
 .dark .scrollbar-thin {
-  scrollbar-color: #2a3137 transparent;
+  scrollbar-color: #3a4468 transparent;
 }
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
@@ -261,28 +261,54 @@ span.text-brand.italic {
   border-radius: 3px;
 }
 .dark .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #2a3137;
+  background-color: #3a4468;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background-color: #b0afa9;
 }
 .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background-color: #3d454c;
+  background-color: #4a5580;
+}
+
+/* Frosted chrome floating over the map. The saturation boost is what stops the
+   blur reading as flat grey — it keeps the colour of whatever is underneath,
+   which is what makes it look like glass rather than a translucent panel. */
+.glass {
+  background: color-mix(in oklch, var(--popover) 72%, transparent);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid color-mix(in oklch, var(--foreground) 9%, transparent);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 10px 30px -8px rgb(0 0 0 / 0.16),
+    inset 0 1px 0 rgb(255 255 255 / 0.5);
+}
+
+.dark .glass {
+  background: color-mix(in oklch, var(--popover) 38%, #00000052);
+  border-color: rgb(255 255 255 / 0.1);
+  box-shadow:
+    0 10px 30px -8px rgb(0 0 0 / 0.6),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--popover);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.mapboxgl-ctrl .mapboxgl-ctrl-logo {
+  display: none;
 }
 
 /* Mapbox ships its own chrome; fold it into the type system so the attribution
    and controls do not read as a foreign widget. */
 .mapboxgl-ctrl-attrib,
-.mapboxgl-ctrl-attrib a {
-  font-family: var(--font-sans);
-  font-size: 0.6875rem;
-}
-.mapboxgl-ctrl-attrib.mapboxgl-compact {
-  background: color-mix(in oklch, var(--background) 82%, transparent);
-  backdrop-filter: blur(6px);
-}
-.mapboxgl-ctrl-attrib a {
-  color: color-mix(in oklch, var(--foreground) 55%, transparent);
+.mapboxgl-ctrl .mapboxgl-ctrl-logo {
+  display: none;
 }
 
 .bim-popup .mapboxgl-popup-content {
@@ -335,7 +361,7 @@ span.text-brand.italic {
   margin-left: -1px;
 }
 .bim-popup .mapboxgl-popup-close-button {
-  color: var(--muted-foreground);
+  color: color-mix(in oklch, var(--foreground) 60%, transparent);
   font-size: 1rem;
   line-height: 1;
   padding: 0.25rem 0.4rem;

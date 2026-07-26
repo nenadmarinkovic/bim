@@ -1,15 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Desktop, Moon, Sun } from "@phosphor-icons/react";
+import { DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const options = [
-  { value: "system", icon: Desktop, label: "System" },
-  { value: "light", icon: Sun, label: "Light" },
-  { value: "dark", icon: Moon, label: "Dark" },
+  { value: "system", icon: DesktopIcon, label: "System" },
+  { value: "light", icon: SunIcon, label: "Light" },
+  { value: "dark", icon: MoonIcon, label: "Dark" },
 ] as const;
 
 export function ThemeToggle({ className }: { className?: string }) {
@@ -44,23 +49,23 @@ export function ThemeToggle({ className }: { className?: string }) {
       {options.map(({ value, icon: Icon, label }) => {
         const active = theme === value;
         return (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-label={label}
-            title={label}
-            onClick={() => setTheme(value)}
-            className={cn(
-              "relative flex size-6 items-center justify-center rounded-full cursor-pointer",
-              active
-                ? "bg-background text-foreground border border-foreground/20"
-                : "text-foreground/55 hover:text-foreground",
-            )}
-          >
-            <Icon size={12} weight="regular" />
-          </button>
+          <Tooltip key={value}>
+            <TooltipTrigger
+              role="radio"
+              aria-checked={active}
+              aria-label={label}
+              onClick={() => setTheme(value)}
+              className={cn(
+                "relative flex size-6 cursor-pointer items-center justify-center rounded-full",
+                active
+                  ? "border border-foreground/20 bg-background text-foreground"
+                  : "text-foreground/55 hover:text-foreground dark:text-foreground/75",
+              )}
+            >
+              <Icon size={12} weight="regular" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{label}</TooltipContent>
+          </Tooltip>
         );
       })}
     </div>

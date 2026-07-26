@@ -12,12 +12,11 @@ export function VehicleCount({ className }: { className?: string }) {
 
   return (
     <p className={className}>
-      <span className="tabular-nums text-foreground">{total}</span> vehicles
-      moving
+      <span className="tabular-nums">{total}</span> vehicles moving
       {scheduled > 0 && (
         <>
           {" · "}
-          <span className="tabular-nums">{scheduled}</span> geschätzt
+          <span className="tabular-nums">{scheduled}</span> estimated
         </>
       )}
     </p>

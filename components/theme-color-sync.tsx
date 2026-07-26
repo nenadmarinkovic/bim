@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect } from "react";
 
 const COLORS: Record<"light" | "dark", string> = {
   light: "#fafafa",
-  dark: "#000000",
+  dark: "#242c45",
 };
 
 const useIsomorphicLayoutEffect =

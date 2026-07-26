@@ -6,17 +6,21 @@ export const VEHICLES_SOURCE = "vehicles";
 export const VEHICLES_LAYER = "vehicles-dots";
 export const VEHICLES_LABEL_LAYER = "vehicles-labels";
 
-const COLOR_BY_MODE: mapboxgl.ExpressionSpecification = [
-  "match",
-  ["get", "mode"],
-  "metro",
-  "#e2231a",
-  "tram",
-  "#e2231a",
-  "bus",
-  "#1c74d4",
-  "#888888",
-];
+// Brighter in dark: the same red and blue that read well on the faded day
+// basemap go muddy against the night one.
+function colorByMode(dark: boolean): mapboxgl.ExpressionSpecification {
+  return [
+    "match",
+    ["get", "mode"],
+    "metro",
+    dark ? "#ff5c50" : "#e2231a",
+    "tram",
+    dark ? "#ff5c50" : "#e2231a",
+    "bus",
+    dark ? "#5aa9ff" : "#1c74d4",
+    dark ? "#9aa3bd" : "#888888",
+  ];
+}
 
 const EMPTY: FeatureCollection<Point> = {
   type: "FeatureCollection",
@@ -46,7 +50,8 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
         16,
         8,
       ],
-      "circle-color": COLOR_BY_MODE,
+      "circle-color": colorByMode(dark),
+      "circle-color-transition": { duration: 180 },
       // Opacity carries confidence — see Certainty.
       "circle-opacity": [
         "match",
@@ -66,7 +71,8 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
         16,
         1.5,
       ],
-      "circle-stroke-color": dark ? "#000000" : "#ffffff",
+      "circle-stroke-color": dark ? "#141a2e" : "#ffffff",
+      "circle-stroke-color-transition": { duration: 180 },
     },
   });
 
@@ -86,7 +92,9 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
     },
     paint: {
       "text-color": dark ? "#ffffff" : "#000000",
-      "text-halo-color": dark ? "#000000" : "#ffffff",
+      "text-color-transition": { duration: 180 },
+      "text-halo-color": dark ? "#141a2e" : "#ffffff",
+      "text-halo-color-transition": { duration: 180 },
       "text-halo-width": 1.2,
     },
   });
@@ -146,20 +154,24 @@ export function bindVehicleSelection(
 }
 
 export function setVehicleTheme(map: mapboxgl.Map, dark: boolean) {
-  if (!map.getLayer(VEHICLES_LAYER)) return;
-  map.setPaintProperty(
-    VEHICLES_LAYER,
-    "circle-stroke-color",
-    dark ? "#000000" : "#ffffff",
-  );
-  map.setPaintProperty(
-    VEHICLES_LABEL_LAYER,
-    "text-color",
-    dark ? "#ffffff" : "#000000",
-  );
-  map.setPaintProperty(
-    VEHICLES_LABEL_LAYER,
-    "text-halo-color",
-    dark ? "#000000" : "#ffffff",
-  );
+  if (map.getLayer(VEHICLES_LAYER)) {
+    map.setPaintProperty(VEHICLES_LAYER, "circle-color", colorByMode(dark));
+    map.setPaintProperty(
+      VEHICLES_LAYER,
+      "circle-stroke-color",
+      dark ? "#141a2e" : "#ffffff",
+    );
+  }
+  if (map.getLayer(VEHICLES_LABEL_LAYER)) {
+    map.setPaintProperty(
+      VEHICLES_LABEL_LAYER,
+      "text-color",
+      dark ? "#ffffff" : "#000000",
+    );
+    map.setPaintProperty(
+      VEHICLES_LABEL_LAYER,
+      "text-halo-color",
+      dark ? "#141a2e" : "#ffffff",
+    );
+  }
 }

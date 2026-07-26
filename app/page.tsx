@@ -8,18 +8,20 @@ export default function Home() {
     <div className="relative h-full w-full">
       <MapView />
 
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between p-6">
-        <div className="pointer-events-auto">
-          <h1 className="flex items-center gap-2.5 text-2xl leading-none tracking-tight text-foreground">
-            <Logo className="h-3.75 w-auto" />
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center gap-2 px-4 pt-4">
+        <div className="glass pointer-events-auto flex max-w-full items-center gap-3 rounded-full py-2 pr-2 pl-4">
+          <h1 className="flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight text-foreground">
+            <Logo className="h-3 w-auto shrink-0" />
             Bim
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            Wiener Linien, <em className="text-brand italic">live</em>
-          </p>
-          <VehicleCount className="mt-0.5 text-sm text-muted-foreground" />
+          <span className="shrink-0 text-sm font-medium text-foreground">
+            Wiener Linien Live Map
+          </span>
+          <span className="h-5 w-px shrink-0 bg-foreground/20" />
+          <ThemeToggle className="shrink-0 border-transparent bg-transparent" />
         </div>
-        <ThemeToggle className="pointer-events-auto" />
+
+        <VehicleCount className="glass pointer-events-auto rounded-full px-3 py-1 text-xs font-medium text-foreground" />
       </header>
     </div>
   );

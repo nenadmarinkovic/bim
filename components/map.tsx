@@ -5,6 +5,8 @@ import { useTheme } from "next-themes";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
+import { MapControls } from "./map-controls";
+import { CAMERA, MAX_PITCH, STEPHANSDOM } from "@/lib/map-camera";
 import { POLL_MS } from "./use-vehicles";
 import { useVehiclesContext } from "./vehicles-provider";
 import {
@@ -23,7 +25,6 @@ import {
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-const VIENNA = { lng: 16.3725, lat: 48.2083 };
 const STOPS_SOURCE = "stops";
 const STOPS_LAYER = "stops-circles";
 
@@ -31,10 +32,37 @@ const STOPS_LAYER = "stops-circles";
 // config rather than a style reload, which would drop every layer.
 const STYLE = "mapbox://styles/mapbox/standard";
 
-const CAMERA = { zoom: 13, pitch: 55, bearing: -18 } as const;
-
 function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
+}
+
+/**
+ * Applies the theme to everything the map owns. Returns false when the style
+ * is not ready yet, so the caller can retry.
+ *
+ * Every layer is guarded: `setPaintProperty` throws on a missing layer, and a
+ * throw partway through used to leave the rest of the map on the old theme.
+ */
+function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
+  if (!map.isStyleLoaded()) return false;
+
+  map.setConfigProperty("basemap", "lightPreset", dark ? "night" : "day");
+
+  if (map.getLayer(STOPS_LAYER)) {
+    map.setPaintProperty(
+      STOPS_LAYER,
+      "circle-color",
+      dark ? "#ffff01" : "#0040ff",
+    );
+    map.setPaintProperty(
+      STOPS_LAYER,
+      "circle-stroke-color",
+      dark ? "#141a2e" : "#ffffff",
+    );
+  }
+
+  setVehicleTheme(map, dark);
+  return true;
 }
 
 function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
@@ -63,6 +91,7 @@ function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
         5,
       ],
       "circle-color": resolvedTheme === "dark" ? "#ffff01" : "#0040ff",
+      "circle-color-transition": { duration: 180 },
       "circle-opacity": [
         "interpolate",
         ["linear"],
@@ -73,7 +102,8 @@ function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
         0.85,
       ],
       "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 13, 0, 16, 1],
-      "circle-stroke-color": resolvedTheme === "dark" ? "#000000" : "#ffffff",
+      "circle-stroke-color": resolvedTheme === "dark" ? "#141a2e" : "#ffffff",
+      "circle-stroke-color-transition": { duration: 180 },
       "circle-pitch-alignment": "map",
     },
   });
@@ -103,36 +133,37 @@ export function MapView() {
     const instance = new mapboxgl.Map({
       container: container.current,
       style: STYLE,
-      center: [VIENNA.lng, VIENNA.lat],
+      center: [STEPHANSDOM.lng, STEPHANSDOM.lat],
       zoom: CAMERA.zoom,
       pitch: CAMERA.pitch,
       bearing: CAMERA.bearing,
       minZoom: 9,
       maxZoom: 18,
-      maxPitch: 75,
+      maxPitch: MAX_PITCH,
       attributionControl: false,
       config: {
         basemap: {
           theme: "faded",
           lightPreset: lightPresetFor(theme.current),
           show3dObjects: true,
+          show3dTrees: false,
+          // The basemap is context, not content. Everything that competes with
+          // the vehicles or the chrome is off; place labels stay for orientation.
           showPointOfInterestLabels: false,
+          showTransitLabels: false,
+          showRoadLabels: false,
+          showPlaceLabels: true,
+          roadsBrightness: 0.22,
         },
       },
     });
 
-    instance.addControl(
-      new mapboxgl.AttributionControl({ compact: true }),
-      "bottom-right",
-    );
-    instance.addControl(
-      new mapboxgl.NavigationControl({ showCompass: true, visualizePitch: true }),
-      "bottom-right",
-    );
-
     const addLayers = () => {
       addStopsLayer(instance, theme.current);
       addVehicleLayers(instance, theme.current === "dark");
+      // The map can finish loading before next-themes has resolved, so the
+      // layers are re-themed here rather than trusting their initial paint.
+      applyMapTheme(instance, theme.current === "dark");
     };
     instance.on("load", addLayers);
     instance.on("style.load", addLayers);
@@ -165,34 +196,23 @@ export function MapView() {
   }, []);
 
   useEffect(() => {
-    if (!map.current || !resolvedTheme) return;
     const instance = map.current;
+    if (!instance || !resolvedTheme) return;
+    const dark = resolvedTheme === "dark";
 
-    const apply = () => {
-      instance.setConfigProperty(
-        "basemap",
-        "lightPreset",
-        lightPresetFor(resolvedTheme),
-      );
-      instance.setPaintProperty(
-        STOPS_LAYER,
-        "circle-color",
-        resolvedTheme === "dark" ? "#ffff01" : "#0040ff",
-      );
-      instance.setPaintProperty(
-        STOPS_LAYER,
-        "circle-stroke-color",
-        resolvedTheme === "dark" ? "#000000" : "#ffffff",
-      );
+    // Poll rather than wait on a map event. `style.load` fires once, and
+    // `idle` requires clean sources — which never happens here, because the
+    // vehicle loop calls setData ~25x/s and keeps them permanently dirty. Both
+    // can therefore never fire, leaving the map on the old theme.
+    let frame = 0;
+    let attempts = 0;
+    const tryApply = () => {
+      if (applyMapTheme(instance, dark) || attempts++ > 600) return;
+      frame = requestAnimationFrame(tryApply);
     };
+    tryApply();
 
-    if (instance.isStyleLoaded()) apply();
-    else instance.once("style.load", apply);
-  }, [resolvedTheme]);
-
-  useEffect(() => {
-    if (!map.current || !resolvedTheme) return;
-    setVehicleTheme(map.current, resolvedTheme === "dark");
+    return () => cancelAnimationFrame(frame);
   }, [resolvedTheme]);
 
   useEffect(() => {
@@ -274,6 +294,10 @@ export function MapView() {
   return (
     <div className="relative h-full w-full">
       <div ref={container} className="h-full w-full" />
+      <MapControls
+        getMap={() => map.current}
+        className="absolute right-4 bottom-8 z-10"
+      />
       {(error || vehicleError) && (
         <p className="absolute bottom-4 left-4 rounded-md bg-card px-3 py-2 text-sm text-destructive">
           {error ?? vehicleError}
