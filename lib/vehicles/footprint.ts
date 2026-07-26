@@ -6,7 +6,7 @@ import {
   ROOF_THICKNESS,
   vehicleColour,
 } from "./colors.ts";
-import { sample, type Tween } from "./animate.ts";
+import { sample, type Cull, type Tween } from "./animate.ts";
 
 const METRES_PER_DEGREE = 111_320;
 
@@ -56,11 +56,21 @@ export function toExtrusionCollection(
   tweens: Map<string, Tween>,
   now: number,
   dark: boolean,
+  cull?: Cull,
 ): FeatureCollection<Polygon> {
   const features: Feature<Polygon>[] = [];
 
   for (const tween of tweens.values()) {
     const { lon, lat, bearing } = sample(tween, now);
+    if (
+      cull &&
+      (lon < cull.west ||
+        lon > cull.east ||
+        lat < cull.south ||
+        lat > cull.north)
+    ) {
+      continue;
+    }
     const { vehicle } = tween;
     const size = DIMENSIONS[vehicle.mode];
     const alpha = ALPHA[vehicle.certainty] ?? 0.5;

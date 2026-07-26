@@ -5,9 +5,18 @@ import type mapboxgl from "mapbox-gl";
 
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { VEHICLES_LABEL_LAYER } from "@/components/vehicle-layer";
 import { STOPS_LAYER } from "@/lib/vehicles/layer-ids";
 import { cn } from "@/lib/utils";
+
+/**
+ * The off state needs its own track colour. shadcn uses `bg-input`, which in
+ * light is oklch(0.922) — a 1.2:1 contrast against the pale glass panel, so an
+ * unchecked switch was all but invisible.
+ */
+const SWITCH_TRACK =
+  "data-unchecked:bg-foreground/25 dark:data-unchecked:bg-foreground/25";
 
 const LAYER_OPTIONS = [
   { key: "lines", label: "Line numbers", layer: VEHICLES_LABEL_LAYER },
@@ -60,6 +69,7 @@ export function MapSettings({
           <Switch
             id={`${id}-${option.key}`}
             size="sm"
+            className={SWITCH_TRACK}
             checked={visible[option.key]}
             onCheckedChange={(on) => {
               setVisible((current) => ({ ...current, [option.key]: on }));
@@ -79,12 +89,20 @@ export function MapSettings({
         <Switch
           id={`${id}-places`}
           size="sm"
+          className={SWITCH_TRACK}
           checked={places}
           onCheckedChange={(on) => {
             setPlaces(on);
             onPlacesChange(on);
           }}
         />
+      </div>
+
+      <div className="mt-0.5 flex items-center justify-between gap-6 border-t border-foreground/10 pt-2.5">
+        <span className="flex items-center text-xs leading-none font-medium text-foreground select-none">
+          Theme
+        </span>
+        <ThemeToggle />
       </div>
     </div>
   );

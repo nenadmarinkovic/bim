@@ -175,61 +175,31 @@ export function enablePlaces(
   };
 }
 
-/** Landmark icons only appear close in; they were intrusive when zoomed out. */
-const LANDMARK_ICON_MIN_ZOOM = 15;
-
 /**
- * POI labels and landmark icons have to be on for there to be anything to see
- * or click. Retried on a frame loop rather than gated on `isStyleLoaded`, which
- * can be briefly false and would otherwise drop the change silently.
+ * POI labels have to be on for there to be anything to see or click.
+ *
+ * Landmark icons — the circular photos Standard puts on famous sites — are
+ * forced off every time this runs, at any zoom. Gating them on zoom was not
+ * enough: the value was only re-asserted when the Places toggle changed, so
+ * any other path that touched the basemap config could leave them showing.
+ * Landmarks stay reachable through their POI labels.
  */
 export function setPlaceVisibility(map: mapboxgl.Map, on: boolean): () => void {
   let frame = 0;
   let attempts = 0;
-  let desired: boolean | null = null;
-  let applied: boolean | null = null;
 
-  // Config writes need a loaded style. Rather than dropping the change when it
-  // is momentarily busy — which used to strand the icons visible after a zoom
-  // out — the wanted value is held and retried until it lands.
-  const push = () => {
-    if (desired === null || desired === applied) return;
+  const apply = () => {
     if (!map.isStyleLoaded()) {
       if (attempts++ > 600) return;
-      frame = requestAnimationFrame(push);
-      return;
-    }
-    attempts = 0;
-    applied = desired;
-    map.setConfigProperty("basemap", "showLandmarkIcons", desired);
-  };
-
-  const syncIcons = () => {
-    desired = on && map.getZoom() >= LANDMARK_ICON_MIN_ZOOM;
-    cancelAnimationFrame(frame);
-    push();
-  };
-
-  const applyLabels = () => {
-    if (!map.isStyleLoaded()) {
-      requestAnimationFrame(applyLabels);
+      frame = requestAnimationFrame(apply);
       return;
     }
     map.setConfigProperty("basemap", "showPointOfInterestLabels", on);
     map.setConfigProperty("basemap", "showPlaceLabels", true);
+    map.setConfigProperty("basemap", "showLandmarkIcons", false);
+    map.setConfigProperty("basemap", "showLandmarkIconLabels", false);
   };
 
-  applyLabels();
-  syncIcons();
-
-  // `zoom` fires throughout the gesture, so the icons go as you pull back
-  // rather than snapping out once the zoom settles.
-  map.on("zoom", syncIcons);
-  map.on("zoomend", syncIcons);
-
-  return () => {
-    cancelAnimationFrame(frame);
-    map.off("zoom", syncIcons);
-    map.off("zoomend", syncIcons);
-  };
+  apply();
+  return () => cancelAnimationFrame(frame);
 }

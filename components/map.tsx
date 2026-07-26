@@ -9,10 +9,16 @@ import { MapControls } from "./map-controls";
 import { MapSettings } from "./map-settings";
 import { enablePlaces, placePopupHtml, setPlaceVisibility } from "./places";
 import { STOPS_LAYER, STOPS_SOURCE } from "@/lib/vehicles/layer-ids";
-import { CAMERA, MAX_PITCH, STEPHANSDOM } from "@/lib/map-camera";
+import {
+  CAMERA,
+  MAX_PITCH,
+  NETWORK_BOUNDS,
+  STEPHANSDOM,
+} from "@/lib/map-camera";
 import { POLL_MS } from "./use-vehicles";
 import { useVehiclesContext } from "./vehicles-provider";
 import {
+  SPRITE_TO_3D_ZOOM,
   VEHICLES_3D_SOURCE,
   VEHICLES_SOURCE,
   addVehicleLayers,
@@ -144,6 +150,7 @@ export function MapView() {
       minZoom: 9,
       maxZoom: 18,
       maxPitch: MAX_PITCH,
+      maxBounds: NETWORK_BOUNDS,
       attributionControl: false,
       config: {
         basemap: {
@@ -152,6 +159,7 @@ export function MapView() {
           show3dObjects: true,
           showPointOfInterestLabels: false,
           showLandmarkIcons: false,
+          showLandmarkIconLabels: false,
           showTransitLabels: false,
           showRoadLabels: false,
           showPlaceLabels: true,
@@ -279,7 +287,7 @@ export function MapView() {
     if (!TOKEN) return;
     let frame = 0;
     let lastDraw = 0;
-    const MIN_FRAME_MS = 40;
+    const MIN_FRAME_MS = 50;
 
     const draw = (now: number) => {
       frame = requestAnimationFrame(draw);
@@ -290,18 +298,53 @@ export function MapView() {
       if (!instance || !instance.getSource(VEHICLES_SOURCE)) return;
       if (!tweens.current.size) return;
 
+      // Only feed Mapbox what is on screen. Building the GeoJSON is cheap
+      // (~0.3 ms for the whole network); the cost is setData re-indexing the
+      // source twice a frame, which scales with feature count. A margin keeps
+      // vehicles from popping in at the edge.
+      const view = instance.getBounds();
+      const cull = view
+        ? (() => {
+            const sw = view.getSouthWest();
+            const ne = view.getNorthEast();
+            const padLon = (ne.lng - sw.lng) * 0.25;
+            const padLat = (ne.lat - sw.lat) * 0.25;
+            return {
+              west: sw.lng - padLon,
+              south: sw.lat - padLat,
+              east: ne.lng + padLon,
+              north: ne.lat + padLat,
+            };
+          })()
+        : undefined;
+
       const source = instance.getSource(
         VEHICLES_SOURCE,
       ) as mapboxgl.GeoJSONSource;
       source.setData(
-        toFeatureCollection(tweens.current, now, theme.current === "dark"),
+        toFeatureCollection(
+          tweens.current,
+          now,
+          theme.current === "dark",
+          cull,
+        ),
       );
 
-      const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
-        mapboxgl.GeoJSONSource | undefined;
-      extrusions?.setData(
-        toExtrusionCollection(tweens.current, now, theme.current === "dark"),
-      );
+      // The extrusion layer is hidden below SPRITE_TO_3D_ZOOM, so building and
+      // uploading its polygons there is pure waste — and that is exactly where
+      // culling helps least, since the viewport then holds most of the network.
+      if (instance.getZoom() >= SPRITE_TO_3D_ZOOM) {
+        const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
+          mapboxgl.GeoJSONSource | undefined;
+        extrusions?.setData(
+          toExtrusionCollection(
+            tweens.current,
+            now,
+            theme.current === "dark",
+            cull,
+          ),
+        );
+      }
 
       const id = selected.current;
       if (!id) return;

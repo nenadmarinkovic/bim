@@ -115,6 +115,7 @@
   --card: #fbf9f7;
   --card-foreground: oklch(0.145 0 0);
   --popover: #ffffff;
+  --sheet: #f6f4f1;
   --popover-foreground: oklch(0.145 0 0);
   --field: #ffffff;
   --brand: #0040ff;
@@ -153,6 +154,7 @@
   --card-foreground: #ffffff;
   --popover: #2a3350;
   --popover-foreground: #ffffff;
+  --sheet: #2a3350;
   --field: #303a5b;
   --brand: #ffff01;
   --primary: oklch(0.922 0 0);
@@ -266,8 +268,28 @@ span.text-brand.italic {
     inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 
+/* Dialog-weight glass: the same material as the control panels, but more
+   opaque, since a modal has to carry body text rather than a few labels. */
+.glass-sheet {
+  /* Same material and mix as the header control, so a dialog and a control
+     panel are visibly the same surface. */
+  background: color-mix(in oklch, var(--popover) 72%, transparent);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.dark .glass-sheet {
+  /* Same painted colour as the control panels — rgb(28,33,52) — but at 85%
+     alpha instead of 58%, so body text reads. Matching the panel needs more
+     black in the mix, not just more popover: raising the popover share alone
+     lightens the result to rgb(39,47,73). */
+  /* Same 80% as light, with the mix solved to keep the panels' colour. */
+  background: color-mix(in oklch, var(--sheet) 52.5%, #00000094);
+}
+
 @media (prefers-reduced-transparency: reduce) {
-  .glass {
+  .glass,
+  .glass-sheet {
     background: var(--popover);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

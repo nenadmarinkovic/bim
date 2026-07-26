@@ -75,15 +75,27 @@ export function sample(tween: Tween, now: number) {
 
 export type VehicleFeature = Feature<Point>;
 
+/** Viewport box, already padded by the caller. */
+export type Cull = { west: number; south: number; east: number; north: number };
+
+const inside = (cull: Cull | undefined, lon: number, lat: number) =>
+  !cull ||
+  (lon >= cull.west &&
+    lon <= cull.east &&
+    lat >= cull.south &&
+    lat <= cull.north);
+
 export function toFeatureCollection(
   tweens: Map<string, Tween>,
   now: number,
   dark = false,
+  cull?: Cull,
 ): FeatureCollection<Point> {
   const features: VehicleFeature[] = [];
 
   for (const tween of tweens.values()) {
     const { lon, lat, bearing } = sample(tween, now);
+    if (!inside(cull, lon, lat)) continue;
     const { vehicle } = tween;
     features.push({
       type: "Feature",

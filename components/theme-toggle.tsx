@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { useTheme } from "next-themes";
 
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,
   TooltipContent,
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const options = [
+const OPTIONS = [
   { value: "system", icon: DesktopIcon, label: "System" },
   { value: "light", icon: SunIcon, label: "Light" },
   { value: "dark", icon: MoonIcon, label: "Dark" },
@@ -26,48 +27,37 @@ export function ThemeToggle({ className }: { className?: string }) {
     setMounted(true);
   }, []);
 
+  // The resolved theme is unknown during SSR, so reserve the space rather than
+  // render a control whose pressed state would change on hydration.
   if (!mounted) {
-    return (
-      <div
-        className={cn(
-          "h-7 w-20 rounded-full bg-card border border-foreground/10",
-          className,
-        )}
-      />
-    );
+    return <div className={cn("h-7 w-18.5", className)} />;
   }
 
   return (
-    <div
-      role="radiogroup"
+    <ToggleGroup
+      size="sm"
+      variant="outline"
+      spacing={0}
+      value={[theme ?? "system"]}
+      onValueChange={(value) => {
+        const next = value[0];
+        if (next) setTheme(next);
+      }}
       aria-label="Theme"
-      className={cn(
-        "inline-flex items-center gap-0 rounded-full bg-card p-0.5 border border-foreground/10",
-        className,
-      )}
+      className={className}
     >
-      {options.map(({ value, icon: Icon, label }) => {
-        const active = theme === value;
-        return (
-          <Tooltip key={value}>
-            <TooltipTrigger
-              role="radio"
-              aria-checked={active}
-              aria-label={label}
-              onClick={() => setTheme(value)}
-              className={cn(
-                "relative flex size-6 cursor-pointer items-center justify-center rounded-full",
-                active
-                  ? "border border-foreground/20 bg-background text-foreground"
-                  : "text-foreground/55 hover:text-foreground dark:text-foreground/75",
-              )}
-            >
-              <Icon size={12} weight="regular" />
-            </TooltipTrigger>
-            <TooltipContent side="bottom">{label}</TooltipContent>
-          </Tooltip>
-        );
-      })}
-    </div>
+      {OPTIONS.map(({ value, icon: Icon, label }) => (
+        <Tooltip key={value}>
+          <TooltipTrigger
+            render={
+              <ToggleGroupItem value={value} aria-label={label}>
+                <Icon weight="regular" className="size-3" />
+              </ToggleGroupItem>
+            }
+          />
+          <TooltipContent side="top">{label}</TooltipContent>
+        </Tooltip>
+      ))}
+    </ToggleGroup>
   );
 }
