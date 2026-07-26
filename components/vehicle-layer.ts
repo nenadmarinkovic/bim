@@ -1,28 +1,38 @@
-import type { FeatureCollection, Point } from "geojson";
+import type { FeatureCollection, Point, Polygon } from "geojson";
 import type mapboxgl from "mapbox-gl";
 import type { Vehicle } from "@/lib/vehicles/types";
+import {
+  METRO_COLOR,
+  SPRITES,
+  SPRITE_PIXEL_RATIO,
+  makeVehicleSprite,
+  spriteId,
+} from "./vehicle-sprites";
 
 export const VEHICLES_SOURCE = "vehicles";
 export const VEHICLES_LAYER = "vehicles-dots";
 export const VEHICLES_LABEL_LAYER = "vehicles-labels";
+export const VEHICLES_3D_SOURCE = "vehicles-3d";
+export const VEHICLES_3D_LAYER = "vehicles-body";
+export const VEHICLES_ROOF_LAYER = "vehicles-roof";
+export const VEHICLES_GLASS_LAYER = "vehicles-glass";
+export const VEHICLES_UPPER_LAYER = "vehicles-upper";
+export const VEHICLE_3D_LAYERS = [
+  VEHICLES_3D_LAYER,
+  VEHICLES_GLASS_LAYER,
+  VEHICLES_UPPER_LAYER,
+  VEHICLES_ROOF_LAYER,
+];
 
-// Brighter in dark: the same red and blue that read well on the faded day
-// basemap go muddy against the night one.
-function colorByMode(dark: boolean): mapboxgl.ExpressionSpecification {
-  return [
-    "match",
-    ["get", "mode"],
-    "metro",
-    dark ? "#ff5c50" : "#e2231a",
-    "tram",
-    dark ? "#ff5c50" : "#e2231a",
-    "bus",
-    dark ? "#5aa9ff" : "#1c74d4",
-    dark ? "#9aa3bd" : "#888888",
-  ];
-}
+/** Below this the extrusions are sub-pixel; above it the sprites look like stickers. */
+export const SPRITE_TO_3D_ZOOM = 14;
 
 const EMPTY: FeatureCollection<Point> = {
+  type: "FeatureCollection",
+  features: [],
+};
+
+const EMPTY_POLYGONS: FeatureCollection<Polygon> = {
   type: "FeatureCollection",
   features: [],
 };
@@ -33,69 +43,139 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
 
   map.addSource(VEHICLES_SOURCE, { type: "geojson", data: EMPTY });
 
+  registerSprites(map, dark);
+
+  map.addSource(VEHICLES_3D_SOURCE, { type: "geojson", data: EMPTY_POLYGONS });
+
+  // Real-size extrusions once close enough to see them, sprites before that:
+  // a 12 m bus is sub-pixel at city zoom, so the sprite keeps a legible
+  // minimum size while the extrusion takes over where the 3D reads.
+  // Four bands off one footprint: skirt, glazing, upper body, roof. A single
+  // box reads as a brick; the white glazing stripe is what makes it a vehicle.
+  const band = (
+    id: string,
+    base: string,
+    height: string,
+    colour: string,
+  ): mapboxgl.LayerSpecification => ({
+    id,
+    type: "fill-extrusion",
+    source: VEHICLES_3D_SOURCE,
+    slot: "middle",
+    minzoom: SPRITE_TO_3D_ZOOM,
+    paint: {
+      "fill-extrusion-color": ["get", colour],
+      "fill-extrusion-base": ["get", base],
+      "fill-extrusion-height": ["get", height],
+      "fill-extrusion-vertical-gradient": false,
+      "fill-extrusion-emissive-strength": dark ? 0.85 : 0.25,
+    },
+  });
+
+  map.addLayer(band(VEHICLES_3D_LAYER, "zero", "windowBase", "color"));
+  map.addLayer(band(VEHICLES_GLASS_LAYER, "windowBase", "windowTop", "glass"));
+  map.addLayer(band(VEHICLES_UPPER_LAYER, "windowTop", "height", "color"));
+  map.addLayer(band(VEHICLES_ROOF_LAYER, "height", "roofTop", "roof"));
+
   map.addLayer({
     id: VEHICLES_LAYER,
-    type: "circle",
+    type: "symbol",
     source: VEHICLES_SOURCE,
     slot: "top",
-    paint: {
-      "circle-radius": [
+    maxzoom: SPRITE_TO_3D_ZOOM,
+    layout: {
+      "icon-image": [
+        "match",
+        ["get", "mode"],
+        "metro",
+        [
+          "match",
+          ["get", "line"],
+          ...Object.keys(METRO_COLOR).flatMap((line) => [
+            line,
+            `vehicle-${line}`,
+          ]),
+          "vehicle-metro",
+        ],
+        "tram",
+        "vehicle-tram",
+        "vehicle-bus",
+      ] as unknown as mapboxgl.ExpressionSpecification,
+      "icon-rotate": ["get", "bearing"],
+      // Aligned to the map, not the screen: the vehicles lie flat on the
+      // street and tilt with the camera rather than standing up as badges.
+      "icon-rotation-alignment": "map",
+      "icon-pitch-alignment": "map",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+      "icon-size": [
         "interpolate",
         ["linear"],
         ["zoom"],
-        10,
-        2.5,
-        13,
-        5,
-        16,
-        8,
+        11,
+        0.3,
+        14,
+        0.6,
+        17,
+        1,
       ],
-      "circle-color": colorByMode(dark),
-      "circle-color-transition": { duration: 180 },
+    },
+    paint: {
       // Opacity carries confidence — see Certainty.
-      "circle-opacity": [
+      "icon-opacity": [
         "match",
         ["get", "certainty"],
         "measured",
         1,
         "interpolated",
-        0.7,
-        0.4,
+        0.75,
+        0.45,
       ],
-      "circle-stroke-width": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        11,
-        0.5,
-        16,
-        1.5,
-      ],
-      "circle-stroke-color": dark ? "#141a2e" : "#ffffff",
-      "circle-stroke-color-transition": { duration: 180 },
+      "icon-opacity-transition": { duration: 180 },
     },
   });
 
+  // The line number is what actually tells you what you are looking at: every
+  // tram shares one red and every bus one navy, and U1's red is the tram red.
+  // Tinting the number by line and keeping it always visible does the work
+  // colour alone cannot.
   map.addLayer({
     id: VEHICLES_LABEL_LAYER,
     type: "symbol",
     source: VEHICLES_SOURCE,
     slot: "top",
-    minzoom: 13.5,
+    minzoom: 12.5,
     layout: {
       "text-field": ["get", "line"],
-      "text-size": ["interpolate", ["linear"], ["zoom"], 13.5, 9, 16, 12],
+      "text-size": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12.5,
+        10,
+        15,
+        13,
+        18,
+        16,
+      ],
       "text-offset": [0, -1.1],
+      "text-letter-spacing": 0.04,
       "text-allow-overlap": false,
       "text-ignore-placement": false,
-      "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+      "text-font": ["DIN Pro Bold", "Arial Unicode MS Regular"],
     },
     paint: {
-      "text-color": dark ? "#ffffff" : "#000000",
-      "text-color-transition": { duration: 180 },
-      "text-halo-color": dark ? "#141a2e" : "#ffffff",
-      "text-halo-color-transition": { duration: 180 },
-      "text-halo-width": 1.2,
+      "text-color": ["get", "color"],
+      "text-halo-width": 0,
+      "text-opacity": [
+        "match",
+        ["get", "certainty"],
+        "measured",
+        1,
+        "interpolated",
+        0.85,
+        0.6,
+      ],
     },
   });
 }
@@ -132,7 +212,7 @@ export function bindVehicleSelection(
   map: mapboxgl.Map,
   onSelect: (id: string | null) => void,
 ) {
-  map.on("click", VEHICLES_LAYER, (event) => {
+  map.on("click", [VEHICLES_LAYER, ...VEHICLE_3D_LAYERS], (event) => {
     const id = event.features?.[0]?.properties?.id;
     if (typeof id === "string") {
       // Stops the map-wide handler below from immediately clearing this.
@@ -145,33 +225,33 @@ export function bindVehicleSelection(
     if (!event.defaultPrevented) onSelect(null);
   });
 
-  map.on("mouseenter", VEHICLES_LAYER, () => {
+  map.on("mouseenter", [VEHICLES_LAYER, ...VEHICLE_3D_LAYERS], () => {
     map.getCanvas().style.cursor = "pointer";
   });
-  map.on("mouseleave", VEHICLES_LAYER, () => {
+  map.on("mouseleave", [VEHICLES_LAYER, ...VEHICLE_3D_LAYERS], () => {
     map.getCanvas().style.cursor = "";
   });
 }
 
-export function setVehicleTheme(map: mapboxgl.Map, dark: boolean) {
-  if (map.getLayer(VEHICLES_LAYER)) {
-    map.setPaintProperty(VEHICLES_LAYER, "circle-color", colorByMode(dark));
-    map.setPaintProperty(
-      VEHICLES_LAYER,
-      "circle-stroke-color",
-      dark ? "#141a2e" : "#ffffff",
-    );
+function registerSprites(map: mapboxgl.Map, dark: boolean) {
+  for (const { mode, line } of SPRITES) {
+    const sprite = makeVehicleSprite(mode, line, dark);
+    if (!sprite) continue;
+    const id = spriteId(mode, line);
+    if (map.hasImage(id)) map.updateImage(id, sprite);
+    else map.addImage(id, sprite, { pixelRatio: SPRITE_PIXEL_RATIO });
   }
-  if (map.getLayer(VEHICLES_LABEL_LAYER)) {
+}
+
+export function setVehicleTheme(map: mapboxgl.Map, dark: boolean) {
+  registerSprites(map, dark);
+
+  for (const id of VEHICLE_3D_LAYERS) {
+    if (!map.getLayer(id)) continue;
     map.setPaintProperty(
-      VEHICLES_LABEL_LAYER,
-      "text-color",
-      dark ? "#ffffff" : "#000000",
-    );
-    map.setPaintProperty(
-      VEHICLES_LABEL_LAYER,
-      "text-halo-color",
-      dark ? "#141a2e" : "#ffffff",
+      id,
+      "fill-extrusion-emissive-strength",
+      dark ? 0.85 : 0.25,
     );
   }
 }

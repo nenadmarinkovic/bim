@@ -6,10 +6,13 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { MapControls } from "./map-controls";
+import { MapSettings } from "./map-settings";
+import { STOPS_LAYER, STOPS_SOURCE } from "@/lib/vehicles/layer-ids";
 import { CAMERA, MAX_PITCH, STEPHANSDOM } from "@/lib/map-camera";
 import { POLL_MS } from "./use-vehicles";
 import { useVehiclesContext } from "./vehicles-provider";
 import {
+  VEHICLES_3D_SOURCE,
   VEHICLES_SOURCE,
   addVehicleLayers,
   bindVehicleSelection,
@@ -22,27 +25,16 @@ import {
   toFeatureCollection,
   type Tween,
 } from "@/lib/vehicles/animate";
+import { toExtrusionCollection } from "@/lib/vehicles/footprint";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-const STOPS_SOURCE = "stops";
-const STOPS_LAYER = "stops-circles";
-
-// Standard carries 3D buildings natively; `lightPreset` swaps day/night via
-// config rather than a style reload, which would drop every layer.
 const STYLE = "mapbox://styles/mapbox/standard";
 
 function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
 }
 
-/**
- * Applies the theme to everything the map owns. Returns false when the style
- * is not ready yet, so the caller can retry.
- *
- * Every layer is guarded: `setPaintProperty` throws on a missing layer, and a
- * throw partway through used to leave the rest of the map on the old theme.
- */
 function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
   if (!map.isStyleLoaded()) return false;
 
@@ -101,7 +93,15 @@ function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
         14,
         0.85,
       ],
-      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 13, 0, 16, 1],
+      "circle-stroke-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        13,
+        0,
+        16,
+        1,
+      ],
       "circle-stroke-color": resolvedTheme === "dark" ? "#141a2e" : "#ffffff",
       "circle-stroke-color-transition": { duration: 180 },
       "circle-pitch-alignment": "map",
@@ -147,8 +147,6 @@ export function MapView() {
           lightPreset: lightPresetFor(theme.current),
           show3dObjects: true,
           show3dTrees: false,
-          // The basemap is context, not content. Everything that competes with
-          // the vehicles or the chrome is off; place labels stay for orientation.
           showPointOfInterestLabels: false,
           showTransitLabels: false,
           showRoadLabels: false,
@@ -161,8 +159,6 @@ export function MapView() {
     const addLayers = () => {
       addStopsLayer(instance, theme.current);
       addVehicleLayers(instance, theme.current === "dark");
-      // The map can finish loading before next-themes has resolved, so the
-      // layers are re-themed here rather than trusting their initial paint.
       applyMapTheme(instance, theme.current === "dark");
     };
     instance.on("load", addLayers);
@@ -200,10 +196,6 @@ export function MapView() {
     if (!instance || !resolvedTheme) return;
     const dark = resolvedTheme === "dark";
 
-    // Poll rather than wait on a map event. `style.load` fires once, and
-    // `idle` requires clean sources — which never happens here, because the
-    // vehicle loop calls setData ~25x/s and keeps them permanently dirty. Both
-    // can therefore never fire, leaving the map on the old theme.
     let frame = 0;
     let attempts = 0;
     const tryApply = () => {
@@ -227,7 +219,6 @@ export function MapView() {
     const id = selected.current;
     if (!id) return;
     const vehicle = data.vehicles.find((v) => v.id === id);
-    // Gone from the snapshot means the trip ended, so there is nothing to follow.
     if (!vehicle) {
       popup.current?.remove();
       selected.current = null;
@@ -236,8 +227,6 @@ export function MapView() {
     popup.current?.setHTML(describeVehicle(vehicle));
   }, [data]);
 
-  // ~25 fps: rebuilding the GeoJSON is the cost, and the difference is
-  // invisible at walking pace.
   useEffect(() => {
     if (!TOKEN) return;
     let frame = 0;
@@ -256,7 +245,16 @@ export function MapView() {
       const source = instance.getSource(
         VEHICLES_SOURCE,
       ) as mapboxgl.GeoJSONSource;
-      source.setData(toFeatureCollection(tweens.current, now));
+      source.setData(
+        toFeatureCollection(tweens.current, now, theme.current === "dark"),
+      );
+
+      const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
+        | mapboxgl.GeoJSONSource
+        | undefined;
+      extrusions?.setData(
+        toExtrusionCollection(tweens.current, now, theme.current === "dark"),
+      );
 
       const id = selected.current;
       if (!id) return;
@@ -297,6 +295,10 @@ export function MapView() {
       <MapControls
         getMap={() => map.current}
         className="absolute right-4 bottom-8 z-10"
+      />
+      <MapSettings
+        getMap={() => map.current}
+        className="absolute bottom-8 left-4 z-10"
       />
       {(error || vehicleError) && (
         <p className="absolute bottom-4 left-4 rounded-md bg-card px-3 py-2 text-sm text-destructive">

@@ -30,8 +30,6 @@ export function MapControls({
     let frame = 0;
     let detach: (() => void) | undefined;
 
-    // The map is created in the parent's effect, which runs after this one, so
-    // wait for it to exist rather than reading it once and giving up.
     const attach = () => {
       const map = getMap();
       if (!map) {

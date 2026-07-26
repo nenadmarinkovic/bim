@@ -1,4 +1,5 @@
 import type { Feature, FeatureCollection, Point } from "geojson";
+import { vehicleColour } from "./colors.ts";
 import type { Vehicle } from "./types.ts";
 
 export type Tween = {
@@ -77,6 +78,7 @@ export type VehicleFeature = Feature<Point>;
 export function toFeatureCollection(
   tweens: Map<string, Tween>,
   now: number,
+  dark = false,
 ): FeatureCollection<Point> {
   const features: VehicleFeature[] = [];
 
@@ -95,6 +97,7 @@ export function toFeatureCollection(
         realtime: vehicle.realtime,
         certainty: vehicle.certainty,
         stopsFromReport: vehicle.stopsFromReport,
+        color: vehicleColour(vehicle.mode, vehicle.line, dark),
         bearing,
       },
     });

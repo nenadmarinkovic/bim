@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { VehiclesResponse } from "@/lib/vehicles/types";
 
-/** Also the tween duration, so a vehicle lands as the next poll arrives. */
 export const POLL_MS = 6_000;
 
 export type VehiclesState = {
@@ -31,7 +30,9 @@ export function useVehicles(): VehiclesState {
 
         if (!response.ok) {
           const body = await response.json().catch(() => ({}));
-          throw new Error(body.error ?? `positions unavailable (${response.status})`);
+          throw new Error(
+            body.error ?? `positions unavailable (${response.status})`,
+          );
         }
 
         const data = (await response.json()) as VehiclesResponse;
@@ -40,7 +41,8 @@ export function useVehicles(): VehiclesState {
         if (cancelled || controller.signal.aborted) return;
         setState((current) => ({
           ...current,
-          error: error instanceof Error ? error.message : "positions unavailable",
+          error:
+            error instanceof Error ? error.message : "positions unavailable",
         }));
       } finally {
         // Chained timeout, not an interval: a slow response must not stack.

@@ -1,0 +1,4 @@
+{
+  "css.customData": [".vscode/css-custom-data.json"],
+  "tailwindCSS.experimental.configFile": "app/globals.css"
+}
