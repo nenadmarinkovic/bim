@@ -64,6 +64,47 @@ sources merely spell the name differently (`Bösendorfer Str., Karlsplatz` vs
 GTFS coordinates win over the Wiener Linien ones: six `haltepunkte.csv` rows
 place Vienna stops in Lower Austria, up to 116 km out.
 
+### Positioning vehicles
+
+The GTFS-RT feed carries **TripUpdates only — no VehiclePositions**. What it does
+carry is the static `trip_id`, which solves vehicle identity outright: there is
+no need to guess which countdown at stop B is the same vehicle as the one at
+stop A. Each update reports a delay against the timetable.
+
+Position then falls out of `shape_dist_traveled`, which appears in both
+`stop_times.txt` and `shapes.txt` in the same units:
+
+```
+now → bracketing stop pair (scheduled time + reported delay)
+    → distance along shape, interpolated linearly between the two stops
+    → coordinate, by binary search on the shape's distance array
+```
+
+No geometric projection, no map-matching. Accuracy is roughly one stop-to-stop
+segment: near-exact on the U-Bahn, looser for a tram stuck in traffic between
+two widely spaced stops.
+
+Two consequences worth knowing:
+
+- **Every scheduled trip is placed, with real-time delays layered on where the
+  feed supplies them.** Driving off the timetable rather than off the feed means
+  coverage gaps do not blank the map — vehicles the feed omits keep moving on
+  schedule and are marked `realtime: false`, drawn hollower and counted
+  separately as *geschätzt*.
+- **The feed repeats each trip across several entities** — commonly four — so
+  updates are merged per `trip_id`. Without that, one vehicle is drawn once per
+  duplicate at identical coordinates.
+
+A delay revision moves the computed point discontinuously: a bus going from
+on-time to five minutes late legitimately jumps a kilometre back. Movement over
+300 m in one poll is applied instantly rather than animated, since sliding it
+would draw a bus at several hundred km/h.
+
+`npm run ingest` also builds the schedule for the current service day plus any
+of yesterday's trips that run past midnight, so night service is positioned
+correctly. **It must be re-run daily** — the schedule artifact is one service
+day only.
+
 ### Current state
 
 ```
@@ -71,7 +112,15 @@ stops     4432/4496 matched (98.6%)   3694 by name, 738 by distance
 coverage  4225/4257 locatable stops served by a line (99.2%)
 lines     204 lines, 6538 patterns
 shapes    5431 shapes, 987710 points
+schedule  24372 trips (23424 today + 948 running past midnight), 0 without geometry
 ```
+
+A Sunday 07:30 sample places 340 vehicles — 182 bus, 118 tram, 40 metro — of
+which 283 carry a real-time delay. Median movement between 12 s snapshots is
+56 m (~17 km/h) and the fastest thing on the map is the Badner Bahn at 60 km/h,
+which is what it actually does. `npm run vehicles:check` re-runs those
+plausibility checks against the live feed; `npm run vehicles:lines` breaks the
+current placement down by line.
 
 The 558 StopIDs with no DIVA and zeroed coordinates are operational points —
 depot runs, short workings, terminus markers. They appear in route patterns but

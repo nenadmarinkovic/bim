@@ -9,6 +9,7 @@ import {
   fetchCached,
 } from "./sources.ts";
 import { extractEntries } from "./unzip.ts";
+import { buildTrips, previousServiceDate, serviceDate } from "./trips.ts";
 import {
   classifyMatch,
   gtfsGroupKey,
@@ -215,30 +216,42 @@ async function buildLines(linien: string, fahrwege: string) {
   return [...lines.values()];
 }
 
-/** shape_id -> flat [lon, lat, lon, lat, ...], which keeps the artifact compact. */
+/**
+ * shape_id -> `{ c: flat [lon, lat, ...], d: [shape_dist_traveled, ...] }`.
+ *
+ * The distance array is what makes positioning cheap: `stop_times.txt` gives a
+ * stop's distance along the shape in the same units, so placing a vehicle is a
+ * lookup between two distances rather than a projection onto the line.
+ */
 async function buildShapes(file: string) {
-  const shapes = new Map<string, { seq: number; lon: number; lat: number }[]>();
+  const shapes = new Map<
+    string,
+    { seq: number; lon: number; lat: number; dist: number }[]
+  >();
 
   for await (const row of readCsv(file)) {
     const point = {
       seq: Number(row.shape_pt_sequence),
       lon: Number(row.shape_pt_lon),
       lat: Number(row.shape_pt_lat),
+      dist: Number(row.shape_dist_traveled),
     };
     const entry = shapes.get(row.shape_id);
     if (entry) entry.push(point);
     else shapes.set(row.shape_id, [point]);
   }
 
-  const out: Record<string, number[]> = {};
+  const out: Record<string, { c: number[]; d: number[] }> = {};
   let points = 0;
   for (const [id, list] of shapes) {
     list.sort((a, b) => a.seq - b.seq);
-    const flat: number[] = [];
+    const c: number[] = [];
+    const d: number[] = [];
     for (const p of list) {
-      flat.push(Number(p.lon.toFixed(6)), Number(p.lat.toFixed(6)));
+      c.push(Number(p.lon.toFixed(6)), Number(p.lat.toFixed(6)));
+      d.push(Number(p.dist.toFixed(1)));
     }
-    out[id] = flat;
+    out[id] = { c, d };
     points += list.length;
   }
 
@@ -258,16 +271,37 @@ async function main() {
   console.log("\nextracting gtfs");
   const gtfs = await extractEntries(
     zip,
-    ["stops.txt", "routes.txt", "shapes.txt", "trips.txt"],
+    [
+      "stops.txt",
+      "routes.txt",
+      "shapes.txt",
+      "trips.txt",
+      "stop_times.txt",
+      "calendar.txt",
+      "calendar_dates.txt",
+    ],
     path.join(CACHE_DIR, "gtfs"),
   );
-  console.log("  stops, routes, shapes, trips");
+  console.log("  stops, routes, shapes, trips, stop_times, calendar");
 
   console.log("\njoining");
   const { byGroup, unparsable } = await readGtfsStops(gtfs["stops.txt"]);
   const result = await buildStopIndex(wl.haltepunkte, byGroup);
   const lines = await buildLines(wl.linien, wl.fahrwegverlaeufe);
   const { shapes, points } = await buildShapes(gtfs["shapes.txt"]);
+
+  const date = serviceDate();
+  const previous = previousServiceDate(date);
+  console.log(`\nschedule for ${date} (+ after-midnight runs from ${previous})`);
+  const schedule = await buildTrips(gtfs, date, previous);
+  const tripCount = Object.keys(schedule.trips).length;
+  const shapeMissing = Object.values(schedule.trips).filter(
+    (t) => !shapes[t.s],
+  ).length;
+  for (const run of schedule.runs) {
+    console.log(`  ${run.date}: ${run.tripIds.length} trips`);
+  }
+  console.log(`  ${tripCount} total, ${shapeMissing} without shape geometry`);
 
   const matched = result.stops.length;
   const total = matched + result.unmatched.length + result.rejected.length;
@@ -295,6 +329,13 @@ async function main() {
   });
   await writeArtifact("lines.json", { generatedAt: new Date().toISOString(), lines });
   await writeArtifact("shapes.json", shapes);
+  await writeArtifact("schedule.json", {
+    date,
+    generatedAt: new Date().toISOString(),
+    routes: schedule.routes,
+    trips: schedule.trips,
+    runs: schedule.runs,
+  });
 
   const report = {
     generatedAt: new Date().toISOString(),
@@ -326,6 +367,13 @@ async function main() {
       patterns: lines.reduce((n, l) => n + Object.keys(l.patterns).length, 0),
     },
     shapes: { total: Object.keys(shapes).length, points },
+    schedule: {
+      date,
+      trips: tripCount,
+      tripsWithoutShape: shapeMissing,
+      tripsWithoutShapeId: schedule.skippedNoShape,
+      routes: Object.keys(schedule.routes).length,
+    },
     anomalies: {
       placeholderStopIds: result.placeholder.size,
       outsideViennaStopIds: result.outsideVienna.size,

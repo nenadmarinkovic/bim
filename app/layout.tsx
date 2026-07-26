@@ -47,6 +47,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="antialiased">
       <head>
+        {/* Corrects the theme-color meta before first paint, as the Next guide
+            on preventing flash before hydration prescribes. React 19 logs a
+            dev-only warning about script tags in the component tree; the
+            `next/script` alternative does not inline into the initial HTML
+            here, which would stop it running at all. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_COLOR_SCRIPT }} />
         <link
           rel="preload"
           href="/fonts/HankenGrotesk-Variable.woff2"
@@ -63,7 +69,6 @@ export default function RootLayout({
         />
       </head>
       <body className="h-screen overflow-hidden">
-        <script dangerouslySetInnerHTML={{ __html: THEME_COLOR_SCRIPT }} />
         <Providers>
           <ThemeColorSync />
           {children}

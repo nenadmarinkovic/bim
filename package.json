@@ -8,13 +8,16 @@
     "start": "next start",
     "lint": "eslint",
     "ingest": "node scripts/ingest/build.ts",
-    "ingest:verify": "node scripts/ingest/verify.ts"
+    "ingest:verify": "node scripts/ingest/verify.ts",
+    "vehicles:check": "node scripts/vehicles-check.ts",
+    "vehicles:lines": "node scripts/vehicles-lines.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@phosphor-icons/react": "^2.1.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "gtfs-realtime-bindings": "^2.1.0",
     "lucide-react": "^1.27.0",
     "mapbox-gl": "^3.27.0",
     "next": "16.2.12",
@@ -27,7 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/mapbox-gl": "^3.4.1",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
