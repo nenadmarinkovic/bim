@@ -1,9 +1,5 @@
 import { readCsv } from "./csv.ts";
 
-/**
- * GTFS times are relative to the service day and legitimately exceed 24:00:00
- * for trips that run past midnight, so they cannot go through Date parsing.
- */
 export function parseGtfsTime(value: string): number {
   const [h, m, s] = value.split(":");
   return Number(h) * 3600 + Number(m) * 60 + Number(s);
@@ -19,7 +15,6 @@ const DAY_NAMES = [
   "saturday",
 ] as const;
 
-/** `YYYYMMDD` in Vienna's calendar, which is what GTFS service days key on. */
 export function serviceDate(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Vienna",
@@ -31,12 +26,6 @@ export function serviceDate(now = new Date()): string {
   return `${get("year")}${get("month")}${get("day")}`;
 }
 
-/**
- * Resolves which service ids run on a date: the weekly pattern from
- * `calendar.txt`, then the per-date additions and removals in
- * `calendar_dates.txt`. Vienna leans on the exceptions heavily — for a July
- * Sunday they remove a third of the nominally active services.
- */
 export async function activeServices(
   calendar: string,
   calendarDates: string,
@@ -72,28 +61,18 @@ export async function activeServices(
 }
 
 export type TripRecord = {
-  /** route_id */
   r: string;
-  /** shape_id */
   s: string;
-  /** trip_headsign */
   h: string;
-  /** departure seconds since service-day start, by stop sequence */
+  /** departure seconds since service-day start */
   t: number[];
-  /** shape_dist_traveled at each stop, in the same units as shapes.txt */
+  /** shape_dist_traveled at each stop, same units as shapes.txt */
   d: number[];
-  /** stop_id at each stop, for matching GTFS-RT stopTimeUpdates */
   p: string[];
 };
 
 export type RouteRecord = { name: string; type: number };
 
-/**
- * Builds the schedule index for one service day: every trip that runs, with the
- * distance along its shape at each stop. `shape_dist_traveled` is present in
- * both `stop_times.txt` and `shapes.txt` and in the same units, so a vehicle's
- * position is a distance lookup rather than a geometric projection.
- */
 export async function buildTrips(
   gtfs: Record<string, string>,
   date: string,
@@ -123,9 +102,7 @@ export async function buildTrips(
 
   const trips: Record<string, TripRecord> = {};
   const today: string[] = [];
-  // Yesterday's trips matter only where they run past midnight — GTFS expresses
-  // those as times beyond 24:00:00, so they are still in service now. Keeping
-  // just those instead of the whole previous day costs almost nothing.
+
   const carryOver: string[] = [];
   let skippedNoShape = 0;
 
@@ -149,9 +126,10 @@ export async function buildTrips(
     if (ranYesterday) carryOver.push(row.trip_id);
   }
 
-  // stop_times.txt is ~615 MB and only ~6% of it belongs to any one service
-  // day, so rows are filtered during the stream rather than collected first.
-  const pending = new Map<string, { seq: number; t: number; d: number; p: string }[]>();
+  const pending = new Map<
+    string,
+    { seq: number; t: number; d: number; p: string }[]
+  >();
   for await (const row of readCsv(gtfs["stop_times.txt"])) {
     if (!trips[row.trip_id]) continue;
     const entry = pending.get(row.trip_id);
@@ -173,7 +151,6 @@ export async function buildTrips(
     trip.p = points.map((p) => p.p);
   }
 
-  // A trip with no stop times cannot be positioned; drop rather than ship it.
   for (const [tripId, trip] of Object.entries(trips)) {
     if (trip.t.length < 2) delete trips[tripId];
   }
@@ -184,7 +161,6 @@ export async function buildTrips(
     return trip && trip.t[trip.t.length - 1] >= DAY_SECONDS;
   });
 
-  // Drop trips kept only for yesterday that turn out not to cross midnight.
   const keep = new Set([...today, ...afterMidnight]);
   for (const tripId of Object.keys(trips)) {
     if (!keep.has(tripId)) delete trips[tripId];
@@ -201,7 +177,6 @@ export async function buildTrips(
   };
 }
 
-/** `YYYYMMDD` for the day before the given service date. */
 export function previousServiceDate(date: string): string {
   const d = new Date(
     Date.UTC(

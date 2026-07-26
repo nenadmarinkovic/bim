@@ -77,7 +77,6 @@ async function readGtfsStops(file: string) {
   return { byGroup, unparsable };
 }
 
-/** Mean position of a stop's platforms — steadier than picking one arbitrarily. */
 function centroid(stops: GtfsStop[]): { lat: number; lon: number } {
   const usable = stops.filter((s) => isPlausiblyVienna(s));
   const sample = usable.length ? usable : stops;
@@ -94,12 +93,7 @@ async function buildStopIndex(
   const rejected: { stopId: number; wl: string; gtfs: string }[] = [];
   const unmatched: { stopId: number; diva: number; name: string }[] = [];
   const suspectWlCoords: { stopId: number; name: string }[] = [];
-  /**
-   * StopIDs with no DIVA and zeroed coordinates. They are real ids that appear
-   * in route patterns — depot runs, short workings, terminus markers — but
-   * carry no location at all, so they are unmatchable by construction rather
-   * than by failure.
-   */
+
   const placeholder = new Set<number>();
   const outsideVienna = new Set<number>();
 
@@ -136,8 +130,6 @@ async function buildStopIndex(
       continue;
     }
 
-    // GTFS coordinates win: a handful of Wiener Linien rows place Vienna stops
-    // in Lower Austria, and GTFS carries per-platform precision anyway.
     const wlUsable = isPlausiblyVienna(wlPoint);
     if (!wlUsable) suspectWlCoords.push({ stopId, name });
 
@@ -159,10 +151,16 @@ async function buildStopIndex(
     });
   }
 
-  return { stops, rejected, unmatched, suspectWlCoords, placeholder, outsideVienna };
+  return {
+    stops,
+    rejected,
+    unmatched,
+    suspectWlCoords,
+    placeholder,
+    outsideVienna,
+  };
 }
 
-/** LineID -> ordered StopID sequences, one per pattern (a direction variant). */
 async function buildLines(linien: string, fahrwege: string) {
   const lines = new Map<
     number,
@@ -216,13 +214,6 @@ async function buildLines(linien: string, fahrwege: string) {
   return [...lines.values()];
 }
 
-/**
- * shape_id -> `{ c: flat [lon, lat, ...], d: [shape_dist_traveled, ...] }`.
- *
- * The distance array is what makes positioning cheap: `stop_times.txt` gives a
- * stop's distance along the shape in the same units, so placing a vehicle is a
- * lookup between two distances rather than a projection onto the line.
- */
 async function buildShapes(file: string) {
   const shapes = new Map<
     string,
@@ -292,7 +283,9 @@ async function main() {
 
   const date = serviceDate();
   const previous = previousServiceDate(date);
-  console.log(`\nschedule for ${date} (+ after-midnight runs from ${previous})`);
+  console.log(
+    `\nschedule for ${date} (+ after-midnight runs from ${previous})`,
+  );
   const schedule = await buildTrips(gtfs, date, previous);
   const tripCount = Object.keys(schedule.trips).length;
   const shapeMissing = Object.values(schedule.trips).filter(
@@ -313,9 +306,7 @@ async function main() {
       for (const stopId of pattern.stopIds) routedStops.add(stopId);
     }
   }
-  // Coverage is only meaningful over stops that can be located at all, so
-  // placeholder ids and stops outside Vienna are excluded rather than counted
-  // as misses.
+
   const locatable = [...routedStops].filter(
     (id) => !result.placeholder.has(id) && !result.outsideVienna.has(id),
   );
@@ -327,7 +318,10 @@ async function main() {
     generatedAt: new Date().toISOString(),
     stops: result.stops,
   });
-  await writeArtifact("lines.json", { generatedAt: new Date().toISOString(), lines });
+  await writeArtifact("lines.json", {
+    generatedAt: new Date().toISOString(),
+    lines,
+  });
   await writeArtifact("shapes.json", shapes);
   await writeArtifact("schedule.json", {
     date,
@@ -351,14 +345,18 @@ async function main() {
     coverage: {
       stopIdsUsedByLines: routedStops.size,
       locatable: locatable.length,
-      routedPlaceholders: [...routedStops].filter((id) => result.placeholder.has(id))
-        .length,
+      routedPlaceholders: [...routedStops].filter((id) =>
+        result.placeholder.has(id),
+      ).length,
       routedOutsideVienna: [...routedStops].filter((id) =>
         result.outsideVienna.has(id),
       ).length,
       routedButUnmatched: routedUnmatched.length,
       routedMatchRate: Number(
-        (((locatable.length - routedUnmatched.length) / locatable.length) * 100).toFixed(1),
+        (
+          ((locatable.length - routedUnmatched.length) / locatable.length) *
+          100
+        ).toFixed(1),
       ),
     },
     lines: {
@@ -400,17 +398,22 @@ async function main() {
   );
   console.log("\nlines");
   console.log(`  ${lines.length} lines, ${report.lines.patterns} patterns`);
-  console.log(`\nshapes\n  ${Object.keys(shapes).length} shapes, ${points} points`);
+  console.log(
+    `\nshapes\n  ${Object.keys(shapes).length} shapes, ${points} points`,
+  );
 
   if (result.rejected.length) {
-    console.log("\nrejected matches (numeric join, contradicting name and position)");
+    console.log(
+      "\nrejected matches (numeric join, contradicting name and position)",
+    );
     for (const r of result.rejected.slice(0, 10)) {
       console.log(`  ${r.stopId}  wl="${r.wl}"  gtfs="${r.gtfs}"`);
     }
   }
   if (result.suspectWlCoords.length) {
     console.log("\ncorrupt Wiener Linien coordinates (GTFS used instead)");
-    for (const s of result.suspectWlCoords) console.log(`  ${s.stopId}  ${s.name}`);
+    for (const s of result.suspectWlCoords)
+      console.log(`  ${s.stopId}  ${s.name}`);
   }
 }
 

@@ -10,9 +10,7 @@ export const metadata: Metadata = {
 };
 
 export async function generateViewport(): Promise<Viewport> {
-  // Read the in-app theme cookie (set by ThemeColorSync). If present, emit a
-  // single theme-color matching the user's pick — prevents the iOS notch from
-  // flashing the OS-default color when in-app theme differs from system theme.
+  // Cookie set by ThemeColorSync; stops the iOS notch flashing the OS colour.
   const pref = (await cookies()).get("theme-color")?.value;
   const base: Viewport = {
     viewportFit: "cover",
@@ -47,11 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="antialiased">
       <head>
-        {/* Corrects the theme-color meta before first paint, as the Next guide
-            on preventing flash before hydration prescribes. React 19 logs a
-            dev-only warning about script tags in the component tree; the
-            `next/script` alternative does not inline into the initial HTML
-            here, which would stop it running at all. */}
+        {/* next/script does not inline here, so this stays a raw tag. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_COLOR_SCRIPT }} />
         <link
           rel="preload"

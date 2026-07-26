@@ -3,12 +3,6 @@ import path from "node:path";
 import { DATA_DIR } from "./sources.ts";
 import { distanceMetres } from "./match.ts";
 
-/**
- * Checks the built stop index against the live monitor API. The build joins
- * static files to each other, which only proves internal consistency — this
- * asks the real-time endpoint whether a StopID really resolves to the DIVA and
- * position we recorded for it.
- */
 const MONITOR = "https://www.wienerlinien.at/ogd_realtime/monitor";
 const BATCH_SIZE = 10;
 const SAMPLE_SIZE = Number(process.argv[2] ?? 80);
@@ -79,7 +73,9 @@ async function main() {
         );
       }
 
-      distances.push(distanceMetres({ lat, lon }, { lat: stop.lat, lon: stop.lon }));
+      distances.push(
+        distanceMetres({ lat, lon }, { lat: stop.lat, lon: stop.lon }),
+      );
     }
   }
 
@@ -91,7 +87,9 @@ async function main() {
   console.log(`answered       ${checked}`);
   console.log(`no departures  ${noDepartures}`);
   console.log(`diva correct   ${divaOk}/${checked}`);
-  console.log(`position median ${median.toFixed(1)} m, p95 ${p95.toFixed(1)} m`);
+  console.log(
+    `position median ${median.toFixed(1)} m, p95 ${p95.toFixed(1)} m`,
+  );
 
   if (mismatches.length) {
     console.log("\nmismatches");

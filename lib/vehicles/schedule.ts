@@ -19,19 +19,15 @@ export type Schedule = {
   generatedAt: string;
   routes: Record<string, RouteRecord>;
   trips: Record<string, TripRecord>;
-  /** Trip ids per service day — today, plus yesterday's after-midnight runs. */
   runs: { date: string; tripIds: string[] }[];
 };
 
 export class MissingArtifactError extends Error {}
 
-/**
- * Both artifacts are large (schedule ~14 MB, shapes ~26 MB) and are read once
- * into module scope. Next reloads modules on edit in development, so the load
- * is memoised on a promise to keep concurrent requests from racing it.
- */
-let loading: Promise<{ schedule: Schedule; shapes: Record<string, Shape> }> | null =
-  null;
+let loading: Promise<{
+  schedule: Schedule;
+  shapes: Record<string, Shape>;
+}> | null = null;
 
 async function readArtifact<T>(name: string): Promise<T> {
   const file = path.join(process.cwd(), "data", name);
@@ -56,6 +52,23 @@ export function loadSchedule() {
   return loading;
 }
 
+export type StopRecord = {
+  stopId: number;
+  name: string;
+  lat: number;
+  lon: number;
+  gtfsStopIds: string[];
+};
+
+let stopsLoading: Promise<StopRecord[]> | null = null;
+
+export function loadStops(): Promise<StopRecord[]> {
+  stopsLoading ??= readArtifact<{ stops: StopRecord[] }>("stops.json").then(
+    (file) => file.stops,
+  );
+  return stopsLoading;
+}
+
 const VIENNA = "Europe/Vienna";
 
 function offsetMs(epochMs: number): number {
@@ -69,7 +82,8 @@ function offsetMs(epochMs: number): number {
     minute: "2-digit",
     second: "2-digit",
   }).formatToParts(epochMs);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)!.value);
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)!.value);
   const asUtc = Date.UTC(
     get("year"),
     get("month") - 1,
@@ -81,12 +95,6 @@ function offsetMs(epochMs: number): number {
   return asUtc - epochMs;
 }
 
-/**
- * Epoch milliseconds of local midnight starting the given `YYYYMMDD` service
- * day. GTFS times are offsets from this instant, and because Vienna observes
- * DST the offset has to be resolved at the target date rather than assumed —
- * two passes converge even across a transition.
- */
 export function serviceDayStart(date: string): number {
   const y = Number(date.slice(0, 4));
   const m = Number(date.slice(4, 6));

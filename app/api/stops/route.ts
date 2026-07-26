@@ -12,11 +12,7 @@ type StopsFile = { generatedAt: string; stops: StopRecord[] };
 
 let cached: string | null = null;
 
-/**
- * Serves the ingested stop index as GeoJSON. The artifact is built by
- * `npm run ingest` and is not in version control, so a missing file is a
- * normal state on a fresh checkout rather than an error.
- */
+// Missing artifact is normal on a fresh checkout, not an error.
 async function loadGeoJson(): Promise<string | null> {
   if (cached) return cached;
 

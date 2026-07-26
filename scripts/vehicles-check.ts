@@ -1,11 +1,6 @@
 import { vehiclesAt, feedStats } from "../lib/vehicles/feed.ts";
 import { isPlausiblyVienna, distanceMetres } from "./ingest/match.ts";
 
-/**
- * Exercises the position engine against the live feed and reports whether the
- * output is physically sensible: inside Vienna, spread across modes, and moving
- * at speeds a tram or bus could actually manage between two samples.
- */
 async function main() {
   const stats = await feedStats();
   console.log(`feed: ${stats.tripsInFeed} trips matched to today's schedule`);
@@ -31,8 +26,6 @@ async function main() {
     );
   }
 
-  // Re-place the same feed snapshot 30 s later. Nothing upstream changes, so any
-  // movement is purely the interpolation advancing along the shape.
   const gapS = 30;
   const later = await vehiclesAt(t0 + gapS * 1000);
   const laterById = new Map(later.map((v) => [v.id, v]));

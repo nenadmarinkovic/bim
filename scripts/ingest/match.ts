@@ -1,9 +1,3 @@
-/**
- * Wiener Linien DIVA ids for Vienna are `60200000 + n`, where `n` is the stop
- * number in the Austrian national id used by GTFS (`at:49:<n>:0:<platform>`).
- * Verified against the full stop list: of 1997 Vienna DIVAs, 1745 resolve and
- * 1679 of those agree on the stop name character for character.
- */
 const DIVA_OFFSET = 60_200_000;
 const GTFS_REGION = "49";
 
@@ -15,7 +9,6 @@ export function gtfsGroupKey(region: string, number: number): string {
   return `${region}:${number}`;
 }
 
-/** `at:49:1320:0:2` -> `{ region: "49", number: 1320, platform: "2" }` */
 export function parseGtfsStopId(
   stopId: string,
 ): { region: string; number: number; platform: string } | null {
@@ -39,11 +32,6 @@ const ABBREVIATIONS: [RegExp, string][] = [
   [/\bbhf\b/g, "bahnhof"],
 ];
 
-/**
- * Normalises a stop name for comparison. The two sources disagree cosmetically
- * a lot — "Bösendorfer Str., Karlsplatz" vs "Bösendorferstraße/Karlsplatz" —
- * so separators and abbreviations are folded away before comparing.
- */
 export function normaliseName(name: string): string {
   let value = name
     .toLowerCase()
@@ -77,7 +65,6 @@ export function distanceMetres(
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
 
-/** Vienna's bounding box, generously padded. Used to spot corrupt coordinates. */
 export function isPlausiblyVienna(point: {
   lat: number;
   lon: number;

@@ -25,7 +25,7 @@ export function ThemeToggle({ className }: { className?: string }) {
     return (
       <div
         className={cn(
-          "h-7 w-[80px] rounded-full bg-card border border-foreground/10",
+          "h-7 w-20 rounded-full bg-card border border-foreground/10",
           className,
         )}
       />

@@ -8,11 +8,7 @@ const VehiclesContext = createContext<VehiclesState>({
   error: null,
 });
 
-/**
- * Runs a single poll loop for the whole page. Both the map and the counter need
- * the same snapshot, and letting each call `useVehicles` would double the
- * request rate for identical data.
- */
+// One poll loop for the page; two callers of useVehicles would double the rate.
 export function VehiclesProvider({ children }: { children: React.ReactNode }) {
   const state = useVehicles();
   return (

@@ -5,7 +5,6 @@ export const VEHICLES_SOURCE = "vehicles";
 export const VEHICLES_LAYER = "vehicles-dots";
 export const VEHICLES_LABEL_LAYER = "vehicles-labels";
 
-/** Mode colours. Vienna's own line liveries would collide with the faded basemap. */
 const COLOR_BY_MODE: mapboxgl.ExpressionSpecification = [
   "match",
   ["get", "mode"],
@@ -23,10 +22,7 @@ const EMPTY: FeatureCollection<Point> = {
   features: [],
 };
 
-/**
- * Adds the vehicle layers. Idempotent, because swapping the base style drops
- * every source and layer and this has to be re-run on `style.load`.
- */
+// Idempotent: a style swap drops every source, so this re-runs on style.load.
 export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
   if (map.getSource(VEHICLES_SOURCE)) return;
 
@@ -50,9 +46,16 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
         8,
       ],
       "circle-color": COLOR_BY_MODE,
-      // A vehicle running on timetable alone is drawn hollower, so the map
-      // never implies more certainty than the data supports.
-      "circle-opacity": ["case", ["get", "realtime"], 1, 0.45],
+      // Opacity carries confidence — see Certainty.
+      "circle-opacity": [
+        "match",
+        ["get", "certainty"],
+        "measured",
+        1,
+        "interpolated",
+        0.7,
+        0.4,
+      ],
       "circle-stroke-width": [
         "interpolate",
         ["linear"],
@@ -85,6 +88,49 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
       "text-halo-color": dark ? "#000000" : "#ffffff",
       "text-halo-width": 1.2,
     },
+  });
+}
+
+function describe(properties: Record<string, unknown>): string {
+  const delay = Number(properties.delay ?? 0);
+  const certainty = String(properties.certainty);
+  const stops = Number(properties.stopsFromReport);
+
+  const lateness =
+    delay === 0
+      ? "on time"
+      : delay > 0
+        ? `${Math.round(delay / 60) || "<1"} min late`
+        : `${Math.round(-delay / 60) || "<1"} min early`;
+
+  const basis =
+    certainty === "measured"
+      ? "measured at this stop"
+      : certainty === "interpolated"
+        ? `interpolated, ${stops} stop${stops === 1 ? "" : "s"} from a measured one`
+        : "timetable only — no live data";
+
+  return [
+    `<strong>${properties.line}</strong> → ${properties.towards}`,
+    `${lateness} · ${basis}`,
+  ].join("<br/>");
+}
+
+export function bindVehiclePopup(map: mapboxgl.Map, popup: mapboxgl.Popup) {
+  map.on("click", VEHICLES_LAYER, (event) => {
+    const feature = event.features?.[0];
+    if (!feature) return;
+    popup
+      .setLngLat(event.lngLat)
+      .setHTML(describe(feature.properties ?? {}))
+      .addTo(map);
+  });
+
+  map.on("mouseenter", VEHICLES_LAYER, () => {
+    map.getCanvas().style.cursor = "pointer";
+  });
+  map.on("mouseleave", VEHICLES_LAYER, () => {
+    map.getCanvas().style.cursor = "";
   });
 }
 

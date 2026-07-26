@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { VehiclesResponse } from "@/lib/vehicles/types";
 
-/** Matches the tween duration, so a vehicle arrives just as the next poll lands. */
+/** Also the tween duration, so a vehicle lands as the next poll arrives. */
 export const POLL_MS = 6_000;
 
 export type VehiclesState = {
@@ -11,11 +11,6 @@ export type VehiclesState = {
   error: string | null;
 };
 
-/**
- * Polls the position endpoint. Polling rather than streaming keeps this working
- * behind any proxy without connection bookkeeping, and the payload is small
- * enough that the difference does not matter at this scale.
- */
 export function useVehicles(): VehiclesState {
   const [state, setState] = useState<VehiclesState>({
     data: null,
@@ -48,8 +43,7 @@ export function useVehicles(): VehiclesState {
           error: error instanceof Error ? error.message : "positions unavailable",
         }));
       } finally {
-        // Chained timeout rather than an interval: a slow response must not
-        // stack requests on top of each other.
+        // Chained timeout, not an interval: a slow response must not stack.
         if (!cancelled) timer.current = setTimeout(tick, POLL_MS);
       }
     }

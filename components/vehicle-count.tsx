@@ -2,11 +2,6 @@
 
 import { useVehiclesContext } from "./vehicles-provider";
 
-/**
- * Ambient readout of how much of the network is in motion. The scheduled count
- * is called out separately because those positions come from the timetable
- * alone — the map should never imply more certainty than the data carries.
- */
 export function VehicleCount({ className }: { className?: string }) {
   const { data } = useVehiclesContext();
 

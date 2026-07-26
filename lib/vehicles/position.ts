@@ -1,9 +1,5 @@
 import type { Shape, TripRecord } from "./schedule.ts";
 
-/**
- * Largest index whose distance is <= `target`. The distance arrays are sorted
- * and can run to thousands of points per shape, so this is a binary search.
- */
 function floorIndex(values: number[], target: number): number {
   let lo = 0;
   let hi = values.length - 1;
@@ -17,7 +13,6 @@ function floorIndex(values: number[], target: number): number {
 
 export type Placed = { lon: number; lat: number; bearing: number };
 
-/** Interpolates a point at `distance` along a shape, plus its heading. */
 export function pointAtDistance(shape: Shape, distance: number): Placed | null {
   const { c, d } = shape;
   const count = d.length;
@@ -37,8 +32,6 @@ export function pointAtDistance(shape: Shape, distance: number): Placed | null {
   const lon = lon0 + (lon1 - lon0) * f;
   const lat = lat0 + (lat1 - lat0) * f;
 
-  // Heading of the segment the vehicle currently sits on. Latitude scaling
-  // keeps the angle true at Vienna's latitude rather than in raw degrees.
   const dx = (lon1 - lon0) * Math.cos((lat * Math.PI) / 180);
   const dy = lat1 - lat0;
   const bearing = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
@@ -46,31 +39,43 @@ export function pointAtDistance(shape: Shape, distance: number): Placed | null {
   return { lon, lat, bearing };
 }
 
-/**
- * Per-stop delay in seconds.
- *
- * GTFS-RT sends updates for some stops, not all: a delay applies from its stop
- * onward until superseded. Stops before the first update have no reported
- * delay, and the first known value is carried backwards so a trip that is
- * already running late is not drawn as if it were on time.
- */
 export function delaysForTrip(
-  stopCount: number,
+  scheduledTimes: number[],
   updates: { index: number; delay: number }[],
 ): number[] {
+  const stopCount = scheduledTimes.length;
   const delays = new Array<number>(stopCount).fill(0);
   if (!updates.length) return delays;
 
-  const sorted = [...updates].sort((a, b) => a.index - b.index);
-  let cursor = 0;
-  let current = sorted[0].delay;
+  const anchors = [...updates]
+    .filter((u) => u.index >= 0 && u.index < stopCount)
+    .sort((a, b) => a.index - b.index);
+  if (!anchors.length) return delays;
 
   for (let i = 0; i < stopCount; i++) {
-    while (cursor < sorted.length && sorted[cursor].index <= i) {
-      current = sorted[cursor].delay;
-      cursor++;
+    if (i <= anchors[0].index) {
+      delays[i] = anchors[0].delay;
+      continue;
     }
-    delays[i] = current;
+    if (i >= anchors[anchors.length - 1].index) {
+      delays[i] = anchors[anchors.length - 1].delay;
+      continue;
+    }
+
+    let next = 0;
+    while (anchors[next].index < i) next++;
+    const before = anchors[next - 1];
+    const after = anchors[next];
+
+    // Interpolate against scheduled time rather than stop index, so a long hop
+    // between two reports absorbs proportionally more of the change.
+    const span = scheduledTimes[after.index] - scheduledTimes[before.index];
+    const f =
+      span > 0
+        ? (scheduledTimes[i] - scheduledTimes[before.index]) / span
+        : (i - before.index) / (after.index - before.index);
+
+    delays[i] = before.delay + (after.delay - before.delay) * f;
   }
 
   return delays;
@@ -80,24 +85,11 @@ export type VehicleState = {
   lon: number;
   lat: number;
   bearing: number;
-  /** Index of the stop just departed. */
   fromStop: number;
-  /** Seconds late at the current point in the trip. */
   delay: number;
-  /** Progress between the bracketing stops, 0..1. */
   segmentProgress: number;
 };
 
-/**
- * Places a trip at `nowMs`, or returns null when the trip has not started or
- * has already finished.
- *
- * The whole method rests on `shape_dist_traveled` being present and consistent
- * in both `stop_times.txt` and `shapes.txt`, which lets a timestamp become a
- * distance and a distance become a coordinate without any geometric fitting.
- * Between two stops the vehicle is assumed to cover distance linearly in time,
- * which is why accuracy is roughly one stop-to-stop segment.
- */
 export function placeTrip(
   trip: TripRecord,
   shape: Shape,

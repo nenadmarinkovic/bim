@@ -100,6 +100,70 @@ on-time to five minutes late legitimately jumps a kilometre back. Movement over
 300 m in one poll is applied instantly rather than animated, since sliding it
 would draw a bus at several hundred km/h.
 
+### How much to trust a dot
+
+Wiener Linien measures departures at only part of the network. **About 73% of
+the stops on a typical run come back with no reported delay**, and coverage
+varies enormously by line — sampled on a Sunday morning, trams ranged from 30%
+of vehicles carrying live data (line 12, the worst) to 100% (lines 1, 10, 26,
+49, O and others), averaging 82%.
+
+So accuracy is not uniform, and the map says so. Each vehicle reports a
+`certainty`, which drives its opacity, and clicking one explains how its
+position was arrived at:
+
+| `certainty`    | Meaning                                              | Opacity |
+| -------------- | ---------------------------------------------------- | ------- |
+| `measured`     | between two stops the feed just reported on           | 1.0     |
+| `interpolated` | live data, but in an unmonitored stretch              | 0.7     |
+| `scheduled`    | no live data for this trip at all — timetable only    | 0.4     |
+
+Delays are **interpolated between reported stops** rather than held constant
+until the next one. Holding lets the error accumulate across the unmonitored
+middle and then correct in a single step — on a tram, a jump of several hundred
+metres. A run going from 98 s late to 52 s early recovered that time gradually,
+not all at one stop. Measured against the live feed, this changes the typical
+position not at all (median 0 m) but pulls in the tail: the worst case moved
+603 m.
+
+Residual error is dominated by things the data cannot fix — timetable stop
+times are quantised to whole minutes (±30 s, or ~120 m at tram speed), and
+motion between two stops is assumed linear, so a tram waiting at a light is
+drawn still rolling.
+
+### Going to the source: the monitor API
+
+**The community GTFS-RT feed is lossy.** It is a conversion of Wiener Linien's
+own monitor API, and comparing the two on line 12:
+
+|                              | GTFS-RT feed | Monitor API directly |
+| ---------------------------- | ------------ | -------------------- |
+| Stops reporting a delay      | ~27%         | 36 of 36             |
+| Departures carrying `timeReal` | —          | 211 of 212 (100%)    |
+| Vehicles with live data      | 30%          | —                    |
+
+The monitor API is stop-based and carries no trip id, but every departure comes
+with `timePlanned`, which **is** the GTFS scheduled time. That makes matching a
+departure back to a trip deterministic rather than probabilistic: measured over
+a sweep, 1,242 of 1,273 real-time departures (97.6%) matched a scheduled call,
+30 of 36 on the exact second and the rest within 90 s.
+
+So there is substantial headroom over the feed. The obstacle is the quota.
+
+**The endpoint rate-limits aggressively and the limit is not published.** Four
+concurrent requests return four 403s — it throttles on concurrency, not just
+volume — and sustained polling earns 403s even at 1.5 s spacing, after which
+access stays blocked for a while. Sweeping all 4,432 stops on a short cycle is
+not a responsible use of it.
+
+The poller is therefore **targeted rather than exhaustive**: it asks only about
+the stops vehicles are currently approaching, which is both the cheapest query
+and the most useful answer, since the next stop is where a timetable-only
+estimate has drifted furthest. Requests are serial, spaced 1.5 s apart, and
+capped at four per cycle, with dropped batches reported rather than hidden. The
+GTFS-RT feed remains the fallback, and monitor anchors win where both cover the
+same stop.
+
 `npm run ingest` also builds the schedule for the current service day plus any
 of yesterday's trips that run past midnight, so night service is positioned
 correctly. **It must be re-run daily** — the schedule artifact is one service

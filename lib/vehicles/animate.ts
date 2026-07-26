@@ -10,22 +10,10 @@ export type Tween = {
   duration: number;
 };
 
-/** Shortest signed angular difference, so a vehicle never spins the long way. */
 function angleDelta(from: number, to: number): number {
   return ((((to - from) % 360) + 540) % 360) - 180;
 }
 
-/**
- * Beyond this, a position change is treated as a correction rather than travel
- * and is applied instantly.
- *
- * Positions derive from schedule plus reported delay, so when the feed revises
- * a delay — a bus going from on-time to five minutes late — the computed point
- * legitimately moves a kilometre or more. Sliding that across a poll interval
- * would draw a bus doing several hundred km/h; snapping reads as what it is.
- * The cap sits above anything the network can actually cover in one interval:
- * the fastest thing on it is the Badner Bahn at about 70 km/h, or ~120 m.
- */
 const SNAP_METRES = 300;
 
 function roughMetres(
@@ -40,15 +28,6 @@ function roughMetres(
   return Math.hypot(dx, dy) * METRES_PER_DEGREE;
 }
 
-/**
- * Builds the next tween set from a fresh server snapshot.
- *
- * The server reports where each vehicle is at a single instant; between polls
- * the client walks it from its last drawn position to the new one. Vehicles
- * seen for the first time are placed directly rather than sliding in from
- * nowhere, and vehicles missing from the snapshot are dropped — their trip
- * has ended.
- */
 export function reconcile(
   previous: Map<string, Tween>,
   vehicles: Vehicle[],
@@ -79,7 +58,6 @@ export function reconcile(
   return next;
 }
 
-/** Position of a tween at `now`, clamped once the tween has completed. */
 export function sample(tween: Tween, now: number) {
   const elapsed = now - tween.startedAt;
   const t =
@@ -115,6 +93,8 @@ export function toFeatureCollection(
         towards: vehicle.towards,
         delay: vehicle.delay,
         realtime: vehicle.realtime,
+        certainty: vehicle.certainty,
+        stopsFromReport: vehicle.stopsFromReport,
         bearing,
       },
     });

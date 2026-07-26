@@ -10,6 +10,7 @@ import { useVehiclesContext } from "./vehicles-provider";
 import {
   VEHICLES_SOURCE,
   addVehicleLayers,
+  bindVehiclePopup,
   setVehicleTheme,
 } from "./vehicle-layer";
 import { reconcile, toFeatureCollection, type Tween } from "@/lib/vehicles/animate";
@@ -20,13 +21,8 @@ const VIENNA = { lng: 16.3725, lat: 48.2083 };
 const STOPS_SOURCE = "stops";
 const STOPS_LAYER = "stops-circles";
 
-/**
- * Mapbox Standard, which carries 3D buildings, trees and landmarks in the base
- * style rather than needing a separate fill-extrusion layer. Its `faded` theme
- * desaturates the basemap so the network drawn on top stays the loudest thing
- * on screen; `lightPreset` follows the app theme, which is a config change
- * rather than a style swap and so keeps every layer intact.
- */
+// Standard carries 3D buildings natively; `lightPreset` swaps day/night via
+// config rather than a style reload, which would drop every layer.
 const STYLE = "mapbox://styles/mapbox/standard";
 
 const CAMERA = { zoom: 13, pitch: 55, bearing: -18 } as const;
@@ -35,10 +31,6 @@ function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
 }
 
-/**
- * Adds the stop layer. Swapping the base style drops all sources and layers, so
- * this stays idempotent and is re-run on `style.load` as well as first load.
- */
 function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
   if (map.getSource(STOPS_SOURCE)) return;
 
@@ -51,12 +43,8 @@ function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
     id: STOPS_LAYER,
     type: "circle",
     source: STOPS_SOURCE,
-    // Standard exposes named slots; `middle` puts the dots above roads and
-    // buildings but below labels, so street names stay readable.
     slot: "middle",
     paint: {
-      // Stops stay pin-prick small when zoomed out so the network reads as
-      // shape rather than noise, and only become clickable dots up close.
       "circle-radius": [
         "interpolate",
         ["linear"],
@@ -93,9 +81,7 @@ export function MapView() {
   const { data, error: vehicleError } = useVehiclesContext();
   const tweens = useRef<Map<string, Tween>>(new Map());
 
-  // Hold the current theme in a ref so the init effect can read it without
-  // listing it as a dependency and tearing the map down on every toggle. The
-  // ref initialiser covers first mount; this effect keeps it current after.
+  // Read via ref so theme changes don't re-run init and tear the map down.
   const theme = useRef(resolvedTheme);
   useEffect(() => {
     theme.current = resolvedTheme;
@@ -132,8 +118,6 @@ export function MapView() {
       "bottom-right",
     );
     instance.addControl(
-      // The compass doubles as a pitch reset, which matters once the camera is
-      // tilted and the user has rotated away from north.
       new mapboxgl.NavigationControl({ showCompass: true, visualizePitch: true }),
       "bottom-right",
     );
@@ -144,6 +128,13 @@ export function MapView() {
     };
     instance.on("load", addLayers);
     instance.on("style.load", addLayers);
+
+    const popup = new mapboxgl.Popup({
+      closeButton: false,
+      offset: 12,
+      className: "bim-popup",
+    });
+    bindVehiclePopup(instance, popup);
     instance.on("error", (event) => {
       setError(event.error?.message ?? "Mapbox failed to load.");
     });
@@ -187,8 +178,6 @@ export function MapView() {
     setVehicleTheme(map.current, resolvedTheme === "dark");
   }, [resolvedTheme]);
 
-  // Fold each server snapshot into the running tweens. The vehicles keep their
-  // currently drawn position as the start point, so a poll never teleports one.
   useEffect(() => {
     if (!data) return;
     tweens.current = reconcile(
@@ -199,9 +188,8 @@ export function MapView() {
     );
   }, [data]);
 
-  // Redraw loop. Rebuilding the GeoJSON is the cost here, so it runs on a fixed
-  // ~25 fps budget rather than every frame — the difference is invisible at
-  // walking-pace movement and roughly halves the work at 60 Hz.
+  // ~25 fps: rebuilding the GeoJSON is the cost, and the difference is
+  // invisible at walking pace.
   useEffect(() => {
     if (!TOKEN) return;
     let frame = 0;
