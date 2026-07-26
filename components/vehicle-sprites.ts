@@ -54,8 +54,6 @@ export function makeVehicleSprite(
   const y = pad;
   const radius = width / 2.4;
 
-  // A white casing in both themes: it separates the vehicle from pale streets
-  // and from the night map alike, and reads as bodywork rather than an outline.
   roundedRect(ctx, x, y, width, length, radius);
   ctx.fillStyle = "#ffffff";
   ctx.fill();
@@ -72,9 +70,7 @@ export function makeVehicleSprite(
   ctx.fillStyle = vehicleColour(mode, line, dark);
   ctx.fill();
 
-  // Articulation joints — what makes a tram read as a tram rather than a bar.
   if (joints > 0) {
-    // White, like the bellows between real carriages.
     ctx.strokeStyle = "rgba(255,255,255,0.75)";
     ctx.lineWidth = 0.9;
     const step = length / (joints + 1);
@@ -87,7 +83,6 @@ export function makeVehicleSprite(
     }
   }
 
-  // Pale cap at the front, so direction of travel is readable at a glance.
   const noseHeight = Math.max(3, length * 0.16);
   ctx.save();
   roundedRect(
@@ -109,7 +104,6 @@ export function makeVehicleSprite(
 export const spriteId = (mode: VehicleMode, line = ""): string =>
   mode === "metro" && METRO_COLOR[line] ? `vehicle-${line}` : `vehicle-${mode}`;
 
-/** Every sprite the layer can ask for: one per U-Bahn line, plus tram and bus. */
 export const SPRITES: { mode: VehicleMode; line: string }[] = [
   ...Object.keys(METRO_COLOR).map((line) => ({ mode: "metro" as const, line })),
   { mode: "metro", line: "" },

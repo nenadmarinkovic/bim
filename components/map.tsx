@@ -31,6 +31,7 @@ import {
   VEHICLES_3D_SOURCE,
   VEHICLES_SOURCE,
   addVehicleLayers,
+  revealVehicles,
   bindVehicleSelection,
   setVehicleTheme,
 } from "./vehicle-layer";
@@ -44,15 +45,32 @@ import { toExtrusionCollection } from "@/lib/vehicles/footprint";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-/**
- * Chase camera. Past roughly 60 degrees the horizon enters frame, and at 72 the
- * sky sits well above it — riding along with the city ahead rather than looking
- * down at a street. Capped below MAX_PITCH so the compass can still recover.
- */
 const FOLLOW_PITCH = 72;
 const FOLLOW_MIN_ZOOM = 17.2;
 
 const STYLE = "mapbox://styles/mapbox/standard";
+
+type Cull = { west: number; south: number; east: number; north: number };
+
+function viewportBounds(instance: mapboxgl.Map): Cull | undefined {
+  const view = instance.getBounds();
+  if (!view) return undefined;
+  const sw = view.getSouthWest();
+  const ne = view.getNorthEast();
+
+  if (ne.lng - sw.lng < 1e-3 || ne.lat - sw.lat < 1e-3) return undefined;
+  const padLon = (ne.lng - sw.lng) * 0.25;
+  const padLat = (ne.lat - sw.lat) * 0.25;
+  return {
+    west: sw.lng - padLon,
+    south: sw.lat - padLat,
+    east: ne.lng + padLon,
+    north: ne.lat + padLat,
+  };
+}
+
+const bboxParam = (c: Cull) =>
+  [c.west, c.south, c.east, c.north].map((n) => n.toFixed(4)).join(",");
 
 function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
@@ -140,11 +158,6 @@ type PopupContext = {
   dark: boolean;
 };
 
-/**
- * Module scope, not a hook: the button handlers re-render the popup so their
- * own labels update, and a `useCallback` that referenced itself would be
- * reading a binding before it exists.
- */
 function renderVehiclePopup(ctx: PopupContext, vehicle: Vehicle) {
   const { map, popup, following, routeTrip, dark } = ctx;
 
@@ -189,14 +202,14 @@ export function MapView() {
   const tweens = useRef<Map<string, Tween>>(new Map());
   const popup = useRef<mapboxgl.Popup | null>(null);
   const selected = useRef<string | null>(null);
+  const seenData = useRef(false);
   const placePopup = useRef<mapboxgl.Popup | null>(null);
   const following = useRef<string | null>(null);
   const routeTrip = useRef<string | null>(null);
   const disablePlaces = useRef<(() => void) | null>(null);
   const stopPlaceVisibility = useRef<(() => void) | null>(null);
-
-  // Read via ref so theme changes don't re-run init and tear the map down.
   const theme = useRef(resolvedTheme);
+
   useEffect(() => {
     theme.current = resolvedTheme;
   }, [resolvedTheme]);
@@ -234,11 +247,16 @@ export function MapView() {
       },
     });
 
+    const initial = viewportBounds(instance);
+    if (initial) reportViewport(bboxParam(initial));
+
     const addLayers = () => {
       addStopsLayer(instance, theme.current);
       addRouteLayers(instance);
       addVehicleLayers(instance, theme.current === "dark");
       applyMapTheme(instance, theme.current === "dark");
+
+      if (seenData.current) revealVehicles(instance);
     };
     instance.on("load", addLayers);
     instance.on("style.load", addLayers);
@@ -286,10 +304,8 @@ export function MapView() {
       instance.remove();
       map.current = null;
     };
-  }, []);
+  }, [reportViewport]);
 
-  // Places are opt-in: the interactions and the basemap labels they need are
-  // both attached only while the toggle is on.
   const setPlacesEnabled = useCallback((on: boolean) => {
     const instance = map.current;
     if (!instance) return;
@@ -337,6 +353,8 @@ export function MapView() {
 
   useEffect(() => {
     if (!data) return;
+    seenData.current = true;
+    if (map.current) revealVehicles(map.current);
     tweens.current = reconcile(
       tweens.current,
       data.vehicles,
@@ -379,38 +397,13 @@ export function MapView() {
       lastDraw = now;
 
       const instance = map.current;
-      if (!instance || !instance.getSource(VEHICLES_SOURCE)) return;
-      if (!tweens.current.size) return;
+      if (!instance) return;
 
-      // Only feed Mapbox what is on screen. Building the GeoJSON is cheap
-      // (~0.3 ms for the whole network); the cost is setData re-indexing the
-      // source twice a frame, which scales with feature count. A margin keeps
-      // vehicles from popping in at the edge.
-      const view = instance.getBounds();
-      const cull = view
-        ? (() => {
-            const sw = view.getSouthWest();
-            const ne = view.getNorthEast();
-            const padLon = (ne.lng - sw.lng) * 0.25;
-            const padLat = (ne.lat - sw.lat) * 0.25;
-            return {
-              west: sw.lng - padLon,
-              south: sw.lat - padLat,
-              east: ne.lng + padLon,
-              north: ne.lat + padLat,
-            };
-          })()
-        : undefined;
+      const cull = viewportBounds(instance);
 
-      // Publish it for the next poll, so the server knows which vehicles need
-      // their track geometry attached.
-      if (cull) {
-        reportViewport(
-          [cull.west, cull.south, cull.east, cull.north]
-            .map((n) => n.toFixed(4))
-            .join(","),
-        );
-      }
+      if (cull) reportViewport(bboxParam(cull));
+
+      if (!tweens.current.size || !instance.getSource(VEHICLES_SOURCE)) return;
 
       const source = instance.getSource(
         VEHICLES_SOURCE,
@@ -424,12 +417,10 @@ export function MapView() {
         ),
       );
 
-      // The extrusion layer is hidden below SPRITE_TO_3D_ZOOM, so building and
-      // uploading its polygons there is pure waste — and that is exactly where
-      // culling helps least, since the viewport then holds most of the network.
       if (instance.getZoom() >= SPRITE_TO_3D_ZOOM) {
         const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
-          mapboxgl.GeoJSONSource | undefined;
+          | mapboxgl.GeoJSONSource
+          | undefined;
         extrusions?.setData(
           toExtrusionCollection(
             tweens.current,
@@ -440,9 +431,6 @@ export function MapView() {
         );
       }
 
-      // Follow rides the same interpolated position the vehicle is drawn at, so
-      // the camera cannot lag behind its own subject. jumpTo, not easeTo: an
-      // easing per frame would fight the next frame's target and judder.
       const followId = following.current;
       if (followId) {
         const followed = tweens.current.get(followId);

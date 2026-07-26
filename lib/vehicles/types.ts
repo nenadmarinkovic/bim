@@ -25,6 +25,12 @@ export type Vehicle = {
   path?: number[];
   pd?: number[];
   d?: number;
+  /**
+   * Distance one poll interval from now. The client tweens `d` to this in real
+   * time, so vehicles move on the first frame instead of standing still until a
+   * second sample arrives — and the map is current rather than an interval behind.
+   */
+  dNext?: number;
   stopsFromReport: number;
 };
 

@@ -22,10 +22,6 @@ function basis(vehicle: Vehicle): string {
   return "timetable only — no live data";
 }
 
-/**
- * Built as DOM rather than an HTML string, because the two actions need real
- * click handlers — `setHTML` would leave them inert.
- */
 export function buildVehiclePopup(
   vehicle: Vehicle,
   actions: PopupActions,

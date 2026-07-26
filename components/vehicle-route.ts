@@ -30,8 +30,6 @@ export function addRouteLayers(map: mapboxgl.Map) {
   map.addSource(ROUTE_SOURCE, { type: "geojson", data: EMPTY_LINE });
   map.addSource(ROUTE_ENDS_SOURCE, { type: "geojson", data: EMPTY_POINTS });
 
-  // Under the vehicles but above the basemap, so the vehicle stays readable
-  // where it overlaps its own line.
   map.addLayer({
     id: ROUTE_LINE_LAYER,
     type: "line",
@@ -73,13 +71,11 @@ export function addRouteLayers(map: mapboxgl.Map) {
     },
     paint: {
       "text-color": ["get", "color"],
-      // No halo, matching the vehicle line numbers.
       "text-halo-width": 0,
     },
   });
 }
 
-/** Paints a trip's path in the vehicle's own colour, with its two ends marked. */
 export function showRoute(
   map: mapboxgl.Map,
   route: TripRoute,
@@ -87,9 +83,11 @@ export function showRoute(
   endFill: string,
 ) {
   const line = map.getSource(ROUTE_SOURCE) as
-    mapboxgl.GeoJSONSource | undefined;
+    | mapboxgl.GeoJSONSource
+    | undefined;
   const ends = map.getSource(ROUTE_ENDS_SOURCE) as
-    mapboxgl.GeoJSONSource | undefined;
+    | mapboxgl.GeoJSONSource
+    | undefined;
   if (!line || !ends) return;
 
   line.setData({
@@ -122,9 +120,11 @@ export function showRoute(
 
 export function clearRoute(map: mapboxgl.Map) {
   const line = map.getSource(ROUTE_SOURCE) as
-    mapboxgl.GeoJSONSource | undefined;
+    | mapboxgl.GeoJSONSource
+    | undefined;
   const ends = map.getSource(ROUTE_ENDS_SOURCE) as
-    mapboxgl.GeoJSONSource | undefined;
+    | mapboxgl.GeoJSONSource
+    | undefined;
   line?.setData(EMPTY_LINE);
   ends?.setData(EMPTY_POINTS);
 }

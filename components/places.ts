@@ -1,25 +1,11 @@
 import type mapboxgl from "mapbox-gl";
 
-/**
- * Clickable places, driven by Mapbox Standard's featuresets. Standard hides its
- * internal layers from `queryRenderedFeatures`, so featuresets are the only way
- * in.
- *
- * Only labelled things are interactive: POI labels and landmark icons. Building
- * footprints are deliberately left alone — the famous buildings are drawn by
- * `building-models`, a model layer Mapbox cannot query at all, so making plain
- * buildings hoverable would have Karlskirche and its neighbours behaving
- * differently for no reason a user could see. Clicking text is consistent.
- */
 function resolveTargets(map: mapboxgl.Map) {
   type Descriptor = ReturnType<
     mapboxgl.Map["getFeaturesetDescriptors"]
   >[number];
   const found = new Map<string, Descriptor>();
 
-  // Mapbox's examples pass `importId: "basemap"`, which is only right when
-  // Standard is imported into a custom style. Loaded directly its featuresets
-  // sit on the root, so ask for both arrangements.
   const collect = (importId?: string) => {
     try {
       for (const descriptor of map.getFeaturesetDescriptors(importId)) {
@@ -57,7 +43,6 @@ export type Place = {
 const titleCase = (value: string) =>
   value.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-/** Placeholder copy — swap for the real lookup; the popup takes whatever this returns. */
 function dummyDetail(title: string, kind: string): string {
   return `A ${kind.toLowerCase()} in Vienna. Details for ${title} will be filled in from a live source.`;
 }
@@ -131,7 +116,6 @@ export function enablePlaces(
       target: targets.landmarks,
       handler: click("Landmark"),
     });
-    // Mapbox warns that mouseleave needs a matching mouseenter to fire.
     map.addInteraction(IDS.landmarkEnter, {
       type: "mouseenter",
       target: targets.landmarks,
@@ -175,15 +159,6 @@ export function enablePlaces(
   };
 }
 
-/**
- * POI labels have to be on for there to be anything to see or click.
- *
- * Landmark icons — the circular photos Standard puts on famous sites — are
- * forced off every time this runs, at any zoom. Gating them on zoom was not
- * enough: the value was only re-asserted when the Places toggle changed, so
- * any other path that touched the basemap config could leave them showing.
- * Landmarks stay reachable through their POI labels.
- */
 export function setPlaceVisibility(map: mapboxgl.Map, on: boolean): () => void {
   let frame = 0;
   let attempts = 0;

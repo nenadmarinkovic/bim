@@ -123,6 +123,9 @@ async function getMonitorAnchors(
   return monitorCache?.anchors ?? new Map();
 }
 
+/** Matches the client poll interval; the client tweens across exactly this span. */
+export const LOOKAHEAD_MS = 6_000;
+
 export type Viewport = {
   west: number;
   south: number;
@@ -132,6 +135,18 @@ export type Viewport = {
 
 /** Enough track either side to cover the body plus a poll interval of travel. */
 const PATH_MARGIN_M = 220;
+
+/**
+ * Scheduled transit does not leave early, so a reading this far ahead of the
+ * timetable is a mispairing between a real vehicle and a planned run, not a
+ * fast one. Taken at face value it drew a tram a kilometre up the line.
+ */
+const EARLY_LIMIT_S = 120;
+
+/** How far the two sources may differ before one of them is disbelieved. */
+const CLASH_S = 120;
+
+const plausible = (a: StopDelay) => a.delay >= -EARLY_LIMIT_S;
 
 /** Slices the shape around a vehicle so the client can bend the body along it. */
 function localPath(
@@ -164,15 +179,33 @@ export async function vehiclesAt(
       ),
     ]);
 
-  const delayMap = new Map<string, StopDelay[]>(feedDelays);
+  const delayMap = new Map<string, StopDelay[]>();
+  for (const [tripId, list] of feedDelays) {
+    const kept = list.filter(plausible);
+    if (kept.length) delayMap.set(tripId, kept);
+  }
+
   for (const [tripId, anchors] of monitorDelays) {
+    const kept = anchors.filter(plausible);
+    if (!kept.length) continue;
+
     const existing = delayMap.get(tripId);
     if (!existing) {
-      delayMap.set(tripId, anchors);
+      delayMap.set(tripId, kept);
       continue;
     }
+
     const merged = new Map(existing.map((a) => [a.index, a.delay]));
-    for (const a of anchors) merged.set(a.index, a.delay);
+    for (const a of kept) {
+      // The feed is keyed on trip id; monitor readings are matched by planned
+      // time, which can pair a real vehicle with the wrong run. Where the two
+      // clash this hard one of them is a mispairing, so keep the feed's.
+      const fromFeed = merged.get(a.index);
+      if (fromFeed !== undefined && Math.abs(a.delay - fromFeed) > CLASH_S) {
+        continue;
+      }
+      merged.set(a.index, a.delay);
+    }
     delayMap.set(
       tripId,
       [...merged].map(([index, delay]) => ({ index, delay })),
@@ -251,6 +284,12 @@ export async function vehiclesAt(
         ? localPath(shape, state.distance, DIMENSIONS[mode].length / 2)
         : null;
 
+      // Where it will be when the next poll lands, so the client can animate
+      // forward through real time rather than replaying the last interval.
+      const ahead = local
+        ? placeTrip(trip, shape, delays, dayStart, nowMs + LOOKAHEAD_MS)
+        : null;
+
       vehicles.push({
         id: tripId,
         line: route?.name ?? trip.r,
@@ -266,7 +305,14 @@ export async function vehiclesAt(
           ? stopsFromReport
           : -1,
         underground: inTunnel,
-        ...(local ? { path: local.path, pd: local.pd, d: state.distance } : {}),
+        ...(local
+          ? {
+              path: local.path,
+              pd: local.pd,
+              d: state.distance,
+              ...(ahead ? { dNext: ahead.distance } : {}),
+            }
+          : {}),
       });
     }
   }

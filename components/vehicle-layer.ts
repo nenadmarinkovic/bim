@@ -24,7 +24,6 @@ export const VEHICLE_3D_LAYERS = [
   VEHICLES_ROOF_LAYER,
 ];
 
-/** Below this the extrusions are sub-pixel; above it the sprites look like stickers. */
 export const SPRITE_TO_3D_ZOOM = 14;
 
 const EMPTY: FeatureCollection<Point> = {
@@ -37,7 +36,6 @@ const EMPTY_POLYGONS: FeatureCollection<Polygon> = {
   features: [],
 };
 
-// Idempotent: a style swap drops every source, so this re-runs on style.load.
 export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
   if (map.getSource(VEHICLES_SOURCE)) return;
 
@@ -47,11 +45,6 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
 
   map.addSource(VEHICLES_3D_SOURCE, { type: "geojson", data: EMPTY_POLYGONS });
 
-  // Real-size extrusions once close enough to see them, sprites before that:
-  // a 12 m bus is sub-pixel at city zoom, so the sprite keeps a legible
-  // minimum size while the extrusion takes over where the 3D reads.
-  // Four bands off one footprint: skirt, glazing, upper body, roof. A single
-  // box reads as a brick; the white glazing stripe is what makes it a vehicle.
   const band = (
     id: string,
     base: string,
@@ -69,6 +62,8 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
       "fill-extrusion-height": ["get", height],
       "fill-extrusion-vertical-gradient": false,
       "fill-extrusion-emissive-strength": dark ? 0.85 : 0.25,
+      "fill-extrusion-opacity": 0,
+      "fill-extrusion-opacity-transition": { duration: 450 },
     },
   });
 
@@ -102,8 +97,6 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
         "vehicle-bus",
       ] as unknown as mapboxgl.ExpressionSpecification,
       "icon-rotate": ["get", "bearing"],
-      // Aligned to the map, not the screen: the vehicles lie flat on the
-      // street and tilt with the camera rather than standing up as badges.
       "icon-rotation-alignment": "map",
       "icon-pitch-alignment": "map",
       "icon-allow-overlap": true,
@@ -123,10 +116,6 @@ export function addVehicleLayers(map: mapboxgl.Map, dark: boolean) {
     paint: {},
   });
 
-  // The line number is what actually tells you what you are looking at: every
-  // tram shares one red and every bus one navy, and U1's red is the tram red.
-  // Tinting the number by line and keeping it always visible does the work
-  // colour alone cannot.
   map.addLayer({
     id: VEHICLES_LABEL_LAYER,
     type: "symbol",
@@ -219,6 +208,12 @@ function registerSprites(map: mapboxgl.Map, dark: boolean) {
     const id = spriteId(mode, line);
     if (map.hasImage(id)) map.updateImage(id, sprite);
     else map.addImage(id, sprite, { pixelRatio: SPRITE_PIXEL_RATIO });
+  }
+}
+
+export function revealVehicles(map: mapboxgl.Map) {
+  for (const id of VEHICLE_3D_LAYERS) {
+    if (map.getLayer(id)) map.setPaintProperty(id, "fill-extrusion-opacity", 1);
   }
 }
 

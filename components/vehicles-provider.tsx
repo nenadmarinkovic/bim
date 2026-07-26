@@ -8,12 +8,10 @@ const VehiclesContext = createContext<VehiclesState>({
   error: null,
 });
 
-/** The map publishes its viewport here so the poll can scope what it asks for. */
 const ViewportContext = createContext<{
   set: (bbox: string | null) => void;
 }>({ set: () => {} });
 
-// One poll loop for the page; two callers of useVehicles would double the rate.
 export function VehiclesProvider({ children }: { children: React.ReactNode }) {
   const viewport = useRef<string | null>(null);
   const getViewport = useCallback(() => viewport.current, []);

@@ -27,8 +27,6 @@ export function ThemeToggle({ className }: { className?: string }) {
     setMounted(true);
   }, []);
 
-  // The resolved theme is unknown during SSR, so reserve the space rather than
-  // render a control whose pressed state would change on hydration.
   if (!mounted) {
     return <div className={cn("h-7 w-18.5", className)} />;
   }

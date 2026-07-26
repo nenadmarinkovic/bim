@@ -15,28 +15,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-/** Header nav: plain foreground, not brand — it sits beside the wordmark. */
 const NAV_LINK =
   "cursor-pointer text-sm font-medium text-foreground transition-opacity hover:opacity-70";
 
-/**
- * Fields need their own surface. shadcn's Input is `bg-transparent`, which on a
- * translucent dialog lets the map show straight through the box — `--field` is
- * the palette's token for exactly this: white in light, navy in dark.
- */
 const FIELD = "bg-field dark:bg-field";
 
-/** Field labels sit a step below body text so the input itself leads. */
 const FIELD_LABEL = "text-xs";
 
-/** Links inside dialogs, where an accent reads as an action rather than as chrome. */
 const LINK =
   "cursor-pointer text-brand font-medium underline-offset-4 transition-opacity hover:opacity-70";
 
-/** Same material as the control panels, a touch more opaque for body text. */
 const SHEET = "glass-sheet gap-5 p-6";
 
-/** The footer bleeds to the sheet edge, so its negative margins track the padding. */
 const FOOTER = "-mx-6 -mb-6 bg-transparent p-6";
 
 export function SiteNav({ className }: { className?: string }) {

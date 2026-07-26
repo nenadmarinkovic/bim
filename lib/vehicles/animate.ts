@@ -101,7 +101,9 @@ export function reconcile(
     const fromDistance =
       !jumped && at?.distance !== undefined ? at.distance : vehicle.d;
 
-    let toDistance = vehicle.d;
+    // Aim at where the vehicle will be, not where it was: the tween then runs
+    // forward through real time instead of replaying the previous interval.
+    let toDistance = vehicle.dNext ?? vehicle.d;
     let reversed = false;
     if (fromDistance !== undefined && toDistance !== undefined) {
       const backwards = fromDistance - toDistance;
