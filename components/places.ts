@@ -56,24 +56,56 @@ const LANG = "en";
 
 type Detail = { title: string; extract: string };
 
-async function fetchDetail(
-  place: Place,
-  signal: AbortSignal,
-): Promise<Detail | null> {
+const detailKey = (place: Place) => `${LANG}|${place.title}|${place.kind}`;
+
+const inFlight = new Map<string, Promise<Detail | null>>();
+const settled = new Map<string, Detail>();
+
+function loadDetail(place: Place): Promise<Detail | null> {
+  const key = detailKey(place);
+  const already = inFlight.get(key);
+  if (already) return already;
+
   const query = new URLSearchParams({
     name: place.title,
     kind: place.kind,
     lang: LANG,
   });
 
-  try {
-    const response = await fetch(`/api/place?${query}`, { signal });
-    if (!response.ok) return null;
-    return (await response.json()) as Detail;
-  } catch {
-    return null;
-  }
+  const request = fetch(`/api/place?${query}`)
+    .then((response) =>
+      response.ok ? (response.json() as Promise<Detail>) : null,
+    )
+    .catch(() => null)
+    .then((detail) => {
+      if (detail) settled.set(key, detail);
+      else inFlight.delete(key);
+      return detail;
+    });
+
+  inFlight.set(key, request);
+  return request;
 }
+
+const DWELL_MS = 220;
+const WARM_WINDOW_MS = 60_000;
+const WARM_PER_WINDOW = 6;
+const warmed: number[] = [];
+
+function mayWarm(): boolean {
+  const now = performance.now();
+  while (warmed.length && warmed[0]! <= now - WARM_WINDOW_MS) warmed.shift();
+  if (warmed.length >= WARM_PER_WINDOW) return false;
+  warmed.push(now);
+  return true;
+}
+
+const withDetail = (place: Place, detail: Detail): Place => ({
+  ...place,
+  detail: detail.extract,
+  pending: false,
+  described: true,
+});
 
 type FeatureLike = { properties?: Record<string, unknown> | null };
 
@@ -106,9 +138,8 @@ export function enablePlaces(
 ): () => void {
   const targets = resolveTargets(map);
 
-  // Clicks outrun the network; a stale response would caption the wrong place.
   let ticket = 0;
-  let inFlight: AbortController | null = null;
+  let dwell = 0;
 
   const click =
     (fallbackKind: string) =>
@@ -118,34 +149,47 @@ export function enablePlaces(
       if (!place) return false;
 
       const mine = ++ticket;
-      inFlight?.abort();
-      inFlight = new AbortController();
+
+      const known = settled.get(detailKey(place));
+      if (known) {
+        onSelect(withDetail(place, known));
+        return true;
+      }
 
       onSelect(place);
 
-      void fetchDetail(place, inFlight.signal).then((detail) => {
+      void loadDetail(place).then((detail) => {
         if (mine !== ticket) return;
         onSelect(
           detail
-            ? {
-                ...place,
-                detail: detail.extract,
-                pending: false,
-                described: true,
-              }
-            : // Declined or failed: drop the line rather than show filler.
-              { ...place, detail: "", pending: false },
+            ? withDetail(place, detail)
+            : { ...place, detail: "", pending: false },
         );
       });
 
       return true;
     };
 
-  const pointer = () => {
-    map.getCanvas().style.cursor = "pointer";
-    return true;
-  };
+  const pointer =
+    (fallbackKind: string) =>
+    (event: { feature?: FeatureLike; lngLat: mapboxgl.LngLat }) => {
+      map.getCanvas().style.cursor = "pointer";
+
+      const place = event.feature
+        ? describe(event.feature, fallbackKind, event.lngLat)
+        : null;
+      if (!place || inFlight.has(detailKey(place))) return true;
+
+      clearTimeout(dwell);
+      dwell = window.setTimeout(() => {
+        if (mayWarm()) void loadDetail(place);
+      }, DWELL_MS);
+
+      return true;
+    };
+
   const resetPointer = () => {
+    clearTimeout(dwell);
     map.getCanvas().style.cursor = "";
     return false;
   };
@@ -159,7 +203,7 @@ export function enablePlaces(
     map.addInteraction(IDS.landmarkEnter, {
       type: "mouseenter",
       target: targets.landmarks,
-      handler: pointer,
+      handler: pointer("Landmark"),
     });
     map.addInteraction(IDS.landmarkLeave, {
       type: "mouseleave",
@@ -177,7 +221,7 @@ export function enablePlaces(
     map.addInteraction(IDS.poiEnter, {
       type: "mouseenter",
       target: targets.poi,
-      handler: pointer,
+      handler: pointer("Place"),
     });
     map.addInteraction(IDS.poiLeave, {
       type: "mouseleave",
@@ -188,7 +232,7 @@ export function enablePlaces(
 
   return () => {
     ticket++;
-    inFlight?.abort();
+    clearTimeout(dwell);
 
     for (const id of Object.values(IDS)) {
       try {
