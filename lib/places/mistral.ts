@@ -12,8 +12,6 @@ export const isSupportedLanguage = (lang: string) => lang in LANGUAGES;
 const cacheKey = (name: string, kind: string, lang: string) =>
   `${lang}|${name}|${kind}`.toLowerCase();
 
-/** Cache lookup with no chance of billing, so the route can serve known places
- *  without spending a caller's rate-limit allowance. */
 export async function cachedDescription(
   name: string,
   kind: string,
@@ -43,8 +41,6 @@ function systemPrompt(language: string): string {
     "unsure, widen to the century or the era, or leave it out — never guess a",
     "specific year.",
     'Example of the required style, in English: "The Secession Building is an exhibition hall built for artists who broke away from the conservative Künstlerhaus. Its gilded openwork dome of laurel leaves is nicknamed the golden cabbage."',
-    // A stricter bar here ("not confident about this specific place") made it
-    // refuse nearly everything outside the guidebook.
     `Only if you have no idea what this place is, reply with exactly: ${DECLINE}.`,
     "Otherwise describe it at whatever level of generality you are sure of.",
   ].join(" ");
@@ -101,8 +97,6 @@ export async function describePlace(
 
   if (!text || text.toUpperCase().includes(DECLINE)) return null;
 
-  // Answers only. Declining is not deterministic, so caching one would leave
-  // the place permanently blank however often it is clicked.
   await remember(key, text);
 
   return text;

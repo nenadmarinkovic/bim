@@ -419,8 +419,7 @@ export function MapView() {
 
       if (instance.getZoom() >= SPRITE_TO_3D_ZOOM) {
         const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
-          | mapboxgl.GeoJSONSource
-          | undefined;
+          mapboxgl.GeoJSONSource | undefined;
         extrusions?.setData(
           toExtrusionCollection(
             tweens.current,

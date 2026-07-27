@@ -64,11 +64,10 @@ export type TripRecord = {
   r: string;
   s: string;
   h: string;
-  /** departure seconds since service-day start */
   t: number[];
-  /** shape_dist_traveled at each stop, same units as shapes.txt */
   d: number[];
   p: string[];
+  w?: number[];
 };
 
 export type RouteRecord = { name: string; type: number };
@@ -128,16 +127,21 @@ export async function buildTrips(
 
   const pending = new Map<
     string,
-    { seq: number; t: number; d: number; p: string }[]
+    { seq: number; t: number; d: number; p: string; w: number }[]
   >();
   for await (const row of readCsv(gtfs["stop_times.txt"])) {
     if (!trips[row.trip_id]) continue;
     const entry = pending.get(row.trip_id);
+    const departure = parseGtfsTime(row.departure_time || row.arrival_time);
+    const arrival = row.arrival_time
+      ? parseGtfsTime(row.arrival_time)
+      : departure;
     const point = {
       seq: Number(row.stop_sequence),
-      t: parseGtfsTime(row.departure_time || row.arrival_time),
+      t: departure,
       d: Number(row.shape_dist_traveled),
       p: row.stop_id,
+      w: Math.max(0, departure - arrival),
     };
     if (entry) entry.push(point);
     else pending.set(row.trip_id, [point]);
@@ -149,6 +153,12 @@ export async function buildTrips(
     trip.t = points.map((p) => p.t);
     trip.d = points.map((p) => Number(p.d.toFixed(1)));
     trip.p = points.map((p) => p.p);
+
+    const waits: number[] = [];
+    points.forEach((p, i) => {
+      if (p.w > 0) waits.push(i, p.w);
+    });
+    if (waits.length) trip.w = waits;
   }
 
   for (const [tripId, trip] of Object.entries(trips)) {

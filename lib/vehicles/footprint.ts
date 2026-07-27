@@ -11,12 +11,6 @@ import { alongPath, sample, type Cull, type Tween } from "./animate.ts";
 
 const METRES_PER_DEGREE = 111_320;
 
-/**
- * The body swept along the track, so a 35 m tram or a 111 m U-Bahn set bends
- * round a curve instead of being drawn as a rigid box across the chord. Walks
- * the centreline from tail to nose and offsets each point sideways by half the
- * width, which is what an articulated vehicle actually does.
- */
 function sweptFootprint(
   path: number[],
   pd: number[],
@@ -53,7 +47,6 @@ function sweptFootprint(
     const lat = centres[i].lat;
     const scale = Math.cos((lat * Math.PI) / 180);
 
-    // Perpendicular to the local direction, in metres, then back to degrees.
     let dx = (next.lon - prev.lon) * scale;
     let dy = next.lat - prev.lat;
     const len = Math.hypot(dx, dy) || 1;
@@ -148,7 +141,6 @@ export function toExtrusionCollection(
         delay: vehicle.delay,
         certainty: vehicle.certainty,
         stopsFromReport: vehicle.stopsFromReport,
-        // Band heights, so body, glazing and roof stack off one footprint.
         zero: 0,
         windowBase: size.windowBase,
         windowTop: size.windowTop,

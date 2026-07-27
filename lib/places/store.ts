@@ -37,10 +37,9 @@ async function persist() {
   const snapshot = Object.fromEntries(entries);
   try {
     await mkdir(path.dirname(FILE), { recursive: true });
-    // Written beside the target and renamed so a crash mid-write cannot leave
-    // a truncated file that would then fail to parse and drop every entry.
     const temp = `${FILE}.${process.pid}.tmp`;
     await writeFile(temp, JSON.stringify(snapshot));
+    // Renamed into place so a crash mid-write cannot leave a truncated file.
     await rename(temp, FILE);
   } catch {
     dirty = true;

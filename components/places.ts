@@ -13,9 +13,7 @@ function resolveTargets(map: mapboxgl.Map) {
           found.set(descriptor.featuresetId, descriptor);
         }
       }
-    } catch {
-      // No such import in this style.
-    }
+    } catch {}
   };
 
   collect();
@@ -44,8 +42,6 @@ export type Place = {
 
 const MINOR = new Set(["and", "or", "of", "the"]);
 
-// Mapbox's "_like" suffix ("park_like") reads as a word once the underscore
-// goes, which captioned a park "Park Like".
 const titleCase = (value: string) =>
   value
     .replace(/_like$/, "")
@@ -56,7 +52,6 @@ const titleCase = (value: string) =>
         : word.charAt(0).toUpperCase() + word.slice(1),
     );
 
-// The whole of the German switch, when it comes.
 const LANG = "en";
 
 type Detail = { title: string; extract: string };
@@ -122,7 +117,6 @@ export function placePopupHtml(place: Place): string {
     );
   }
 
-  // Generated text is marked, not passed off as sourced.
   if (place.described) {
     rows.push(`<span class="bim-popup-source">AI summary</span>`);
   }
@@ -217,16 +211,13 @@ export function enablePlaces(
   }
 
   return () => {
-    // So a late response cannot reopen the popup after Places is switched off.
     ticket++;
     inFlight?.abort();
 
     for (const id of Object.values(IDS)) {
       try {
         map.removeInteraction(id);
-      } catch {
-        // Never registered, because that featureset was not exposed.
-      }
+      } catch {}
     }
     map.getCanvas().style.cursor = "";
     onSelect(null);

@@ -7,11 +7,8 @@ export type Tween = {
   fromLon: number;
   fromLat: number;
   fromBearing: number;
-  /** Heading to settle on: the direction actually travelled this interval. */
   toBearing: number;
-  /** Distance along `vehicle.path` at the start of the tween, when known. */
   fromDistance?: number;
-  /** Where it should end up — not always the reported distance; see reconcile. */
   toDistance?: number;
   startedAt: number;
   duration: number;
@@ -23,30 +20,14 @@ function angleDelta(from: number, to: number): number {
 
 const SNAP_METRES = 300;
 
-/**
- * How long a vehicle takes to swing onto its new heading.
- *
- * Short, and deliberately not the whole poll interval. Position moves along the
- * straight chord from the last sample to the next, so spreading the rotation
- * across the same window leaves the body pointing one way while it travels
- * another — it crabs sideways through corners instead of driving round them.
- * Turning quickly and then holding keeps it aligned with its own motion.
- */
+// Short, not the whole interval: rotating over the full window makes it crab through corners.
 const TURN_MS = 1400;
 
-/** Below this the vehicle is effectively stopped, and its heading is meaningless. */
 const MOVING_METRES = 1.5;
 
-/**
- * Positions come from the timetable bent by the reported delay, so when a delay
- * is revised the computed point can land behind where the vehicle already is.
- * Nothing on the network reverses, so a small correction is absorbed by holding
- * station until the schedule catches up, rather than animating a reversal.
- * Past this the correction is too large to wait out and is applied at once.
- */
+// Nothing on the network reverses, so a small backward correction is waited out.
 const BACKWARD_HOLD_M = 180;
 
-/** Compass heading from one point to another, in degrees. */
 function headingBetween(
   aLon: number,
   aLat: number,
@@ -88,27 +69,20 @@ export function reconcile(
     const from = at && !jumped ? at : vehicle;
     const fromBearing = "bearing" in from ? from.bearing : vehicle.bearing;
 
-    // Face the way it is going. Where it barely moved — sitting at a stop — the
-    // chord is noise, so the reported heading along the track is kept instead.
     const travelled = roughMetres(from.lon, from.lat, vehicle.lon, vehicle.lat);
     const toBearing =
       travelled >= MOVING_METRES
         ? headingBetween(from.lon, from.lat, vehicle.lon, vehicle.lat)
         : vehicle.bearing;
 
-    // With track geometry, interpolate along the rails rather than across the
-    // chord — the vehicle then follows the curve instead of cutting it.
     const fromDistance =
       !jumped && at?.distance !== undefined ? at.distance : vehicle.d;
 
-    // Aim at where the vehicle will be, not where it was: the tween then runs
-    // forward through real time instead of replaying the previous interval.
     let toDistance = vehicle.dNext ?? vehicle.d;
     let reversed = false;
     if (fromDistance !== undefined && toDistance !== undefined) {
       const backwards = fromDistance - toDistance;
       if (backwards > 0 && backwards <= BACKWARD_HOLD_M) {
-        // Hold position; the vehicle waits instead of rolling back.
         toDistance = fromDistance;
       } else if (backwards > BACKWARD_HOLD_M) {
         reversed = true;
@@ -131,7 +105,6 @@ export function reconcile(
   return next;
 }
 
-/** Position and heading at a distance along a flat [lon, lat, ...] path. */
 export function alongPath(
   path: number[],
   pd: number[],
@@ -178,8 +151,6 @@ export function sample(tween: Tween, now: number) {
     if (on) return { ...on, distance };
   }
 
-  // Rotation finishes well before the move does, so the body spends most of the
-  // interval pointing along its path rather than easing into it.
   const turn =
     tween.duration > 0 ? Math.min(Math.max(elapsed / TURN_MS, 0), 1) : 1;
   const eased = turn * turn * (3 - 2 * turn);
@@ -196,7 +167,6 @@ export function sample(tween: Tween, now: number) {
 
 export type VehicleFeature = Feature<Point>;
 
-/** Viewport box, already padded by the caller. */
 export type Cull = { west: number; south: number; east: number; north: number };
 
 const inside = (cull: Cull | undefined, lon: number, lat: number) =>

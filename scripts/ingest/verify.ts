@@ -40,7 +40,7 @@ async function main() {
     await readFile(path.join(DATA_DIR, "stops.json"), "utf8"),
   ) as { stops: StopRecord[] };
 
-  // Evenly spaced sample rather than random, so runs are reproducible.
+  // Evenly spaced rather than random, so runs are reproducible.
   const step = Math.max(1, Math.floor(stops.length / SAMPLE_SIZE));
   const sample = stops.filter((_, i) => i % step === 0).slice(0, SAMPLE_SIZE);
 
@@ -57,7 +57,6 @@ async function main() {
     for (const stop of batch) {
       const monitor = found.get(stop.stopId);
       if (!monitor) {
-        // A stop with no departures in the current window returns no monitor.
         noDepartures++;
         continue;
       }

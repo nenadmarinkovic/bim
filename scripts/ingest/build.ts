@@ -49,7 +49,6 @@ async function download() {
   return { wl, zip };
 }
 
-/** GTFS stops grouped by their national id number, which is what DIVA maps onto. */
 async function readGtfsStops(file: string) {
   const byGroup = new Map<string, GtfsStop[]>();
   let unparsable = 0;
@@ -332,7 +331,9 @@ async function main() {
   const ways = await fetchWays();
   const underground = buildUndergroundRanges(shapes, metroShapes, ways);
   console.log(`  osm subway ways ${ways.length}`);
-  console.log(`  metro shapes ${metroShapes.size}, with tunnel ${underground.stats.shapes}`);
+  console.log(
+    `  metro shapes ${metroShapes.size}, with tunnel ${underground.stats.shapes}`,
+  );
   console.log(
     `  points matched ${underground.stats.pointsMatched}, unmatched ${underground.stats.pointsUnmatched}`,
   );

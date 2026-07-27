@@ -2,22 +2,12 @@ import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CACHE_DIR } from "./sources.ts";
 
-/**
- * Which stretches of each U-Bahn shape run in tunnel.
- *
- * Nothing in GTFS or the Wiener Linien exports records level, so this comes
- * from OpenStreetMap: subway ways carry `tunnel`, `bridge` and `layer`. Only
- * about 38% of Vienna's U-Bahn track is tunnel — the U6 viaduct, the U4
- * cutting and the eastern ends are all in the open — so treating the whole
- * mode as underground would be wrong far more often than right.
- */
+// Level is in no transit export, so tunnel/bridge/layer come from OpenStreetMap.
 const OVERPASS = "https://overpass-api.de/api/interpreter";
 const BBOX = "47.97,16.15,48.33,16.60";
 
-/** A shape point counts as being on a way within this distance. */
 const MATCH_METRES = 30;
 
-/** Runs shorter than this are absorbed into their neighbours. */
 const MIN_RUN_METRES = 60;
 
 type Way = { underground: boolean; points: [number, number][] };
@@ -27,9 +17,7 @@ async function fetchWays(): Promise<Way[]> {
   try {
     const raw = await readFile(cached, "utf8");
     return JSON.parse(raw) as Way[];
-  } catch {
-    // Not cached yet.
-  }
+  } catch {}
 
   const query = `[out:json][timeout:180];way["railway"="subway"](${BBOX});out geom tags;`;
   // Overpass answers 406 without a User-Agent identifying the caller.
@@ -57,8 +45,6 @@ async function fetchWays(): Promise<Way[]> {
     const tunnel = tags.tunnel && tags.tunnel !== "no";
     const bridge = tags.bridge && tags.bridge !== "no";
     const layer = Number(tags.layer ?? 0);
-    // A bridge is never underground however its layer reads; otherwise a
-    // tunnel tag or a negative layer both mean below ground.
     ways.push({
       underground: Boolean(!bridge && (tunnel || layer < 0)),
       points: element.geometry.map((p) => [p.lon, p.lat] as [number, number]),
@@ -75,7 +61,13 @@ const CELL = 0.003;
 const cellKey = (lon: number, lat: number) =>
   `${Math.floor(lon / CELL)}:${Math.floor(lat / CELL)}`;
 
-type Segment = { ax: number; ay: number; bx: number; by: number; under: boolean };
+type Segment = {
+  ax: number;
+  ay: number;
+  bx: number;
+  by: number;
+  under: boolean;
+};
 
 function buildIndex(ways: Way[]) {
   const grid = new Map<string, Segment[]>();
@@ -84,8 +76,6 @@ function buildIndex(ways: Way[]) {
       const [ax, ay] = way.points[i];
       const [bx, by] = way.points[i + 1];
       const segment: Segment = { ax, ay, bx, by, under: way.underground };
-      // Register under every cell the segment's endpoints touch; segments are
-      // short relative to the cell, so this is enough to find them again.
       for (const [x, y] of [
         [ax, ay],
         [bx, by],
@@ -100,18 +90,15 @@ function buildIndex(ways: Way[]) {
   return grid;
 }
 
-function distanceToSegment(
-  lon: number,
-  lat: number,
-  s: Segment,
-): number {
+function distanceToSegment(lon: number, lat: number, s: Segment): number {
   const scale = Math.cos((lat * Math.PI) / 180);
   const px = (lon - s.ax) * scale;
   const py = lat - s.ay;
   const vx = (s.bx - s.ax) * scale;
   const vy = s.by - s.ay;
   const lenSq = vx * vx + vy * vy;
-  const t = lenSq > 0 ? Math.max(0, Math.min(1, (px * vx + py * vy) / lenSq)) : 0;
+  const t =
+    lenSq > 0 ? Math.max(0, Math.min(1, (px * vx + py * vy) / lenSq)) : 0;
   const dx = px - vx * t;
   const dy = py - vy * t;
   return Math.hypot(dx, dy) * METRES_PER_DEGREE;
@@ -145,11 +132,6 @@ function nearestFlag(
 
 export type UndergroundRanges = Record<string, [number, number][]>;
 
-/**
- * Walks each metro shape and records the distance ranges that sit in tunnel.
- * Ranges are keyed on `shape_dist_traveled`, the same units that place a
- * vehicle, so the runtime check is a lookup rather than any geometry work.
- */
 export function buildUndergroundRanges(
   shapes: Record<string, { c: number[]; d: number[] }>,
   shapeIds: Iterable<string>,
@@ -176,7 +158,6 @@ export function buildUndergroundRanges(
       flags[i] = last;
     }
 
-    // Collapse to ranges, dropping runs too short to be a real tunnel mouth.
     const out: [number, number][] = [];
     let start: number | null = null;
     for (let i = 0; i < flags.length; i++) {

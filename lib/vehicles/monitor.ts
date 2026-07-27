@@ -5,7 +5,8 @@ const MONITOR = "https://www.wienerlinien.at/ogd_realtime/monitor";
 const BATCH = 200;
 
 const REQUEST_GAP_MS = 1_500;
-const MAX_REQUESTS_PER_SWEEP = 4;
+
+const MAX_REQUESTS_PER_SWEEP = 6;
 
 const DAY_SECONDS = 86_400;
 
@@ -15,7 +16,20 @@ export type Anchor = { index: number; delay: number };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type Candidate = { tripId: string; idx: number; line: string; secs: number };
+type Candidate = {
+  tripId: string;
+  idx: number;
+  line: string;
+  secs: number;
+  towards: string;
+};
+
+function normaliseTowards(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/^wien\s+/, "")
+    .replace(/[^a-z0-9äöüß]/g, "");
+}
 
 let index: Map<string, Candidate[]> | null = null;
 
@@ -31,7 +45,13 @@ async function stopTimeIndex(): Promise<Map<string, Candidate[]>> {
     for (let i = 0; i < trip.p.length; i++) {
       const key = trip.p[i];
       const list = built.get(key);
-      const entry = { tripId, idx: i, line, secs: trip.t[i] };
+      const entry = {
+        tripId,
+        idx: i,
+        line,
+        secs: trip.t[i],
+        towards: normaliseTowards(trip.h ?? ""),
+      };
       if (list) list.push(entry);
       else built.set(key, [entry]);
     }
@@ -51,6 +71,7 @@ type Monitor = {
   locationStop?: { properties?: { attributes?: { rbl?: number } } };
   lines?: {
     name?: string;
+    towards?: string;
     departures?: {
       departure?: {
         departureTime?: {
@@ -74,12 +95,19 @@ function matchCandidate(
   candidates: Candidate[],
   line: string,
   plannedSecs: number,
+  towards: string,
 ): Candidate | null {
   let best: Candidate | null = null;
   let bestDiff = Infinity;
 
+  // Both platforms carry the same line at similar times; the headsign picks the right run.
+  const wanted = normaliseTowards(towards);
+  const directed =
+    wanted.length > 0 && candidates.some((c) => c.towards === wanted);
+
   for (const candidate of candidates) {
     if (candidate.line !== line) continue;
+    if (directed && candidate.towards !== wanted) continue;
     for (const secs of [plannedSecs, plannedSecs + DAY_SECONDS]) {
       const diff = Math.abs(candidate.secs - secs);
       if (diff < bestDiff) {
@@ -174,7 +202,12 @@ export async function sweepMonitor(
             const realSecs = secondsOfDay(real);
             if (plannedSecs === null || realSecs === null) continue;
 
-            const hit = matchCandidate(candidates, name, plannedSecs);
+            const hit = matchCandidate(
+              candidates,
+              name,
+              plannedSecs,
+              line.towards ?? "",
+            );
             if (!hit) continue;
             matched++;
 

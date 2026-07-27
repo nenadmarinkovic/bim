@@ -66,9 +66,6 @@ export function delaysForTrip(
     while (anchors[next].index < i) next++;
     const before = anchors[next - 1];
     const after = anchors[next];
-
-    // Interpolate against scheduled time rather than stop index, so a long hop
-    // between two reports absorbs proportionally more of the change.
     const span = scheduledTimes[after.index] - scheduledTimes[before.index];
     const f =
       span > 0
@@ -81,6 +78,27 @@ export function delaysForTrip(
   return delays;
 }
 
+const RAMP = 0.25;
+const CRUISE = 1 / (1 - RAMP);
+
+function travelled(u: number): number {
+  if (u <= 0) return 0;
+  if (u >= 1) return 1;
+  if (u < RAMP) return (CRUISE * u * u) / (2 * RAMP);
+  if (u > 1 - RAMP) {
+    const left = 1 - u;
+    return 1 - (CRUISE * left * left) / (2 * RAMP);
+  }
+  return CRUISE * (u - RAMP / 2);
+}
+
+function waitsOf(trip: TripRecord): number[] | null {
+  if (!trip.w?.length) return null;
+  const waits = new Array<number>(trip.t.length).fill(0);
+  for (let i = 0; i < trip.w.length; i += 2) waits[trip.w[i]] = trip.w[i + 1];
+  return waits;
+}
+
 export type VehicleState = {
   lon: number;
   lat: number;
@@ -88,7 +106,6 @@ export type VehicleState = {
   fromStop: number;
   delay: number;
   segmentProgress: number;
-  /** Distance along the shape, in the same units as the tunnel ranges. */
   distance: number;
 };
 
@@ -115,12 +132,14 @@ export function placeTrip(
     else hi = mid;
   }
 
+  const waits = waitsOf(trip);
   const start = at(lo);
-  const end = at(lo + 1);
+  const end = at(lo + 1) - (waits ? waits[lo + 1] * 1000 : 0);
   const span = end - start;
-  const progress = span > 0 ? (nowMs - start) / span : 0;
+  const progress = span > 0 ? Math.min((nowMs - start) / span, 1) : 1;
 
-  const distance = trip.d[lo] + (trip.d[lo + 1] - trip.d[lo]) * progress;
+  const distance =
+    trip.d[lo] + (trip.d[lo + 1] - trip.d[lo]) * travelled(progress);
   const placed = pointAtDistance(shape, distance);
   if (!placed) return null;
 

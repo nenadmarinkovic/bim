@@ -8,6 +8,7 @@ export type TripRecord = {
   t: number[];
   d: number[];
   p: string[];
+  w?: number[];
 };
 
 export type RouteRecord = { name: string; type: number };
@@ -72,6 +73,62 @@ export function loadStops(): Promise<StopRecord[]> {
     (file) => file.stops,
   );
   return stopsLoading;
+}
+
+type LineRecord = {
+  name: string;
+  patterns: Record<string, { stopIds: number[] }>;
+};
+
+let platformsLoading: Promise<PlatformIndex> | null = null;
+
+export type PlatformIndex = {
+  candidates: Map<string, number[]>;
+  linesAt: Map<number, Set<string>>;
+};
+
+export function loadPlatforms(): Promise<PlatformIndex> {
+  platformsLoading ??= (async () => {
+    const [stops, lines] = await Promise.all([
+      loadStops(),
+      readArtifact<{ lines: LineRecord[] }>("lines.json").then((f) => f.lines),
+    ]);
+
+    const candidates = new Map<string, number[]>();
+    for (const stop of stops) {
+      for (const gtfsId of stop.gtfsStopIds) {
+        const list = candidates.get(gtfsId);
+        if (list) list.push(stop.stopId);
+        else candidates.set(gtfsId, [stop.stopId]);
+      }
+    }
+
+    const linesAt = new Map<number, Set<string>>();
+    for (const line of lines) {
+      for (const pattern of Object.values(line.patterns ?? {})) {
+        for (const stopId of pattern.stopIds ?? []) {
+          const set = linesAt.get(stopId);
+          if (set) set.add(line.name);
+          else linesAt.set(stopId, new Set([line.name]));
+        }
+      }
+    }
+
+    return { candidates, linesAt };
+  })();
+  return platformsLoading;
+}
+
+export function platformFor(
+  index: PlatformIndex,
+  gtfsStopId: string,
+  line: string,
+): number | undefined {
+  const options = index.candidates.get(gtfsStopId);
+  if (!options?.length) return undefined;
+  return (
+    options.find((stopId) => index.linesAt.get(stopId)?.has(line)) ?? options[0]
+  );
 }
 
 const VIENNA = "Europe/Vienna";
