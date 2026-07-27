@@ -1,14 +1,27 @@
+import { remember, remembered } from "./store";
+
 const ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
 const MODEL = "mistral-small-latest";
 const TIMEOUT_MS = 10000;
 const DECLINE = "UNKNOWN";
 
-const CACHE_MAX = 500;
-const cache = new Map<string, string>();
-
 const LANGUAGES: Record<string, string> = { en: "English", de: "German" };
 
 export const isSupportedLanguage = (lang: string) => lang in LANGUAGES;
+
+const cacheKey = (name: string, kind: string, lang: string) =>
+  `${lang}|${name}|${kind}`.toLowerCase();
+
+/** Cache lookup with no chance of billing, so the route can serve known places
+ *  without spending a caller's rate-limit allowance. */
+export async function cachedDescription(
+  name: string,
+  kind: string,
+  lang: string,
+): Promise<string | undefined> {
+  if (!isSupportedLanguage(lang)) return undefined;
+  return remembered(cacheKey(name, kind, lang));
+}
 
 function systemPrompt(language: string): string {
   return [
@@ -45,9 +58,9 @@ export async function describePlace(
   const language = LANGUAGES[lang];
   if (!language) return null;
 
-  const key = `${lang}|${name}|${kind}`.toLowerCase();
+  const key = cacheKey(name, kind, lang);
 
-  const hit = cache.get(key);
+  const hit = await remembered(key);
   if (hit !== undefined) return hit;
 
   const apiKey = process.env.MISTRAL_API_KEY;
@@ -90,11 +103,7 @@ export async function describePlace(
 
   // Answers only. Declining is not deterministic, so caching one would leave
   // the place permanently blank however often it is clicked.
-  if (cache.size >= CACHE_MAX) {
-    const oldest = cache.keys().next().value;
-    if (oldest !== undefined) cache.delete(oldest);
-  }
-  cache.set(key, text);
+  await remember(key, text);
 
   return text;
 }
