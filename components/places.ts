@@ -100,30 +100,6 @@ function describe(
   return { title, kind, detail: "Looking up…", lngLat, pending: true };
 }
 
-export function placePopupHtml(place: Place): string {
-  const escape = (v: string) =>
-    v.replace(
-      /[&<>"]/g,
-      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!,
-    );
-  const rows = [
-    `<strong>${escape(place.title)}</strong>`,
-    `<span class="bim-popup-kind">${escape(place.kind)}</span>`,
-  ];
-
-  if (place.detail) {
-    rows.push(
-      `<span class="bim-popup-detail"${place.pending ? ' data-pending="true"' : ""}>${escape(place.detail)}</span>`,
-    );
-  }
-
-  if (place.described) {
-    rows.push(`<span class="bim-popup-source">AI summary</span>`);
-  }
-
-  return rows.join("");
-}
-
 export function enablePlaces(
   map: mapboxgl.Map,
   onSelect: (place: Place | null) => void,

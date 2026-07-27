@@ -78,18 +78,24 @@ export function delaysForTrip(
   return delays;
 }
 
-const RAMP = 0.25;
-const CRUISE = 1 / (1 - RAMP);
+// A fixed time, not a share of the segment: a long hop still pulls away briskly.
+const RAMP_MS = 8_000;
 
-function travelled(u: number): number {
+// Vienna's GTFS sets arrival == departure, so the standing time is modelled.
+const DWELL_MS = 20_000;
+const DWELL_MAX_SHARE = 0.35;
+
+function travelled(u: number, ramp: number): number {
   if (u <= 0) return 0;
   if (u >= 1) return 1;
-  if (u < RAMP) return (CRUISE * u * u) / (2 * RAMP);
-  if (u > 1 - RAMP) {
+  if (ramp <= 0) return u;
+  const cruise = 1 / (1 - ramp);
+  if (u < ramp) return (cruise * u * u) / (2 * ramp);
+  if (u > 1 - ramp) {
     const left = 1 - u;
-    return 1 - (CRUISE * left * left) / (2 * RAMP);
+    return 1 - (cruise * left * left) / (2 * ramp);
   }
-  return CRUISE * (u - RAMP / 2);
+  return cruise * (u - ramp / 2);
 }
 
 function waitsOf(trip: TripRecord): number[] | null {
@@ -134,12 +140,17 @@ export function placeTrip(
 
   const waits = waitsOf(trip);
   const start = at(lo);
-  const end = at(lo + 1) - (waits ? waits[lo + 1] * 1000 : 0);
+  const scheduled = at(lo + 1) - start;
+  const layover = waits ? waits[lo + 1] * 1000 : 0;
+  const dwell =
+    layover > 0 ? layover : Math.min(DWELL_MS, scheduled * DWELL_MAX_SHARE);
+  const end = at(lo + 1) - dwell;
   const span = end - start;
   const progress = span > 0 ? Math.min((nowMs - start) / span, 1) : 1;
 
+  const ramp = span > 0 ? Math.min(RAMP_MS / span, 0.5) : 0;
   const distance =
-    trip.d[lo] + (trip.d[lo + 1] - trip.d[lo]) * travelled(progress);
+    trip.d[lo] + (trip.d[lo + 1] - trip.d[lo]) * travelled(progress, ramp);
   const placed = pointAtDistance(shape, distance);
   if (!placed) return null;
 

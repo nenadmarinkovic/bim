@@ -7,7 +7,9 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 import { MapControls } from "./map-controls";
 import { MapSettings } from "./map-settings";
-import { enablePlaces, placePopupHtml, setPlaceVisibility } from "./places";
+import { enablePlaces, setPlaceVisibility } from "./places";
+import { buildPlacePopup } from "./place-popup";
+import { PlaceChat, type ChatPlace } from "./place-chat";
 import { buildVehiclePopup } from "./vehicle-popup";
 import {
   addRouteLayers,
@@ -197,6 +199,7 @@ export function MapView() {
   const map = useRef<mapboxgl.Map | null>(null);
   const { resolvedTheme } = useTheme();
   const [error, setError] = useState<string | null>(null);
+  const [chatPlace, setChatPlace] = useState<ChatPlace | null>(null);
   const { data, error: vehicleError } = useVehiclesContext();
   const reportViewport = useViewportReporter();
   const tweens = useRef<Map<string, Tween>>(new Map());
@@ -327,7 +330,15 @@ export function MapView() {
         }
         placePopup.current
           ?.setLngLat(place.lngLat)
-          .setHTML(placePopupHtml(place))
+          .setDOMContent(
+            buildPlacePopup(place, () =>
+              setChatPlace({
+                title: place.title,
+                kind: place.kind,
+                summary: place.detail,
+              }),
+            ),
+          )
           .addTo(instance);
       });
     }
@@ -504,6 +515,11 @@ export function MapView() {
           {error ?? vehicleError}
         </p>
       )}
+      <PlaceChat
+        key={chatPlace?.title ?? "none"}
+        place={chatPlace}
+        onClose={() => setChatPlace(null)}
+      />
     </div>
   );
 }

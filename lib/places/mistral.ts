@@ -101,3 +101,81 @@ export async function describePlace(
 
   return text;
 }
+
+export type ChatTurn = { role: "user" | "assistant"; content: string };
+
+const CHAT_TIMEOUT_MS = 20000;
+const MAX_TURNS = 12;
+
+function chatSystemPrompt(
+  name: string,
+  kind: string,
+  language: string,
+  summary: string,
+): string {
+  return [
+    `You are answering questions about "${name}", a ${kind} in Vienna, Austria,`,
+    "for someone looking at it on a map.",
+    `Answer in ${language}.`,
+    summary ? `The map already showed them this: "${summary}"` : "",
+    "Keep answers short — two or three sentences, unless asked for more.",
+    "Be concrete: dates, names, numbers, what happened there.",
+    "Say plainly when you do not know or are unsure rather than guessing a",
+    "specific fact. Widening to a century or an era beats inventing a year.",
+    "You only discuss this place and its context — history, architecture, the",
+    "people involved, the city around it. If asked for anything else, such as",
+    "code, translations, recipes or general knowledge, reply with one sentence",
+    `saying you can only talk about ${name}, and do not attempt the task, not`,
+    "even partly.",
+    "No promotional adjectives such as vibrant, iconic, charming or bustling.",
+    "Do not address the reader as a tourist or tell them what to do there.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export async function chatAboutPlace(
+  name: string,
+  kind: string,
+  lang: string,
+  summary: string,
+  turns: ChatTurn[],
+): Promise<string | null> {
+  const language = LANGUAGES[lang];
+  if (!language) return null;
+
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        temperature: 0.3,
+        max_tokens: 400,
+        messages: [
+          {
+            role: "system",
+            content: chatSystemPrompt(name, kind, language, summary),
+          },
+          ...turns.slice(-MAX_TURNS),
+        ],
+      }),
+      signal: AbortSignal.timeout(CHAT_TIMEOUT_MS),
+    });
+
+    if (!response.ok) return null;
+
+    const body = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    return body.choices?.[0]?.message?.content?.trim() || null;
+  } catch {
+    return null;
+  }
+}
