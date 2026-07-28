@@ -96,10 +96,23 @@ function stopAt(feature: mapboxgl.GeoJSONFeature) {
   };
 }
 
+export type Station = {
+  diva: number;
+  name: string;
+  modes: string[];
+  lngLat: [number, number];
+};
+
+export type StopHandle = {
+  disable: () => void;
+  // Opening a station without clicking it, for search.
+  select: (station: Station) => void;
+};
+
 export function enableStops(
   map: mapboxgl.Map,
   onSelect: (selection: StopSelection | null) => void,
-): () => void {
+): StopHandle {
   let ticket = 0;
   let refresh = 0;
   let dwell = 0;
@@ -111,14 +124,7 @@ export function enableStops(
     onSelect(null);
   };
 
-  const onClick = (
-    event: mapboxgl.MapMouseEvent & { features?: mapboxgl.GeoJSONFeature[] },
-  ) => {
-    const feature = event.features?.[0];
-    if (!feature) return;
-    const stop = stopAt(feature);
-    if (!stop) return;
-
+  const select = (stop: Station) => {
     const mine = ++ticket;
     clearInterval(refresh);
     clearTimeout(dwell);
@@ -141,6 +147,15 @@ export function enableStops(
         show(board);
       });
     }, REFRESH_MS);
+  };
+
+  const onClick = (
+    event: mapboxgl.MapMouseEvent & { features?: mapboxgl.GeoJSONFeature[] },
+  ) => {
+    const feature = event.features?.[0];
+    if (!feature) return;
+    const stop = stopAt(feature);
+    if (stop) select(stop);
   };
 
   const onMapClick = (event: mapboxgl.MapMouseEvent) => {
@@ -177,14 +192,17 @@ export function enableStops(
   map.on("mouseenter", STOPS_LAYER, pointer);
   map.on("mouseleave", STOPS_LAYER, resetPointer);
 
-  return () => {
-    ticket++;
-    clearInterval(refresh);
-    clearTimeout(dwell);
-    map.off("click", STOPS_LAYER, onClick);
-    map.off("click", onMapClick);
-    map.off("mouseenter", STOPS_LAYER, pointer);
-    map.off("mouseleave", STOPS_LAYER, resetPointer);
-    map.getCanvas().style.cursor = "";
+  return {
+    select,
+    disable: () => {
+      ticket++;
+      clearInterval(refresh);
+      clearTimeout(dwell);
+      map.off("click", STOPS_LAYER, onClick);
+      map.off("click", onMapClick);
+      map.off("mouseenter", STOPS_LAYER, pointer);
+      map.off("mouseleave", STOPS_LAYER, resetPointer);
+      map.getCanvas().style.cursor = "";
+    },
   };
 }

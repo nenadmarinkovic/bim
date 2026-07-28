@@ -9,7 +9,8 @@ import { MapControls } from "./map-controls";
 import { MapSettings } from "./map-settings";
 import { enablePlaces, setPlaceVisibility } from "./places";
 import { buildPlacePopup } from "./place-popup";
-import { enableStops, type StopSelection } from "./stops";
+import { enableStops, type Station, type StopSelection } from "./stops";
+import { StationSearch } from "./station-search";
 import { installStopIcons } from "./stop-icons";
 import { buildStopPopup, rowColour, rowKey } from "./stop-popup";
 import type { BoardRow } from "@/lib/vehicles/board";
@@ -239,6 +240,7 @@ export function MapView() {
   const untraceable = useRef<Set<string>>(new Set());
 
   const disableStops = useRef<(() => void) | null>(null);
+  const pickStation = useRef<((station: Station) => void) | null>(null);
   const following = useRef<string | null>(null);
   const routeTrip = useRef<string | null>(null);
   const disablePlaces = useRef<(() => void) | null>(null);
@@ -398,7 +400,7 @@ export function MapView() {
         .catch(() => {});
     };
 
-    disableStops.current = enableStops(instance, (selection) => {
+    const stops = enableStops(instance, (selection) => {
       const changed = selection?.diva !== openStop.current?.diva;
       openStop.current = selection;
 
@@ -420,6 +422,8 @@ export function MapView() {
       }
       drawStopPopup(selection);
     });
+    disableStops.current = stops.disable;
+    pickStation.current = stops.select;
 
     bindVehicleSelection(instance, (id) => {
       selected.current = id;
@@ -660,6 +664,20 @@ export function MapView() {
   return (
     <div className="relative h-full w-full">
       <div ref={container} className="h-full w-full" />
+      <div className="pointer-events-none absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+        <StationSearch
+          onPick={(station) => {
+            const instance = map.current;
+            if (!instance) return;
+            instance.flyTo({
+              center: station.lngLat,
+              zoom: Math.max(instance.getZoom(), 15.5),
+              duration: 900,
+            });
+            pickStation.current?.(station);
+          }}
+        />
+      </div>
       <MapControls
         getMap={() => map.current}
         className="absolute right-4 bottom-8 z-10"
