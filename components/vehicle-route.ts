@@ -1,6 +1,8 @@
 import type { FeatureCollection, LineString, Point } from "geojson";
 import type mapboxgl from "mapbox-gl";
 
+import { addArrowLayer, showArrows, stopArrows } from "./route-arrows";
+
 export const ROUTE_SOURCE = "vehicle-route";
 export const ROUTE_LINE_LAYER = "vehicle-route-line";
 export const ROUTE_ENDS_SOURCE = "vehicle-route-ends";
@@ -34,6 +36,10 @@ export type TripRoute = {
 };
 
 export function addRouteLayers(map: mapboxgl.Map) {
+  // Ahead of the guard below: the arrow layer has its own, and a style reload
+  // can take the images while leaving this source in place.
+  addArrowLayer(map);
+
   if (map.getSource(ROUTE_SOURCE)) return;
 
   map.addSource(ROUTE_SOURCE, { type: "geojson", data: EMPTY_LINE });
@@ -117,6 +123,8 @@ export function showRoute(
     ],
   });
 
+  showArrows(map, route.line);
+
   ends.setData({
     type: "FeatureCollection",
     features: [
@@ -136,6 +144,8 @@ export function showRoute(
 }
 
 export function clearRoute(map: mapboxgl.Map) {
+  stopArrows(map);
+
   const line = map.getSource(ROUTE_SOURCE) as
     mapboxgl.GeoJSONSource | undefined;
   const ends = map.getSource(ROUTE_ENDS_SOURCE) as

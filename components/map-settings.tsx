@@ -5,15 +5,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { VEHICLES_LABEL_LAYER } from "@/components/vehicle-layer";
-import { STOPS_LAYER } from "@/lib/vehicles/layer-ids";
+import { STOPS_BADGE_LAYER, STOPS_LAYER } from "@/lib/vehicles/layer-ids";
 import { cn } from "@/lib/utils";
 
 const SWITCH_TRACK =
   "data-unchecked:bg-foreground/25 dark:data-unchecked:bg-foreground/25";
 
 const LAYER_OPTIONS = [
-  { key: "lines", label: "Line numbers", layer: VEHICLES_LABEL_LAYER },
-  { key: "stops", label: "Stops", layer: STOPS_LAYER },
+  { key: "lines", label: "Line numbers", layers: [VEHICLES_LABEL_LAYER] },
+  // A stop is two layers now: the badge you see and the circle you click.
+  { key: "stops", label: "Stops", layers: [STOPS_LAYER, STOPS_BADGE_LAYER] },
 ] as const;
 
 export function MapSettings({
@@ -34,10 +35,13 @@ export function MapSettings({
   const [streets, setStreets] = useState(false);
 
   const apply = useCallback(
-    (layer: string, on: boolean) => {
+    (layers: readonly string[], on: boolean) => {
       const map = getMap();
-      if (!map?.getLayer(layer)) return;
-      map.setLayoutProperty(layer, "visibility", on ? "visible" : "none");
+      if (!map) return;
+      for (const layer of layers) {
+        if (!map.getLayer(layer)) continue;
+        map.setLayoutProperty(layer, "visibility", on ? "visible" : "none");
+      }
     },
     [getMap],
   );
@@ -84,7 +88,7 @@ export function MapSettings({
             checked={visible[option.key]}
             onCheckedChange={(on) => {
               setVisible((current) => ({ ...current, [option.key]: on }));
-              apply(option.layer, on);
+              apply(option.layers, on);
             }}
           />
         </div>

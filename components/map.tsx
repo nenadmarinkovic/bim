@@ -23,7 +23,11 @@ import {
 } from "./vehicle-route";
 import { vehicleColour } from "@/lib/vehicles/colors";
 import type { Vehicle } from "@/lib/vehicles/types";
-import { STOPS_LAYER, STOPS_SOURCE } from "@/lib/vehicles/layer-ids";
+import {
+  STOPS_BADGE_LAYER,
+  STOPS_LAYER,
+  STOPS_SOURCE,
+} from "@/lib/vehicles/layer-ids";
 import {
   CAMERA,
   MAX_PITCH,
@@ -100,8 +104,69 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
 
   map.setConfigProperty("basemap", "lightPreset", dark ? "night" : "day");
 
+  if (map.getLayer(BUILDINGS_LAYER)) {
+    map.setPaintProperty(
+      BUILDINGS_LAYER,
+      "fill-extrusion-color",
+      BUILDING_FILL[dark ? "dark" : "light"],
+    );
+    map.setPaintProperty(
+      BUILDINGS_LAYER,
+      "fill-extrusion-emissive-strength",
+      dark ? 0.35 : 0.12,
+    );
+  }
+
   setVehicleTheme(map, dark);
   return true;
+}
+
+// Mapbox Standard fades its own 3D buildings out somewhere above zoom 15 and
+// gives no config knob for it, so these carry the massing further down the zoom
+// range and hand over before Standard's begin. Streets v8 only carries building
+// footprints from zoom 13, which is the real floor here.
+const BUILDINGS_SOURCE = "streets-buildings";
+const BUILDINGS_LAYER = "extra-3d-buildings";
+
+const BUILDING_FILL = { light: "#e6e1d8", dark: "#333d5e" } as const;
+
+function addExtraBuildings(map: mapboxgl.Map, dark: boolean) {
+  if (map.getSource(BUILDINGS_SOURCE)) return;
+
+  map.addSource(BUILDINGS_SOURCE, {
+    type: "vector",
+    url: "mapbox://mapbox.mapbox-streets-v8",
+  });
+
+  map.addLayer({
+    id: BUILDINGS_LAYER,
+    type: "fill-extrusion",
+    source: BUILDINGS_SOURCE,
+    "source-layer": "building",
+    slot: "middle",
+    minzoom: 13,
+    // Stops before Standard's own buildings appear, so the two never stack.
+    maxzoom: 15.5,
+    filter: ["==", ["get", "extrude"], "true"],
+    paint: {
+      "fill-extrusion-color": BUILDING_FILL[dark ? "dark" : "light"],
+      "fill-extrusion-color-transition": { duration: 180 },
+      // Heights are thin in the tiles this far out; a storey-ish default keeps
+      // a block from collapsing flat.
+      "fill-extrusion-height": ["coalesce", ["get", "height"], 10],
+      "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
+      "fill-extrusion-opacity": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        13,
+        0.5,
+        15,
+        0.9,
+      ],
+      "fill-extrusion-emissive-strength": dark ? 0.35 : 0.12,
+    },
+  });
 }
 
 function addStopsLayer(map: mapboxgl.Map) {
@@ -112,12 +177,37 @@ function addStopsLayer(map: mapboxgl.Map) {
     data: "/api/stops",
   });
 
+  // Clicks land here, not on the badge. Symbols that lose a collision are not
+  // placed, and an unplaced symbol answers no query — which is how a busy
+  // interchange like Reumannplatz became entirely unclickable.
   map.addLayer({
     id: STOPS_LAYER,
+    type: "circle",
+    source: STOPS_SOURCE,
+    slot: "top",
+    paint: {
+      // Big enough that a badge is always reachable, small enough that clicking
+      // beside a station still counts as clicking away from it.
+      "circle-radius": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        11,
+        5,
+        14,
+        7,
+        16,
+        9,
+      ],
+      "circle-color": "#000000",
+      "circle-opacity": 0,
+    },
+  });
+
+  map.addLayer({
+    id: STOPS_BADGE_LAYER,
     type: "symbol",
     source: STOPS_SOURCE,
-    // "middle" draws behind the basemap's 3D buildings, which buries stops in
-    // the tall new districts once the camera is pitched in close.
     slot: "top",
     layout: {
       // One image per combination of modes, so a station that has a U-Bahn, a
@@ -259,6 +349,7 @@ export function MapView() {
     const addLayers = () => {
       // Images first: a symbol layer whose icon is missing logs on every tile.
       void installStopIcons(instance).then(() => addStopsLayer(instance));
+      addExtraBuildings(instance, theme.current === "dark");
       addRouteLayers(instance);
       addVehicleLayers(instance, theme.current === "dark");
       applyMapTheme(instance, theme.current === "dark");
@@ -298,10 +389,11 @@ export function MapView() {
     });
     stopPopup.current.on("close", () => {
       openStop.current = null;
-      if (tracing.current) {
-        tracing.current = null;
-        clearRoute(instance);
-      }
+      tracing.current = null;
+      // Whatever the board drew closes with it. Gating this on the tracing flag
+      // meant one flag out of step stranded a route — and its arrows — on the
+      // map with nothing left able to clear them.
+      if (!routeTrip.current) clearRoute(instance);
     });
 
     const drawStopPopup = (from: StopSelection | null = openStop.current) => {
@@ -396,8 +488,13 @@ export function MapView() {
       if (!id) {
         popup.current?.remove();
         following.current = null;
-        routeTrip.current = null;
-        clearRoute(instance);
+        // Deselecting a vehicle fires on any click that missed one, so it must
+        // only drop the route it owns. Wiping a route the board is tracing left
+        // the highlighted row insisting it was still drawn.
+        if (routeTrip.current) {
+          routeTrip.current = null;
+          clearRoute(instance);
+        }
       }
     });
     instance.on("error", (event) => {
