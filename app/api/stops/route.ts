@@ -6,6 +6,7 @@ type StationRecord = {
   name: string;
   lat: number;
   lon: number;
+  modes: string[];
 };
 
 type StationsFile = { generatedAt: string; stations: StationRecord[] };
@@ -33,7 +34,14 @@ async function loadGeoJson(): Promise<string | null> {
       type: "Feature",
       id: station.diva,
       geometry: { type: "Point", coordinates: [station.lon, station.lat] },
-      properties: { diva: station.diva, name: station.name },
+      properties: {
+        diva: station.diva,
+        name: station.name,
+        // Styling matches on one kind; the popup names them all.
+        kind: station.modes[0] ?? "bus",
+        // Never empty: the icon image is looked up by this exact string.
+        modes: (station.modes.length ? station.modes : ["bus"]).join(","),
+      },
     })),
   });
 

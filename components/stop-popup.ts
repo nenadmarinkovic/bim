@@ -8,8 +8,45 @@ import {
 import type { BoardRow, StopBoard } from "@/lib/vehicles/board";
 import { lateness } from "./vehicle-popup";
 import type { StopSelection } from "./stops";
+import { badgeMarkup, type StationMode } from "./stop-icons";
 
 export const rowKey = (row: BoardRow) => `${row.line}|${row.towards}`;
+
+// What a rider would call it, not what the feed calls it.
+const MODE_LABEL: Record<string, string> = {
+  metro: "U-Bahn",
+  train: "S-Bahn",
+  tram: "Tram",
+  bus: "Bus",
+};
+
+const describeModes = (modes: string[]) =>
+  modes
+    .map((mode) => MODE_LABEL[mode])
+    .filter(Boolean)
+    .join(" · ");
+
+// The same marks the map draws, so the popup confirms what was clicked.
+function buildModes(modes: string[]): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "bim-stop-modes";
+
+  for (const mode of modes) {
+    if (!MODE_LABEL[mode]) continue;
+    const badge = document.createElement("span");
+    badge.className = "bim-stop-mode";
+    badge.title = MODE_LABEL[mode];
+    badge.innerHTML = badgeMarkup(mode as StationMode, 13);
+    row.append(badge);
+  }
+
+  const label = document.createElement("span");
+  label.className = "bim-popup-kind";
+  label.textContent = describeModes(modes);
+  row.append(label);
+
+  return row;
+}
 
 export function rowColour(row: BoardRow, dark: boolean): string {
   const base =
@@ -122,11 +159,16 @@ export function buildStopPopup(view: BoardView): HTMLElement {
   title.className = "bim-popup-title";
   title.textContent = selection.name;
 
-  const kind = document.createElement("span");
-  kind.className = "bim-popup-kind";
-  kind.textContent = "Departures";
+  root.append(title);
 
-  root.append(title, kind);
+  if (selection.modes.length) {
+    root.append(buildModes(selection.modes));
+  } else {
+    const kind = document.createElement("span");
+    kind.className = "bim-popup-kind";
+    kind.textContent = "Departures";
+    root.append(kind);
+  }
 
   if (selection.board) {
     root.append(buildBoard(selection.board, view));

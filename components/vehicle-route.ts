@@ -16,6 +16,14 @@ const EMPTY_POINTS: FeatureCollection<Point> = {
   features: [],
 };
 
+// The end markers keep the line's colour; their labels do not, so a route name
+// reads as plain text rather than as more of the line.
+// The end markers are white discs in both themes, ringed in the line's colour,
+// the way a terminus is drawn on a printed network map. Only the label beside
+// them follows the theme.
+const END_FILL = "#ffffff";
+const END_INK = { light: "#000000", dark: "#ffffff" } as const;
+
 export type TripRoute = {
   tripId: string;
   line: [number, number][];
@@ -40,7 +48,11 @@ export function addRouteLayers(map: mapboxgl.Map) {
     paint: {
       "line-color": ["get", "color"],
       "line-width": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 16, 6],
-      "line-opacity": 0.9,
+      // Mapbox Standard lights every layer it draws, so without this the night
+      // preset shades the route down along with the streets under it. The line
+      // is a drawn annotation, not a surface catching light.
+      "line-emissive-strength": 1,
+      "line-opacity": 1,
     },
   });
 
@@ -52,6 +64,7 @@ export function addRouteLayers(map: mapboxgl.Map) {
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 4, 16, 7],
       "circle-color": ["get", "fill"],
+      "circle-emissive-strength": 1,
       "circle-stroke-color": ["get", "color"],
       "circle-stroke-width": 2.5,
     },
@@ -71,7 +84,8 @@ export function addRouteLayers(map: mapboxgl.Map) {
       "text-allow-overlap": true,
     },
     paint: {
-      "text-color": ["get", "color"],
+      "text-color": ["get", "ink"],
+      "text-emissive-strength": 1,
       "text-halo-width": 0,
     },
   });
@@ -81,14 +95,15 @@ export function showRoute(
   map: mapboxgl.Map,
   route: TripRoute,
   color: string,
-  endFill: string,
+  dark: boolean,
 ) {
+  const fill = END_FILL;
+  const ink = END_INK[dark ? "dark" : "light"];
+
   const line = map.getSource(ROUTE_SOURCE) as
-    | mapboxgl.GeoJSONSource
-    | undefined;
+    mapboxgl.GeoJSONSource | undefined;
   const ends = map.getSource(ROUTE_ENDS_SOURCE) as
-    | mapboxgl.GeoJSONSource
-    | undefined;
+    mapboxgl.GeoJSONSource | undefined;
   if (!line || !ends) return;
 
   line.setData({
@@ -109,12 +124,12 @@ export function showRoute(
         type: "Feature",
         geometry: { type: "Point", coordinates: route.start },
         // Naming the far end but not this one leaves half the line a mystery.
-        properties: { color, fill: endFill, label: route.origin || "Start" },
+        properties: { color, fill, ink, label: route.origin || "Start" },
       },
       {
         type: "Feature",
         geometry: { type: "Point", coordinates: route.end },
-        properties: { color, fill: endFill, label: route.towards },
+        properties: { color, fill, ink, label: route.towards },
       },
     ],
   });
@@ -122,11 +137,9 @@ export function showRoute(
 
 export function clearRoute(map: mapboxgl.Map) {
   const line = map.getSource(ROUTE_SOURCE) as
-    | mapboxgl.GeoJSONSource
-    | undefined;
+    mapboxgl.GeoJSONSource | undefined;
   const ends = map.getSource(ROUTE_ENDS_SOURCE) as
-    | mapboxgl.GeoJSONSource
-    | undefined;
+    mapboxgl.GeoJSONSource | undefined;
   line?.setData(EMPTY_LINE);
   ends?.setData(EMPTY_POINTS);
 }

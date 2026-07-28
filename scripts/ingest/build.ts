@@ -40,6 +40,23 @@ type StopRecord = {
   confidence: MatchConfidence | "unmatched";
 };
 
+// Wiener Linien's own classification of every line, collapsed to what a
+// passenger distinguishes at a stop.
+const MODE_BY_TRANSPORT: Record<string, StationMode> = {
+  ptMetro: "metro",
+  ptTrainS: "train",
+  ptTram: "tram",
+  ptTramWLB: "tram",
+  ptBusCity: "bus",
+  ptBusNight: "bus",
+  ptRufBus: "bus",
+};
+
+// Ordered: a station is named after the biggest thing that calls at it.
+const MODE_RANK: StationMode[] = ["metro", "train", "tram", "bus"];
+
+type StationMode = "metro" | "train" | "tram" | "bus";
+
 type StationRecord = {
   diva: number;
   name: string;
@@ -47,6 +64,7 @@ type StationRecord = {
   lon: number;
   stopIds: number[];
   gtfsStopIds: string[];
+  modes: StationMode[];
 };
 
 async function download() {
@@ -169,7 +187,49 @@ function buildStation(members: PendingStop[]): StationRecord {
     lon: Number(point.lon.toFixed(6)),
     stopIds: members.map((m) => m.stopId).sort((a, b) => a - b),
     gtfsStopIds: members[0].group.map((s) => s.stopId).sort(),
+    modes: [],
   };
+}
+
+type LineForModes = {
+  transport: string;
+  patterns: Record<string, { stopIds: number[] }>;
+};
+
+function attachModes(stations: StationRecord[], lines: LineForModes[]) {
+  const atStop = new Map<number, Set<StationMode>>();
+
+  for (const line of lines) {
+    const mode = MODE_BY_TRANSPORT[line.transport];
+    if (!mode) continue;
+    for (const pattern of Object.values(line.patterns ?? {})) {
+      for (const stopId of pattern.stopIds ?? []) {
+        const found = atStop.get(stopId);
+        if (found) found.add(mode);
+        else atStop.set(stopId, new Set([mode]));
+      }
+    }
+  }
+
+  let unclassified = 0;
+  for (const station of stations) {
+    const modes = new Set<StationMode>();
+    for (const stopId of station.stopIds) {
+      for (const mode of atStop.get(stopId) ?? []) modes.add(mode);
+    }
+
+    // Wiener Linien lists the ten S-Bahn lines but not the stops they call at —
+    // ÖBB runs them — so the only signal left is the name, where a standalone
+    // "S" marks the interchange. The same trick is wrong for "U": stops like
+    // "Oper, Karlsplatz U" are trams named after the station they sit outside,
+    // and for those the line data already knows the truth.
+    if (/(^|\s)S(\s|$)/.test(station.name)) modes.add("train");
+
+    station.modes = MODE_RANK.filter((mode) => modes.has(mode));
+    if (!station.modes.length) unclassified++;
+  }
+
+  return unclassified;
 }
 
 async function buildStopIndex(
@@ -374,6 +434,7 @@ async function main() {
   const { byGroup, unparsable } = await readGtfsStops(gtfs["stops.txt"]);
   const result = await buildStopIndex(wl.haltepunkte, byGroup);
   const lines = await buildLines(wl.linien, wl.fahrwegverlaeufe);
+  const unclassified = attachModes(result.stations, lines);
   const { shapes, points } = await buildShapes(gtfs["shapes.txt"]);
 
   const date = serviceDate();
@@ -509,6 +570,7 @@ async function main() {
   console.log(`    by distance ${matched - byName}`);
   console.log(`    unmatched   ${result.unmatched.length}`);
   console.log(`    stations    ${result.stations.length}`);
+  console.log(`    no mode     ${unclassified}`);
   console.log(`    rejected    ${result.rejected.length}`);
   console.log("\ncoverage of stops actually served by a line");
   console.log(

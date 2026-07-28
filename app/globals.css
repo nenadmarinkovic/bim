@@ -136,6 +136,8 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
+  /* One dial for every floating panel: controls, header and popups. */
+  --glass-fill: color-mix(in oklch, var(--popover) 88%, transparent);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -168,6 +170,7 @@
   --border: rgb(255 255 255 / 12%);
   --input: rgb(255 255 255 / 16%);
   --ring: #7b86a8;
+  --glass-fill: color-mix(in oklch, var(--popover) 62%, #00000052);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -248,7 +251,7 @@ span.text-brand.italic {
 }
 
 .glass {
-  background: color-mix(in oklch, var(--popover) 72%, transparent);
+  background: var(--glass-fill);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   border: 1px solid color-mix(in oklch, var(--foreground) 9%, transparent);
@@ -259,13 +262,13 @@ span.text-brand.italic {
 }
 
 .dark .glass {
-  background: color-mix(in oklch, var(--popover) 38%, #00000052);
   border-color: rgb(255 255 255 / 0.1);
   box-shadow:
     0 10px 30px -8px rgb(0 0 0 / 0.6),
     inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 
+/* Dialogs keep their own fill: they sit over a dimmed backdrop, not the map. */
 .glass-sheet {
   background: color-mix(in oklch, var(--popover) 72%, transparent);
   backdrop-filter: blur(24px) saturate(180%);
@@ -278,7 +281,9 @@ span.text-brand.italic {
 
 @media (prefers-reduced-transparency: reduce) {
   .glass,
-  .glass-sheet {
+  .glass-sheet,
+  .bim-popup .mapboxgl-popup-content,
+  .dark .bim-popup .mapboxgl-popup-content {
     background: var(--popover);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -294,33 +299,47 @@ span.text-brand.italic {
   display: none;
 }
 
+/* Same glass as the map controls and the header, so a popup reads as another
+   panel floating over the map rather than a separate kind of surface. */
 .bim-popup .mapboxgl-popup-content {
-  background: var(--popover);
+  background: var(--glass-fill);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   color: var(--popover-foreground);
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in oklch, var(--foreground) 9%, transparent);
   border-radius: var(--radius-md);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 10px 30px -8px rgb(0 0 0 / 0.16),
+    inset 0 1px 0 rgb(255 255 255 / 0.5);
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.45;
   padding: 0.5rem 1.6rem 0.5rem 0.7rem;
 }
 
+.dark .bim-popup .mapboxgl-popup-content {
+  border-color: rgb(255 255 255 / 0.1);
+  box-shadow:
+    0 10px 30px -8px rgb(0 0 0 / 0.6),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
 .bim-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
 .bim-popup.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
 .bim-popup.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
-  border-bottom-color: var(--popover);
+  border-bottom-color: var(--glass-fill);
 }
 .bim-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
 .bim-popup.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
 .bim-popup.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip {
-  border-top-color: var(--popover);
+  border-top-color: var(--glass-fill);
 }
 .bim-popup.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
-  border-right-color: var(--popover);
+  border-right-color: var(--glass-fill);
 }
 .bim-popup.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
-  border-left-color: var(--popover);
+  border-left-color: var(--glass-fill);
 }
 
 .bim-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
@@ -354,6 +373,12 @@ span.text-brand.italic {
 .bim-popup-title {
   font-weight: 600;
   line-height: 1.25;
+}
+/* Scoped to the board: a station name heads a table of numbers and needs to
+   carry it. Place popups lead with prose and are better left alone. */
+.bim-stop-popup .bim-popup-title {
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
 }
 .bim-popup-kind {
   margin-top: 0.15rem;
@@ -436,6 +461,25 @@ span.text-brand.italic {
   display: flex;
   flex-direction: column;
   max-width: 17rem;
+}
+.bim-stop-modes {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+}
+.bim-stop-mode {
+  display: inline-flex;
+  line-height: 0;
+  /* The same 0.5px white rim the map sprites are drawn with, so a badge in the
+     popup and a badge on the map are the same object. */
+  padding: 0.5px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+.bim-stop-modes .bim-popup-kind {
+  margin-top: 0;
+  margin-left: 0.15rem;
 }
 .bim-stop-note {
   margin-top: 0.45rem;

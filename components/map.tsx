@@ -10,6 +10,7 @@ import { MapSettings } from "./map-settings";
 import { enablePlaces, setPlaceVisibility } from "./places";
 import { buildPlacePopup } from "./place-popup";
 import { enableStops, type StopSelection } from "./stops";
+import { installStopIcons } from "./stop-icons";
 import { buildStopPopup, rowColour, rowKey } from "./stop-popup";
 import type { BoardRow } from "@/lib/vehicles/board";
 import { PlaceChat, type ChatPlace } from "./place-chat";
@@ -81,30 +82,30 @@ function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
 }
 
-// A ring rather than a disc: the transit idiom, and it survives being drawn
-// over both pale squares and dark roads at two pixels across.
-const STOP_RING = { light: "#0040ff", dark: "#ffff01" };
-const STOP_CORE = { light: "#ffffff", dark: "#141a2e" };
+// Rail before road when badges collide: a rider plans around the U-Bahn.
+const KIND_ORDER = [
+  "match",
+  ["get", "kind"],
+  "metro",
+  0,
+  "train",
+  1,
+  "tram",
+  2,
+  3,
+] as never;
 
 function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
   if (!map.isStyleLoaded()) return false;
 
   map.setConfigProperty("basemap", "lightPreset", dark ? "night" : "day");
 
-  if (map.getLayer(STOPS_LAYER)) {
-    const shade = dark ? "dark" : "light";
-    map.setPaintProperty(STOPS_LAYER, "circle-color", STOP_CORE[shade]);
-    map.setPaintProperty(STOPS_LAYER, "circle-stroke-color", STOP_RING[shade]);
-  }
-
   setVehicleTheme(map, dark);
   return true;
 }
 
-function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
+function addStopsLayer(map: mapboxgl.Map) {
   if (map.getSource(STOPS_SOURCE)) return;
-
-  const shade = resolvedTheme === "dark" ? "dark" : "light";
 
   map.addSource(STOPS_SOURCE, {
     type: "geojson",
@@ -113,53 +114,33 @@ function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
 
   map.addLayer({
     id: STOPS_LAYER,
-    type: "circle",
+    type: "symbol",
     source: STOPS_SOURCE,
     // "middle" draws behind the basemap's 3D buildings, which buries stops in
     // the tall new districts once the camera is pitched in close.
     slot: "top",
-    paint: {
-      "circle-radius": [
+    layout: {
+      // One image per combination of modes, so a station that has a U-Bahn, a
+      // tram and a bus shows all three badges in a row.
+      "icon-image": ["concat", "bim-stop-", ["get", "modes"]],
+      "icon-size": [
         "interpolate",
         ["linear"],
         ["zoom"],
-        10,
-        1.6,
-        13,
-        3,
-        16,
-        5.5,
-      ],
-      "circle-color": STOP_CORE[shade],
-      "circle-color-transition": { duration: 180 },
-      "circle-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.7, 13, 1],
-      // Without this the night preset dims the layer along with the streets.
-      "circle-emissive-strength": 1,
-      "circle-stroke-width": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        10,
+        11,
+        0.7,
+        14,
         1,
-        13,
-        1.5,
-        16,
-        2.4,
+        17,
+        1.2,
       ],
-      "circle-stroke-color": STOP_RING[shade],
-      "circle-stroke-color-transition": { duration: 180 },
-      "circle-stroke-opacity": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        10,
-        0.85,
-        13,
-        1,
-      ],
-      // The camera sits at 70° of pitch, which would flatten a map-aligned
-      // circle to a third of its height and make it unclickable.
-      "circle-pitch-alignment": "viewport",
+      // Left to collide: 1,726 stations at city zoom is unreadable otherwise,
+      // and the sort key decides who survives.
+      "icon-allow-overlap": false,
+      "icon-padding": 2,
+      "symbol-sort-key": KIND_ORDER,
+      "icon-pitch-alignment": "viewport",
+      "icon-rotation-alignment": "viewport",
     },
   });
 }
@@ -195,7 +176,7 @@ function renderVehiclePopup(ctx: PopupContext, vehicle: Vehicle) {
             takeRoute();
             routeTrip.current = vehicle.id;
             const base = vehicleColour(vehicle.mode, vehicle.line, dark);
-            showRoute(map, route, base, dark ? "#141a2e" : "#ffffff");
+            showRoute(map, route, base, dark);
             renderVehiclePopup(ctx, vehicle);
           })
           .catch(() => {});
@@ -276,7 +257,8 @@ export function MapView() {
     if (initial) reportViewport(bboxParam(initial));
 
     const addLayers = () => {
-      addStopsLayer(instance, theme.current);
+      // Images first: a symbol layer whose icon is missing logs on every tile.
+      void installStopIcons(instance).then(() => addStopsLayer(instance));
       addRouteLayers(instance);
       addVehicleLayers(instance, theme.current === "dark");
       applyMapTheme(instance, theme.current === "dark");
@@ -380,12 +362,7 @@ export function MapView() {
           routeTrip.current = null;
           tracing.current = key;
           const dark = theme.current === "dark";
-          showRoute(
-            map,
-            route,
-            rowColour(row, dark),
-            dark ? "#141a2e" : "#ffffff",
-          );
+          showRoute(map, route, rowColour(row, dark), dark);
           drawStopPopup();
         })
         .catch(() => {});

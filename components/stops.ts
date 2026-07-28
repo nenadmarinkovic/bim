@@ -6,6 +6,7 @@ import type { StopBoard } from "@/lib/vehicles/board";
 export type StopSelection = {
   diva: number;
   name: string;
+  modes: string[];
   lngLat: [number, number];
   board: StopBoard | null;
   failed: boolean;
@@ -81,10 +82,16 @@ function stopAt(feature: mapboxgl.GeoJSONFeature) {
   const name = feature.properties?.name;
   if (typeof diva !== "number" || typeof name !== "string") return null;
 
+  // Vector-tile properties are flat, so the modes travel as one string.
+  const modes = String(feature.properties?.modes ?? "")
+    .split(",")
+    .filter(Boolean);
+
   const point = feature.geometry as GeoJSON.Point;
   return {
     diva,
     name,
+    modes,
     lngLat: [point.coordinates[0]!, point.coordinates[1]!] as [number, number],
   };
 }

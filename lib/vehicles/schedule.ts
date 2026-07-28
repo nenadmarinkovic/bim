@@ -76,6 +76,8 @@ export function loadStops(): Promise<StopRecord[]> {
 }
 
 // One entry per DIVA, holding every platform StopID beneath it.
+export type StationMode = "metro" | "train" | "tram" | "bus";
+
 export type StationRecord = {
   diva: number;
   name: string;
@@ -83,6 +85,7 @@ export type StationRecord = {
   lon: number;
   stopIds: number[];
   gtfsStopIds: string[];
+  modes: StationMode[];
 };
 
 let stationsLoading: Promise<StationRecord[]> | null = null;

@@ -1,16 +1,20 @@
 import type { VehicleMode } from "./types.ts";
 
+// Wiener Linien's published line colours.
 export const METRO_COLOR: Record<string, string> = {
-  U1: "#e30613",
-  U2: "#a762a3",
-  U3: "#ed7d00",
-  U4: "#039540",
-  U5: "#14a79d",
-  U6: "#9d6831",
+  U1: "#e3000f",
+  U2: "#a862a4",
+  U3: "#ef7c00",
+  U4: "#00963f",
+  U5: "#008f95",
+  U6: "#9d6830",
 };
 
-export const TRAM_RED = "#df021d";
-export const BUS_BLUE = "#032960";
+// Vienna Red: the paint on the trams themselves, and on the buses too. Buses
+// take their signage blue instead, because a map that draws both in one red
+// cannot tell them apart.
+export const TRAM_RED = "#e3000f";
+export const BUS_BLUE = "#009bac";
 export const SBAHN_BLUE = "#009ddd";
 
 function relativeLuminance(hex: string): number {
