@@ -104,69 +104,8 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
 
   map.setConfigProperty("basemap", "lightPreset", dark ? "night" : "day");
 
-  if (map.getLayer(BUILDINGS_LAYER)) {
-    map.setPaintProperty(
-      BUILDINGS_LAYER,
-      "fill-extrusion-color",
-      BUILDING_FILL[dark ? "dark" : "light"],
-    );
-    map.setPaintProperty(
-      BUILDINGS_LAYER,
-      "fill-extrusion-emissive-strength",
-      dark ? 0.35 : 0.12,
-    );
-  }
-
   setVehicleTheme(map, dark);
   return true;
-}
-
-// Mapbox Standard fades its own 3D buildings out somewhere above zoom 15 and
-// gives no config knob for it, so these carry the massing further down the zoom
-// range and hand over before Standard's begin. Streets v8 only carries building
-// footprints from zoom 13, which is the real floor here.
-const BUILDINGS_SOURCE = "streets-buildings";
-const BUILDINGS_LAYER = "extra-3d-buildings";
-
-const BUILDING_FILL = { light: "#e6e1d8", dark: "#333d5e" } as const;
-
-function addExtraBuildings(map: mapboxgl.Map, dark: boolean) {
-  if (map.getSource(BUILDINGS_SOURCE)) return;
-
-  map.addSource(BUILDINGS_SOURCE, {
-    type: "vector",
-    url: "mapbox://mapbox.mapbox-streets-v8",
-  });
-
-  map.addLayer({
-    id: BUILDINGS_LAYER,
-    type: "fill-extrusion",
-    source: BUILDINGS_SOURCE,
-    "source-layer": "building",
-    slot: "middle",
-    minzoom: 13,
-    // Stops before Standard's own buildings appear, so the two never stack.
-    maxzoom: 15.5,
-    filter: ["==", ["get", "extrude"], "true"],
-    paint: {
-      "fill-extrusion-color": BUILDING_FILL[dark ? "dark" : "light"],
-      "fill-extrusion-color-transition": { duration: 180 },
-      // Heights are thin in the tiles this far out; a storey-ish default keeps
-      // a block from collapsing flat.
-      "fill-extrusion-height": ["coalesce", ["get", "height"], 10],
-      "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
-      "fill-extrusion-opacity": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        13,
-        0.5,
-        15,
-        0.9,
-      ],
-      "fill-extrusion-emissive-strength": dark ? 0.35 : 0.12,
-    },
-  });
 }
 
 function addStopsLayer(map: mapboxgl.Map) {
@@ -349,7 +288,6 @@ export function MapView() {
     const addLayers = () => {
       // Images first: a symbol layer whose icon is missing logs on every tile.
       void installStopIcons(instance).then(() => addStopsLayer(instance));
-      addExtraBuildings(instance, theme.current === "dark");
       addRouteLayers(instance);
       addVehicleLayers(instance, theme.current === "dark");
       applyMapTheme(instance, theme.current === "dark");
