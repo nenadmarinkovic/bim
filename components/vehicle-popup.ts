@@ -7,7 +7,7 @@ export type PopupActions = {
   following: boolean;
 };
 
-function lateness(delay: number): string {
+export function lateness(delay: number): string {
   if (delay === 0) return "on time";
   const minutes = Math.round(Math.abs(delay) / 60) || "<1";
   return delay > 0 ? `${minutes} min late` : `${minutes} min early`;

@@ -13,6 +13,7 @@ import { buildTrips, previousServiceDate, serviceDate } from "./trips.ts";
 import { buildUndergroundRanges, fetchWays } from "./underground.ts";
 import {
   classifyMatch,
+  distanceMetres,
   gtfsGroupKey,
   isPlausiblyVienna,
   parseGtfsStopId,
@@ -37,6 +38,15 @@ type StopRecord = {
   coordSource: "gtfs" | "wl";
   gtfsStopIds: string[];
   confidence: MatchConfidence | "unmatched";
+};
+
+type StationRecord = {
+  diva: number;
+  name: string;
+  lat: number;
+  lon: number;
+  stopIds: number[];
+  gtfsStopIds: string[];
 };
 
 async function download() {
@@ -85,11 +95,88 @@ function centroid(stops: GtfsStop[]): { lat: number; lon: number } {
   return { lat, lon };
 }
 
+type PendingStop = {
+  stopId: number;
+  diva: number;
+  name: string;
+  wlPoint: { lat: number; lon: number };
+  group: GtfsStop[];
+  gtfsPoint: { lat: number; lon: number };
+  confidence: MatchConfidence;
+};
+
+function placeStop(
+  member: PendingStop,
+  suspect: { stopId: number; name: string }[],
+): StopRecord {
+  const usable = isPlausiblyVienna(member.wlPoint);
+  if (!usable) suspect.push({ stopId: member.stopId, name: member.name });
+
+  const point = usable ? member.wlPoint : member.gtfsPoint;
+
+  return {
+    stopId: member.stopId,
+    diva: member.diva,
+    name: member.name,
+    lat: Number(point.lat.toFixed(6)),
+    lon: Number(point.lon.toFixed(6)),
+    coordSource: usable ? "wl" : "gtfs",
+    gtfsStopIds: member.group.map((s) => s.stopId).sort(),
+    confidence: member.confidence,
+  };
+}
+
+// The map draws one dot per station, so a station needs a single point. The
+// centroid of its platforms is not it — that lands in the block between them,
+// off the tracks and inside buildings. Picking the platform closest to the
+// centroid keeps the dot on a place a tram actually stops.
+function stationPoint(platforms: { lat: number; lon: number }[]) {
+  const centre = {
+    lat: platforms.reduce((sum, p) => sum + p.lat, 0) / platforms.length,
+    lon: platforms.reduce((sum, p) => sum + p.lon, 0) / platforms.length,
+  };
+
+  let pick = platforms[0];
+  let metres = Infinity;
+  for (const platform of platforms) {
+    const away = distanceMetres(centre, platform);
+    if (away < metres) {
+      metres = away;
+      pick = platform;
+    }
+  }
+  return pick;
+}
+
+function buildStation(members: PendingStop[]): StationRecord {
+  const modelled = members[0].group.filter(isPlausiblyVienna);
+  const fallback = members
+    .map((m) => m.wlPoint)
+    .filter((p) => isPlausiblyVienna(p));
+
+  const pool = modelled.length
+    ? modelled
+    : fallback.length
+      ? fallback
+      : [members[0].gtfsPoint];
+
+  const point = stationPoint(pool);
+
+  return {
+    diva: members[0].diva,
+    name: members[0].name,
+    lat: Number(point.lat.toFixed(6)),
+    lon: Number(point.lon.toFixed(6)),
+    stopIds: members.map((m) => m.stopId).sort((a, b) => a - b),
+    gtfsStopIds: members[0].group.map((s) => s.stopId).sort(),
+  };
+}
+
 async function buildStopIndex(
   haltepunkte: string,
   gtfsStops: Map<string, GtfsStop[]>,
 ) {
-  const stops: StopRecord[] = [];
+  const pending: PendingStop[] = [];
   const rejected: { stopId: number; wl: string; gtfs: string }[] = [];
   const unmatched: { stopId: number; diva: number; name: string }[] = [];
   const suspectWlCoords: { stopId: number; name: string }[] = [];
@@ -130,29 +217,37 @@ async function buildStopIndex(
       continue;
     }
 
-    const wlUsable = isPlausiblyVienna(wlPoint);
-    if (!wlUsable) suspectWlCoords.push({ stopId, name });
-
-    const point = isPlausiblyVienna(gtfsPoint)
-      ? gtfsPoint
-      : wlUsable
-        ? wlPoint
-        : gtfsPoint;
-
-    stops.push({
+    pending.push({
       stopId,
       diva,
       name,
-      lat: Number(point.lat.toFixed(6)),
-      lon: Number(point.lon.toFixed(6)),
-      coordSource: isPlausiblyVienna(gtfsPoint) ? "gtfs" : "wl",
-      gtfsStopIds: group.map((s) => s.stopId).sort(),
+      wlPoint,
+      group,
+      gtfsPoint,
       confidence: verdict.confidence,
     });
   }
 
+  const stops = pending.map((member) => placeStop(member, suspectWlCoords));
+
+  // A DIVA is one station; its StopIDs are the platforms within it. Which
+  // platform a StopID occupies cannot be recovered — Wiener Linien's own
+  // coordinates point at the wrong ones — so the map draws the station and the
+  // board reads every platform at once.
+  const byStation = new Map<number, PendingStop[]>();
+  for (const stop of pending) {
+    const members = byStation.get(stop.diva);
+    if (members) members.push(stop);
+    else byStation.set(stop.diva, [stop]);
+  }
+
+  const stations = [...byStation.values()]
+    .map(buildStation)
+    .sort((a, b) => a.diva - b.diva);
+
   return {
     stops,
+    stations,
     rejected,
     unmatched,
     suspectWlCoords,
@@ -318,6 +413,10 @@ async function main() {
     generatedAt: new Date().toISOString(),
     stops: result.stops,
   });
+  await writeArtifact("stations.json", {
+    generatedAt: new Date().toISOString(),
+    stations: result.stations,
+  });
   await writeArtifact("lines.json", {
     generatedAt: new Date().toISOString(),
     lines,
@@ -360,6 +459,7 @@ async function main() {
       unmatched: result.unmatched.length,
       rejected: result.rejected.length,
       matchRate: Number(((matched / total) * 100).toFixed(1)),
+      stations: result.stations.length,
     },
     coverage: {
       stopIdsUsedByLines: routedStops.size,
@@ -408,6 +508,7 @@ async function main() {
   console.log(`    by name     ${byName}`);
   console.log(`    by distance ${matched - byName}`);
   console.log(`    unmatched   ${result.unmatched.length}`);
+  console.log(`    stations    ${result.stations.length}`);
   console.log(`    rejected    ${result.rejected.length}`);
   console.log("\ncoverage of stops actually served by a line");
   console.log(

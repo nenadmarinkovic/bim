@@ -1,3 +1,7 @@
+import { normaliseName } from "../../lib/vehicles/names.ts";
+
+export { normaliseName };
+
 const DIVA_OFFSET = 60_200_000;
 const GTFS_REGION = "49";
 
@@ -23,31 +27,6 @@ export function parseGtfsStopId(
 
 export function viennaGroupKeyForDiva(diva: number): string {
   return gtfsGroupKey(GTFS_REGION, divaToGtfsNumber(diva));
-}
-
-const ABBREVIATIONS: [RegExp, string][] = [
-  [/\bstr\b/g, "strasse"],
-  [/\bg\b/g, "gasse"],
-  [/\bpl\b/g, "platz"],
-  [/\bbhf\b/g, "bahnhof"],
-];
-
-export function normaliseName(name: string): string {
-  let value = name
-    .toLowerCase()
-    .replace(/ß/g, "ss")
-    .normalize("NFKD")
-    .replace(/\p{Diacritic}/gu, "");
-
-  value = value
-    .replace(/[.,/()-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  for (const [pattern, replacement] of ABBREVIATIONS) {
-    value = value.replace(pattern, replacement);
-  }
-
-  return value.replace(/[^a-z0-9]/g, "");
 }
 
 const EARTH_RADIUS_M = 6_371_000;

@@ -1,14 +1,14 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-type StopRecord = {
-  stopId: number;
+type StationRecord = {
+  diva: number;
   name: string;
   lat: number;
   lon: number;
 };
 
-type StopsFile = { generatedAt: string; stops: StopRecord[] };
+type StationsFile = { generatedAt: string; stations: StationRecord[] };
 
 let cached: string | null = null;
 
@@ -18,19 +18,22 @@ async function loadGeoJson(): Promise<string | null> {
 
   let raw: string;
   try {
-    raw = await readFile(path.join(process.cwd(), "data", "stops.json"), "utf8");
+    raw = await readFile(
+      path.join(process.cwd(), "data", "stations.json"),
+      "utf8",
+    );
   } catch {
     return null;
   }
 
-  const { stops } = JSON.parse(raw) as StopsFile;
+  const { stations } = JSON.parse(raw) as StationsFile;
   cached = JSON.stringify({
     type: "FeatureCollection",
-    features: stops.map((stop) => ({
+    features: stations.map((station) => ({
       type: "Feature",
-      id: stop.stopId,
-      geometry: { type: "Point", coordinates: [stop.lon, stop.lat] },
-      properties: { stopId: stop.stopId, name: stop.name },
+      id: station.diva,
+      geometry: { type: "Point", coordinates: [station.lon, station.lat] },
+      properties: { diva: station.diva, name: station.name },
     })),
   });
 
@@ -42,7 +45,7 @@ export async function GET() {
 
   if (!geojson) {
     return Response.json(
-      { error: "stop index not built — run `npm run ingest`" },
+      { error: "station index not built — run `npm run ingest`" },
       { status: 503 },
     );
   }

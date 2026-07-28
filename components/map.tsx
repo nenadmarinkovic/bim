@@ -9,6 +9,9 @@ import { MapControls } from "./map-controls";
 import { MapSettings } from "./map-settings";
 import { enablePlaces, setPlaceVisibility } from "./places";
 import { buildPlacePopup } from "./place-popup";
+import { enableStops, type StopSelection } from "./stops";
+import { buildStopPopup, rowColour, rowKey } from "./stop-popup";
+import type { BoardRow } from "@/lib/vehicles/board";
 import { PlaceChat, type ChatPlace } from "./place-chat";
 import { buildVehiclePopup } from "./vehicle-popup";
 import {
@@ -78,22 +81,20 @@ function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
 }
 
+// A ring rather than a disc: the transit idiom, and it survives being drawn
+// over both pale squares and dark roads at two pixels across.
+const STOP_RING = { light: "#0040ff", dark: "#ffff01" };
+const STOP_CORE = { light: "#ffffff", dark: "#141a2e" };
+
 function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
   if (!map.isStyleLoaded()) return false;
 
   map.setConfigProperty("basemap", "lightPreset", dark ? "night" : "day");
 
   if (map.getLayer(STOPS_LAYER)) {
-    map.setPaintProperty(
-      STOPS_LAYER,
-      "circle-color",
-      dark ? "#ffff01" : "#0040ff",
-    );
-    map.setPaintProperty(
-      STOPS_LAYER,
-      "circle-stroke-color",
-      dark ? "#141a2e" : "#ffffff",
-    );
+    const shade = dark ? "dark" : "light";
+    map.setPaintProperty(STOPS_LAYER, "circle-color", STOP_CORE[shade]);
+    map.setPaintProperty(STOPS_LAYER, "circle-stroke-color", STOP_RING[shade]);
   }
 
   setVehicleTheme(map, dark);
@@ -102,6 +103,8 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
 
 function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
   if (map.getSource(STOPS_SOURCE)) return;
+
+  const shade = resolvedTheme === "dark" ? "dark" : "light";
 
   map.addSource(STOPS_SOURCE, {
     type: "geojson",
@@ -112,42 +115,51 @@ function addStopsLayer(map: mapboxgl.Map, resolvedTheme: string | undefined) {
     id: STOPS_LAYER,
     type: "circle",
     source: STOPS_SOURCE,
-    slot: "middle",
+    // "middle" draws behind the basemap's 3D buildings, which buries stops in
+    // the tall new districts once the camera is pitched in close.
+    slot: "top",
     paint: {
       "circle-radius": [
         "interpolate",
         ["linear"],
         ["zoom"],
         10,
-        1.2,
+        1.6,
         13,
-        2.5,
+        3,
         16,
-        5,
+        5.5,
       ],
-      "circle-color": resolvedTheme === "dark" ? "#ffff01" : "#0040ff",
+      "circle-color": STOP_CORE[shade],
       "circle-color-transition": { duration: 180 },
-      "circle-opacity": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        10,
-        0.35,
-        14,
-        0.85,
-      ],
+      "circle-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.7, 13, 1],
+      // Without this the night preset dims the layer along with the streets.
+      "circle-emissive-strength": 1,
       "circle-stroke-width": [
         "interpolate",
         ["linear"],
         ["zoom"],
+        10,
+        1,
         13,
-        0,
+        1.5,
         16,
+        2.4,
+      ],
+      "circle-stroke-color": STOP_RING[shade],
+      "circle-stroke-color-transition": { duration: 180 },
+      "circle-stroke-opacity": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        10,
+        0.85,
+        13,
         1,
       ],
-      "circle-stroke-color": resolvedTheme === "dark" ? "#141a2e" : "#ffffff",
-      "circle-stroke-color-transition": { duration: 180 },
-      "circle-pitch-alignment": "map",
+      // The camera sits at 70° of pitch, which would flatten a map-aligned
+      // circle to a third of its height and make it unclickable.
+      "circle-pitch-alignment": "viewport",
     },
   });
 }
@@ -158,10 +170,12 @@ type PopupContext = {
   following: { current: string | null };
   routeTrip: { current: string | null };
   dark: boolean;
+  // One route layer, two popups that can drive it.
+  takeRoute: () => void;
 };
 
 function renderVehiclePopup(ctx: PopupContext, vehicle: Vehicle) {
-  const { map, popup, following, routeTrip, dark } = ctx;
+  const { map, popup, following, routeTrip, dark, takeRoute } = ctx;
 
   popup.setDOMContent(
     buildVehiclePopup(vehicle, {
@@ -178,6 +192,7 @@ function renderVehiclePopup(ctx: PopupContext, vehicle: Vehicle) {
           .then((response) => (response.ok ? response.json() : null))
           .then((route: TripRoute | null) => {
             if (!route) return;
+            takeRoute();
             routeTrip.current = vehicle.id;
             const base = vehicleColour(vehicle.mode, vehicle.line, dark);
             showRoute(map, route, base, dark ? "#141a2e" : "#ffffff");
@@ -207,6 +222,13 @@ export function MapView() {
   const selected = useRef<string | null>(null);
   const seenData = useRef(false);
   const placePopup = useRef<mapboxgl.Popup | null>(null);
+  const stopPopup = useRef<mapboxgl.Popup | null>(null);
+  const openStop = useRef<StopSelection | null>(null);
+  const tracing = useRef<string | null>(null);
+  const redrawStop = useRef<(() => void) | null>(null);
+  const untraceable = useRef<Set<string>>(new Set());
+
+  const disableStops = useRef<(() => void) | null>(null);
   const following = useRef<string | null>(null);
   const routeTrip = useRef<string | null>(null);
   const disablePlaces = useRef<(() => void) | null>(null);
@@ -284,6 +306,114 @@ export function MapView() {
       maxWidth: "260px",
     });
 
+    stopPopup.current = new mapboxgl.Popup({
+      closeButton: true,
+      closeOnClick: false,
+      offset: 10,
+      className: "bim-popup bim-popup-stop",
+      focusAfterOpen: false,
+      maxWidth: "300px",
+    });
+    stopPopup.current.on("close", () => {
+      openStop.current = null;
+      if (tracing.current) {
+        tracing.current = null;
+        clearRoute(instance);
+      }
+    });
+
+    const drawStopPopup = (from: StopSelection | null = openStop.current) => {
+      const selection = from;
+      if (!selection) return;
+
+      let content: HTMLElement;
+      try {
+        content = buildStopPopup({
+          selection,
+          dark: theme.current === "dark",
+          tracing: tracing.current,
+          untraceable: untraceable.current,
+          onTrace: (row) => traceRow(instance, row),
+        });
+      } catch (cause) {
+        // A popup that failed to draw keeps whatever it last showed, so a
+        // throw here reads as a board that never finishes loading. Say what
+        // actually happened instead.
+        console.error("stop popup failed to render", cause);
+        content = document.createElement("div");
+        content.className = "bim-stop-popup";
+        content.textContent = `${selection.name} — could not draw the board.`;
+      }
+
+      stopPopup.current?.setDOMContent(content);
+    };
+    redrawStop.current = drawStopPopup;
+
+    const traceRow = (map: mapboxgl.Map, row: BoardRow) => {
+      const key = rowKey(row);
+      if (tracing.current === key) {
+        tracing.current = null;
+        clearRoute(map);
+        drawStopPopup();
+        return;
+      }
+
+      const station = openStop.current?.diva;
+      const query = new URLSearchParams({
+        line: row.line,
+        towards: row.towards,
+        ...(station ? { from: String(station) } : {}),
+      });
+
+      fetch(`/api/route?${query}`)
+        .then((response) => (response.ok ? response.json() : null))
+        .then((route: TripRoute | null) => {
+          if (openStop.current?.diva !== station) return;
+          if (!route) {
+            // Say so on the row rather than leaving a tap that does nothing.
+            untraceable.current.add(key);
+            drawStopPopup();
+            return;
+          }
+          // The board and the vehicle popup share one route layer, so taking it
+          // has to release whoever was holding it.
+          routeTrip.current = null;
+          tracing.current = key;
+          const dark = theme.current === "dark";
+          showRoute(
+            map,
+            route,
+            rowColour(row, dark),
+            dark ? "#141a2e" : "#ffffff",
+          );
+          drawStopPopup();
+        })
+        .catch(() => {});
+    };
+
+    disableStops.current = enableStops(instance, (selection) => {
+      const changed = selection?.diva !== openStop.current?.diva;
+      openStop.current = selection;
+
+      if (!selection) {
+        stopPopup.current?.remove();
+        return;
+      }
+      if (changed && tracing.current) {
+        tracing.current = null;
+        clearRoute(instance);
+      }
+
+      const popup = stopPopup.current;
+      if (popup) {
+        popup.setLngLat(selection.lngLat);
+        // addTo() on an already-open popup removes and re-adds it, and the
+        // close event fired in between clears the selection about to be drawn.
+        if (!popup.isOpen()) popup.addTo(instance);
+      }
+      drawStopPopup(selection);
+    });
+
     bindVehicleSelection(instance, (id) => {
       selected.current = id;
       if (!id) {
@@ -300,6 +430,8 @@ export function MapView() {
     map.current = instance;
 
     return () => {
+      disableStops.current?.();
+      disableStops.current = null;
       disablePlaces.current?.();
       disablePlaces.current = null;
       stopPlaceVisibility.current?.();
@@ -351,6 +483,9 @@ export function MapView() {
     if (!instance || !resolvedTheme) return;
     const dark = resolvedTheme === "dark";
 
+    // Line badges are drawn from the same palette as the vehicles.
+    redrawStop.current?.();
+
     let frame = 0;
     let attempts = 0;
     const tryApply = () => {
@@ -390,6 +525,12 @@ export function MapView() {
           following,
           routeTrip,
           dark: theme.current === "dark",
+          takeRoute: () => {
+            // Reads refs only, so it stays out of effect dependencies.
+            if (!tracing.current) return;
+            tracing.current = null;
+            redrawStop.current?.();
+          },
         },
         vehicle,
       );
@@ -468,6 +609,12 @@ export function MapView() {
             following,
             routeTrip,
             dark: theme.current === "dark",
+            takeRoute: () => {
+              // Reads refs only, so it stays out of effect dependencies.
+              if (!tracing.current) return;
+              tracing.current = null;
+              redrawStop.current?.();
+            },
           },
           tween.vehicle,
         );

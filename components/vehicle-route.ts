@@ -21,6 +21,7 @@ export type TripRoute = {
   line: [number, number][];
   start: [number, number];
   end: [number, number];
+  origin: string;
   towards: string;
 };
 
@@ -107,7 +108,8 @@ export function showRoute(
       {
         type: "Feature",
         geometry: { type: "Point", coordinates: route.start },
-        properties: { color, fill: endFill, label: "Start" },
+        // Naming the far end but not this one leaves half the line a mystery.
+        properties: { color, fill: endFill, label: route.origin || "Start" },
       },
       {
         type: "Feature",

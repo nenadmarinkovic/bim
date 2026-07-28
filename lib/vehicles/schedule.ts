@@ -75,6 +75,25 @@ export function loadStops(): Promise<StopRecord[]> {
   return stopsLoading;
 }
 
+// One entry per DIVA, holding every platform StopID beneath it.
+export type StationRecord = {
+  diva: number;
+  name: string;
+  lat: number;
+  lon: number;
+  stopIds: number[];
+  gtfsStopIds: string[];
+};
+
+let stationsLoading: Promise<StationRecord[]> | null = null;
+
+export function loadStations(): Promise<StationRecord[]> {
+  stationsLoading ??= readArtifact<{ stations: StationRecord[] }>(
+    "stations.json",
+  ).then((file) => file.stations);
+  return stationsLoading;
+}
+
 type LineRecord = {
   name: string;
   patterns: Record<string, { stopIds: number[] }>;
