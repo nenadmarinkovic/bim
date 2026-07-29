@@ -37,8 +37,6 @@ export function ThemeColorSync() {
       .forEach((m) => {
         if (m !== meta) m.remove();
       });
-
-    document.cookie = `theme-color=${resolvedTheme}; path=/; max-age=31536000; samesite=lax`;
   }, [resolvedTheme]);
 
   return null;

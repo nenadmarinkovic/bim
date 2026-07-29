@@ -1,10 +1,23 @@
 "use client";
 
 import { useVehiclesContext } from "./vehicles-provider";
+import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
+
+function Counted({ template, n }: { template: string; n: number }) {
+  const [before, after = ""] = template.split("{n}");
+  return (
+    <>
+      {before}
+      <span className="tabular-nums">{n}</span>
+      {after}
+    </>
+  );
+}
 
 export function VehicleCount({ className }: { className?: string }) {
   const { data, error } = useVehiclesContext();
+  const dict = useDict();
 
   if (error) {
     return (
@@ -17,7 +30,7 @@ export function VehicleCount({ className }: { className?: string }) {
   if (!data) {
     return (
       <p className={cn(className, "animate-pulse")} role="status">
-        Loading live positions…
+        {dict.count.loading}
       </p>
     );
   }
@@ -27,11 +40,14 @@ export function VehicleCount({ className }: { className?: string }) {
 
   return (
     <p className={className} role="status">
-      <span className="tabular-nums">{total}</span> vehicles moving
+      <Counted
+        template={total === 1 ? dict.count.moving.one : dict.count.moving.other}
+        n={total}
+      />
       {scheduled > 0 && (
         <>
           {" · "}
-          <span className="tabular-nums">{scheduled}</span> estimated
+          <Counted template={dict.count.estimated} n={scheduled} />
         </>
       )}
     </p>

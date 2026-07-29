@@ -9,40 +9,39 @@ import type { BoardRow, StopBoard } from "@/lib/vehicles/board";
 import { lateness } from "./vehicle-popup";
 import type { StopSelection } from "./stops";
 import { badgeMarkup, type StationMode } from "./stop-icons";
+import type { Dictionary } from "@/lib/i18n";
+import { fill } from "@/lib/i18n/locales";
 
 export const rowKey = (row: BoardRow) => `${row.line}|${row.towards}`;
 
 // What a rider would call it, not what the feed calls it.
-const MODE_LABEL: Record<string, string> = {
-  metro: "U-Bahn",
-  train: "S-Bahn",
-  tram: "Tram",
-  bus: "Bus",
-};
+const modeLabel = (dict: Dictionary, mode: string): string | undefined =>
+  (dict.stop.modes as Record<string, string>)[mode];
 
-const describeModes = (modes: string[]) =>
+const describeModes = (modes: string[], dict: Dictionary) =>
   modes
-    .map((mode) => MODE_LABEL[mode])
+    .map((mode) => modeLabel(dict, mode))
     .filter(Boolean)
     .join(" · ");
 
 // The same marks the map draws, so the popup confirms what was clicked.
-function buildModes(modes: string[]): HTMLElement {
+function buildModes(modes: string[], dict: Dictionary): HTMLElement {
   const row = document.createElement("div");
   row.className = "bim-stop-modes";
 
   for (const mode of modes) {
-    if (!MODE_LABEL[mode]) continue;
+    const label = modeLabel(dict, mode);
+    if (!label) continue;
     const badge = document.createElement("span");
     badge.className = "bim-stop-mode";
-    badge.title = MODE_LABEL[mode];
+    badge.title = label;
     badge.innerHTML = badgeMarkup(mode as StationMode, 13);
     row.append(badge);
   }
 
   const label = document.createElement("span");
   label.className = "bim-popup-kind";
-  label.textContent = describeModes(modes);
+  label.textContent = describeModes(modes, dict);
   row.append(label);
 
   return row;
@@ -63,6 +62,7 @@ export function rowColour(row: BoardRow, dark: boolean): string {
 export type BoardView = {
   selection: StopSelection;
   dark: boolean;
+  dict: Dictionary;
   tracing: string | null;
   // Rows the schedule has no geometry for — the Badner Bahn and other lines
   // Wiener Linien publishes departures for but does not operate.
@@ -72,13 +72,13 @@ export type BoardView = {
 
 // The rows share one grid, so the "min" heading sits directly over the numbers
 // it labels rather than being stranded at the foot of the popup.
-function buildHeading(): HTMLElement {
+function buildHeading(dict: Dictionary): HTMLElement {
   const element = document.createElement("li");
   element.className = "bim-stop-row";
 
   const unit = document.createElement("span");
   unit.className = "bim-stop-unit";
-  unit.textContent = "min";
+  unit.textContent = dict.stop.minutes;
 
   element.append(
     document.createElement("span"),
@@ -98,9 +98,10 @@ function buildRow(row: BoardRow, view: BoardView): HTMLElement {
   pick.type = "button";
   pick.className = "bim-stop-pick";
   pick.dataset.active = String(active);
-  pick.title = active
-    ? `Hide the ${row.line} to ${row.towards}`
-    : `Trace the ${row.line} to ${row.towards}`;
+  pick.title = fill(
+    active ? view.dict.stop.untrace : view.dict.stop.trace,
+    { line: row.line, towards: row.towards },
+  );
   pick.addEventListener("click", () => view.onTrace(row));
 
   const badge = document.createElement("span");
@@ -119,12 +120,14 @@ function buildRow(row: BoardRow, view: BoardView): HTMLElement {
     const time = document.createElement("span");
     time.className = "bim-stop-time";
     time.textContent =
-      departure.countdown === 0 ? "now" : `${departure.countdown}`;
+      departure.countdown === 0
+        ? view.dict.stop.now
+        : `${departure.countdown}`;
     if (departure.delay === null) {
       time.dataset.scheduled = "true";
-      time.title = "timetable only — no live data";
+      time.title = view.dict.vehicle.scheduled;
     } else {
-      time.title = lateness(departure.delay);
+      time.title = lateness(departure.delay, view.dict);
     }
     times.append(time);
   }
@@ -138,19 +141,19 @@ function buildBoard(board: StopBoard, view: BoardView): HTMLElement {
   if (!board.rows.length) {
     const empty = document.createElement("span");
     empty.className = "bim-stop-note";
-    empty.textContent = "No departures right now.";
+    empty.textContent = view.dict.stop.noDepartures;
     return empty;
   }
 
   const list = document.createElement("ul");
   list.className = "bim-stop-rows";
-  list.append(buildHeading());
+  list.append(buildHeading(view.dict));
   for (const row of board.rows) list.append(buildRow(row, view));
   return list;
 }
 
 export function buildStopPopup(view: BoardView): HTMLElement {
-  const { selection } = view;
+  const { selection, dict } = view;
 
   const root = document.createElement("div");
   root.className = "bim-stop-popup";
@@ -162,11 +165,11 @@ export function buildStopPopup(view: BoardView): HTMLElement {
   root.append(title);
 
   if (selection.modes.length) {
-    root.append(buildModes(selection.modes));
+    root.append(buildModes(selection.modes, dict));
   } else {
     const kind = document.createElement("span");
     kind.className = "bim-popup-kind";
-    kind.textContent = "Departures";
+    kind.textContent = dict.stop.departures;
     root.append(kind);
   }
 
@@ -176,10 +179,10 @@ export function buildStopPopup(view: BoardView): HTMLElement {
     const note = document.createElement("span");
     note.className = "bim-stop-note";
     if (selection.failed) {
-      note.textContent = "Departures unavailable.";
+      note.textContent = dict.stop.unavailable;
     } else {
       note.dataset.pending = "true";
-      note.textContent = "Reading the board…";
+      note.textContent = dict.stop.reading;
     }
     root.append(note);
   }
@@ -193,9 +196,9 @@ export function buildStopPopup(view: BoardView): HTMLElement {
   source.className = "bim-popup-source";
   source.textContent = selection.board?.rows.length
     ? anyScheduled
-      ? "Tap a line to trace it · faded = timetable only"
-      : "Tap a line to trace it"
-    : "Wiener Linien";
+      ? dict.stop.tapToTraceFaded
+      : dict.stop.tapToTrace
+    : dict.stop.operator;
   root.append(source);
 
   return root;

@@ -10,17 +10,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useDict, useLocale } from "./locale-provider";
 import { cn } from "@/lib/utils";
 
 export type ChatPlace = { title: string; kind: string; summary: string };
 
 type Turn = { role: "user" | "assistant"; content: string };
-
-const OPENERS = [
-  "Who built it?",
-  "What was here before?",
-  "Why does it matter?",
-];
 
 export function PlaceChat({
   place,
@@ -29,6 +24,8 @@ export function PlaceChat({
   place: ChatPlace | null;
   onClose: () => void;
 }) {
+  const { locale } = useLocale();
+  const dict = useDict();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -60,7 +57,7 @@ export function PlaceChat({
           name: place.title,
           kind: place.kind,
           summary: place.summary,
-          lang: "en",
+          lang: locale,
           messages: next,
         }),
       });
@@ -71,7 +68,7 @@ export function PlaceChat({
       setError(
         cause instanceof Error && cause.message !== "no answer"
           ? cause.message
-          : "Could not answer that one. Try again?",
+          : dict.chat.failed,
       );
     } finally {
       setBusy(false);
@@ -98,13 +95,11 @@ export function PlaceChat({
             </p>
           )}
 
-          <p className="text-sm text-muted-foreground">
-            What would you like to know more about?
-          </p>
+          <p className="text-sm text-muted-foreground">{dict.chat.prompt}</p>
 
           {!turns.length && (
             <div className="flex flex-wrap gap-2">
-              {OPENERS.map((opener) => (
+              {dict.chat.openers.map((opener) => (
                 <button
                   key={opener}
                   type="button"
@@ -134,7 +129,7 @@ export function PlaceChat({
           {busy && (
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
               <SparkleIcon size={14} weight="fill" className="animate-pulse" />
-              Thinking…
+              {dict.chat.thinking}
             </p>
           )}
 
@@ -158,23 +153,21 @@ export function PlaceChat({
               }
             }}
             rows={2}
-            placeholder="Ask about this place…"
-            aria-label="Ask about this place"
+            placeholder={dict.chat.placeholder}
+            aria-label={dict.chat.ariaAsk}
             className="bg-field dark:bg-field max-h-32 min-h-18 resize-none rounded-xl pr-11 text-sm leading-relaxed placeholder:text-xs"
           />
           <button
             type="submit"
             disabled={busy || !draft.trim()}
-            aria-label="Send"
+            aria-label={dict.chat.send}
             className="absolute right-2 bottom-2 cursor-pointer rounded-md p-1.5 text-foreground transition-opacity hover:opacity-70 disabled:cursor-default disabled:opacity-30"
           >
             <PaperPlaneRightIcon size={16} />
           </button>
         </form>
 
-        <p className="text-xs text-muted-foreground">
-          Written by Mistral AI — it can be wrong about dates and details.
-        </p>
+        <p className="text-xs text-muted-foreground">{dict.chat.disclaimer}</p>
       </DialogContent>
     </Dialog>
   );

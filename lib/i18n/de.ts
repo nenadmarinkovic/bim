@@ -1,0 +1,153 @@
+import type { Dictionary } from "./en";
+
+export const de: Dictionary = {
+  meta: {
+    title: "Bim — Live-Verkehrskarte für Wien",
+    description:
+      "Eine inoffizielle Live-Karte des Wiener-Linien-Netzes, auf Basis offener Daten.",
+  },
+
+  header: {
+    tagline: "Live-Verkehrskarte für Wien",
+  },
+
+  count: {
+    loading: "Live-Positionen werden geladen…",
+    moving: { one: "{n} Fahrzeug unterwegs", other: "{n} Fahrzeuge unterwegs" },
+    estimated: "{n} geschätzt",
+  },
+
+  map: {
+    tokenMissing: "Mapbox-Token fehlt.",
+    tokenAddBefore: "",
+    tokenAddBetween: " in ",
+    tokenAddAfter: " eintragen und den Dev-Server neu starten.",
+    zoomIn: "Vergrößern",
+    zoomOut: "Verkleinern",
+    alignNorth: "Nach Norden ausrichten",
+
+    centre: "Auf den Stephansdom zentrieren",
+    dataSources: "Datenquellen",
+    improve: "Diese Karte verbessern",
+    routeStart: "Start",
+  },
+
+  settings: {
+    lines: "Liniennummern",
+    stops: "Haltestellen",
+    places: "Orte",
+    streets: "Straßen",
+    districts: "Bezirke",
+    theme: "Design",
+    language: "Sprache",
+  },
+
+  theme: {
+    label: "Design",
+    system: "System",
+    light: "Hell",
+    dark: "Dunkel",
+  },
+
+  vehicle: {
+    onTime: "pünktlich",
+    late: "{n} Min. Verspätung",
+    early: "{n} Min. zu früh",
+    lessThanOne: "<1",
+    measured: "an dieser Haltestelle gemessen",
+    interpolated: {
+      one: "interpoliert, {n} Haltestelle von einer Messung entfernt",
+      other: "interpoliert, {n} Haltestellen von einer Messung entfernt",
+    },
+    scheduled: "nur Fahrplan — keine Echtzeitdaten",
+    inTunnel: "im Tunnel",
+    showRoute: "Route anzeigen",
+    hideRoute: "Route ausblenden",
+    follow: "Folgen",
+    unfollow: "Nicht mehr folgen",
+  },
+
+  stop: {
+    modes: {
+      metro: "U-Bahn",
+      train: "S-Bahn",
+      tram: "Straßenbahn",
+      bus: "Bus",
+    },
+    minutes: "Min.",
+    trace: "Die {line} Richtung {towards} nachzeichnen",
+    untrace: "Die {line} Richtung {towards} ausblenden",
+    now: "jetzt",
+    noDepartures: "Derzeit keine Abfahrten.",
+    departures: "Abfahrten",
+    unavailable: "Abfahrten nicht verfügbar.",
+    reading: "Anzeige wird gelesen…",
+    tapToTrace: "Linie antippen, um sie nachzuzeichnen",
+    tapToTraceFaded:
+      "Linie antippen, um sie nachzuzeichnen · blass = nur Fahrplan",
+    operator: "Wiener Linien",
+    drawFailed: "Nachzeichnen fehlgeschlagen",
+  },
+
+  place: {
+    lookingUp: "Wird nachgeschlagen…",
+    landmark: "Sehenswürdigkeit",
+    place: "Ort",
+    listen: "Anhören",
+    noAudio: "Dafür gibt es keine Tonaufnahme",
+    aiSummary: "KI-Zusammenfassung",
+    askMore: "Mehr erfahren",
+  },
+
+  chat: {
+    prompt: "Worüber möchten Sie mehr wissen?",
+    openers: [
+      "Wer hat es gebaut?",
+      "Was war vorher hier?",
+      "Warum ist es bedeutend?",
+    ],
+    thinking: "Denkt nach…",
+    failed: "Das konnte nicht beantwortet werden. Noch einmal versuchen?",
+    placeholder: "Fragen Sie zu diesem Ort…",
+    ariaAsk: "Zu diesem Ort fragen",
+    send: "Senden",
+    disclaimer:
+      "Verfasst von Mistral AI — Daten und Details können falsch sein.",
+  },
+
+  search: {
+    open: "Station suchen",
+    openWithKey: "Station suchen  (⌘F)",
+    description: "Das Wiener-Linien-Netz nach Stationsnamen durchsuchen.",
+    loadingStations: "Stationen werden geladen…",
+    searchStations: "Stationen durchsuchen…",
+    nothingMatching: "Nichts gefunden für",
+    recent: "Zuletzt",
+    clear: "Löschen",
+    readingNetwork: "Netz wird gelesen…",
+    typeName: "Stationsnamen eingeben.",
+    results: { one: "{n} Station", other: "{n} Stationen" },
+    hintOpen: "öffnen",
+  },
+
+  nav: {
+    about: "Über",
+  },
+
+  about: {
+    title: "Bim",
+    subtitle: "Inoffizielle Live-Karte des Wiener-Linien-Netzes.",
+    lead: "Wiener Linien veröffentlicht keine Fahrzeugpositionen. Jede Straßenbahn, jeder Bus und jede U-Bahn hier wird gesetzt, indem der Fahrplan genommen, um die an nahen Haltestellen gemeldete Verspätung gebogen und entlang der echten Gleisgeometrie verschoben wird.",
+    purpose:
+      "Bim ist eine Beobachtungsstelle für das Netz, kein Routenplaner. Die Karte basiert auf den offenen Daten der Wiener Linien und steht in keiner Verbindung zu ihnen.",
+    trustTitle: "Wie verlässlich ist ein Fahrzeug",
+    trustBody:
+      "Das ist unterschiedlich. Wiener Linien misst Abfahrten nur an einem Teil des Netzes. Klicken Sie ein Fahrzeug an, um zu sehen, ob seine Position gerade an einer Haltestelle gemessen, zwischen meldenden Haltestellen interpoliert oder allein aus dem Fahrplan abgeleitet wurde.",
+    accuracy:
+      "Die Positionen stimmen etwa auf einen Abschnitt zwischen zwei Haltestellen genau: bei der U-Bahn beinahe exakt, bei einer Straßenbahn im Verkehr ungenauer.",
+    dataNote:
+      "Daten von Wiener Linien und Stadt Wien Open Data, Gleisgeometrie aus einer GTFS-Konvertierung der Community (CC BY 4.0).",
+    openSource: "Open-Source-Projekt",
+    projectBy: "von",
+  },
+};

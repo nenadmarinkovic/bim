@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
 
 export function MapControls({
@@ -25,6 +26,7 @@ export function MapControls({
   className?: string;
 }) {
   const needle = useRef<SVGSVGElement>(null);
+  const dict = useDict();
 
   useEffect(() => {
     let frame = 0;
@@ -66,29 +68,29 @@ export function MapControls({
     >
       <Tooltip>
         <TooltipTrigger
-          aria-label="Zoom in"
+          aria-label={dict.map.zoomIn}
           onClick={() => getMap()?.zoomIn()}
           className={button}
         >
           <PlusIcon size={16} weight="bold" />
         </TooltipTrigger>
-        <TooltipContent side="left">Zoom in</TooltipContent>
+        <TooltipContent side="left">{dict.map.zoomIn}</TooltipContent>
       </Tooltip>
       <span className="h-px w-full bg-foreground/10" />
       <Tooltip>
         <TooltipTrigger
-          aria-label="Zoom out"
+          aria-label={dict.map.zoomOut}
           onClick={() => getMap()?.zoomOut()}
           className={button}
         >
           <MinusIcon size={16} weight="bold" />
         </TooltipTrigger>
-        <TooltipContent side="left">Zoom out</TooltipContent>
+        <TooltipContent side="left">{dict.map.zoomOut}</TooltipContent>
       </Tooltip>
       <span className="h-px w-full bg-foreground/10" />
       <Tooltip>
         <TooltipTrigger
-          aria-label="Align north"
+          aria-label={dict.map.alignNorth}
           onClick={() =>
             getMap()?.easeTo({ bearing: CAMERA.bearing, duration: 500 })
           }
@@ -96,12 +98,12 @@ export function MapControls({
         >
           <CompassIcon size={16} weight="regular" ref={needle} />
         </TooltipTrigger>
-        <TooltipContent side="left">Align north</TooltipContent>
+        <TooltipContent side="left">{dict.map.alignNorth}</TooltipContent>
       </Tooltip>
       <span className="h-px w-full bg-foreground/10" />
       <Tooltip>
         <TooltipTrigger
-          aria-label="Centre on Stephansdom"
+          aria-label={dict.map.centre}
           onClick={() =>
             getMap()?.flyTo({
               center: [STEPHANSDOM.lng, STEPHANSDOM.lat],
@@ -113,7 +115,7 @@ export function MapControls({
         >
           <CrosshairIcon size={16} weight="regular" />
         </TooltipTrigger>
-        <TooltipContent side="left">Centre on Stephansdom</TooltipContent>
+        <TooltipContent side="left">{dict.map.centre}</TooltipContent>
       </Tooltip>
     </div>
   );

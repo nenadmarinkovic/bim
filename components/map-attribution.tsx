@@ -8,6 +8,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
 
 const SOURCES = [
@@ -20,11 +21,13 @@ const SOURCES = [
   },
   { label: "© Mapbox", href: "https://www.mapbox.com/about/maps/" },
   { label: "© OpenStreetMap", href: "https://www.openstreetmap.org/copyright" },
-  { label: "Improve this map", href: "https://apps.mapbox.com/feedback/" },
 ];
+
+const FEEDBACK = "https://apps.mapbox.com/feedback/";
 
 export function MapAttribution({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
+  const dict = useDict();
 
   return (
     <div
@@ -46,19 +49,27 @@ export function MapAttribution({ className }: { className?: string }) {
               {source.label}
             </a>
           ))}
+          <a
+            href={FEEDBACK}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="whitespace-nowrap underline-offset-2 transition-opacity hover:underline hover:opacity-70"
+          >
+            {dict.map.improve}
+          </a>
         </div>
       )}
 
       <Tooltip>
         <TooltipTrigger
-          aria-label="Data sources"
+          aria-label={dict.map.dataSources}
           aria-expanded={open}
           onClick={() => setOpen((was) => !was)}
           className="glass flex size-9 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:bg-foreground/15"
         >
           <InfoIcon size={16} weight="regular" />
         </TooltipTrigger>
-        <TooltipContent side="top">Data sources</TooltipContent>
+        <TooltipContent side="top">{dict.map.dataSources}</TooltipContent>
       </Tooltip>
     </div>
   );

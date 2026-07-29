@@ -1,9 +1,17 @@
+import { notFound } from "next/navigation";
+
 import { Logo } from "@/components/logo";
 import { MapView } from "@/components/map";
 import { SiteNav } from "@/components/site-nav";
 import { VehicleCount } from "@/components/vehicle-count";
+import { getDictionary, isLocale } from "@/lib/i18n";
 
-export default function Home() {
+export default async function Home({ params }: PageProps<"/[lang]">) {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
+
+  const dict = getDictionary(lang);
+
   return (
     <div className="relative h-full w-full">
       <MapView />
@@ -16,7 +24,7 @@ export default function Home() {
           </h1>
           <span className="h-5 w-px shrink-0 bg-foreground/20" />
           <span className="shrink-0 text-sm font-medium text-foreground">
-            Live transit map for Vienna
+            {dict.header.tagline}
           </span>
           <span className="h-5 w-px shrink-0 bg-foreground/20" />
           <SiteNav />

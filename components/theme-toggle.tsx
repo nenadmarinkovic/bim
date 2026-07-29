@@ -10,16 +10,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
 
 const OPTIONS = [
-  { value: "system", icon: DesktopIcon, label: "System" },
-  { value: "light", icon: SunIcon, label: "Light" },
-  { value: "dark", icon: MoonIcon, label: "Dark" },
+  { value: "system", icon: DesktopIcon, key: "system" },
+  { value: "light", icon: SunIcon, key: "light" },
+  { value: "dark", icon: MoonIcon, key: "dark" },
 ] as const;
 
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
+  const dict = useDict();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -40,19 +42,19 @@ export function ThemeToggle({ className }: { className?: string }) {
         const next = value[0];
         if (next) setTheme(next);
       }}
-      aria-label="Theme"
+      aria-label={dict.theme.label}
       className={className}
     >
-      {OPTIONS.map(({ value, icon: Icon, label }) => (
+      {OPTIONS.map(({ value, icon: Icon, key }) => (
         <Tooltip key={value}>
           <TooltipTrigger
             render={
-              <ToggleGroupItem value={value} aria-label={label}>
+              <ToggleGroupItem value={value} aria-label={dict.theme[key]}>
                 <Icon weight="regular" className="size-3" />
               </ToggleGroupItem>
             }
           />
-          <TooltipContent side="top">{label}</TooltipContent>
+          <TooltipContent side="top">{dict.theme[key]}</TooltipContent>
         </Tooltip>
       ))}
     </ToggleGroup>

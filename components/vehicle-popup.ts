@@ -1,4 +1,6 @@
 import type { Vehicle } from "@/lib/vehicles/types";
+import type { Dictionary } from "@/lib/i18n";
+import { fill, plural } from "@/lib/i18n/locales";
 
 export type PopupActions = {
   onToggleRoute: () => void;
@@ -7,24 +9,26 @@ export type PopupActions = {
   following: boolean;
 };
 
-export function lateness(delay: number): string {
-  if (delay === 0) return "on time";
-  const minutes = Math.round(Math.abs(delay) / 60) || "<1";
-  return delay > 0 ? `${minutes} min late` : `${minutes} min early`;
+export function lateness(delay: number, dict: Dictionary): string {
+  if (delay === 0) return dict.vehicle.onTime;
+  const minutes = Math.round(Math.abs(delay) / 60) || dict.vehicle.lessThanOne;
+  return fill(delay > 0 ? dict.vehicle.late : dict.vehicle.early, {
+    n: minutes,
+  });
 }
 
-function basis(vehicle: Vehicle): string {
-  if (vehicle.certainty === "measured") return "measured at this stop";
+function basis(vehicle: Vehicle, dict: Dictionary): string {
+  if (vehicle.certainty === "measured") return dict.vehicle.measured;
   if (vehicle.certainty === "interpolated") {
-    const n = vehicle.stopsFromReport;
-    return `interpolated, ${n} stop${n === 1 ? "" : "s"} from a measured one`;
+    return plural(dict.vehicle.interpolated, vehicle.stopsFromReport);
   }
-  return "timetable only — no live data";
+  return dict.vehicle.scheduled;
 }
 
 export function buildVehiclePopup(
   vehicle: Vehicle,
   actions: PopupActions,
+  dict: Dictionary,
 ): HTMLElement {
   const root = document.createElement("div");
   root.className = "bim-vehicle-popup";
@@ -40,9 +44,9 @@ export function buildVehiclePopup(
   const meta = document.createElement("div");
   meta.className = "bim-popup-detail";
   meta.textContent = [
-    lateness(vehicle.delay),
-    vehicle.underground ? "in tunnel" : null,
-    basis(vehicle),
+    lateness(vehicle.delay, dict),
+    vehicle.underground ? dict.vehicle.inTunnel : null,
+    basis(vehicle, dict),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -52,12 +56,16 @@ export function buildVehiclePopup(
 
   const routeButton = document.createElement("button");
   routeButton.type = "button";
-  routeButton.textContent = actions.routeShown ? "Hide route" : "Show route";
+  routeButton.textContent = actions.routeShown
+    ? dict.vehicle.hideRoute
+    : dict.vehicle.showRoute;
   routeButton.addEventListener("click", actions.onToggleRoute);
 
   const followButton = document.createElement("button");
   followButton.type = "button";
-  followButton.textContent = actions.following ? "Stop following" : "Follow";
+  followButton.textContent = actions.following
+    ? dict.vehicle.unfollow
+    : dict.vehicle.follow;
   followButton.dataset.active = String(actions.following);
   followButton.addEventListener("click", actions.onToggleFollow);
 

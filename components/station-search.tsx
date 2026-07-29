@@ -13,11 +13,11 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { normaliseName } from "@/lib/vehicles/names";
+import { useDict } from "./locale-provider";
+import { fill } from "@/lib/i18n/locales";
 import { badgeMarkup, type StationMode } from "./stop-icons";
 import type { Station } from "./stops";
 
-// Enough to scan, few enough to keep the list light. The whole network is 1,726
-// stations and cmdk would otherwise mount every one of them.
 const LIMIT = 40;
 
 const RECENT_KEY = "bim:recent-stations";
@@ -124,13 +124,8 @@ export function StationSearch({
   const [stations, setStations] = useState<Indexed[]>([]);
   const [recent, setRecent] = useState<Station[]>([]);
   const [query, setQuery] = useState("");
-  // cmdk always marks one item selected so Enter has a target. Before the list
-  // has been touched that reads as a row hovered by nobody, so the styling is
-  // held back until an arrow key or the pointer says otherwise.
   const [touched, setTouched] = useState(false);
 
-  // Opening reads the recents: localStorage is a side effect of the gesture,
-  // not of rendering.
   const show = useCallback((next: boolean) => {
     if (next) setRecent(readRecent());
     setTouched(false);
@@ -189,6 +184,7 @@ export function StationSearch({
     setRecent([]);
   }, []);
 
+  const dict = useDict();
   const searching = query.trim().length > 0;
   const loading = !stations.length;
 
@@ -197,8 +193,8 @@ export function StationSearch({
       <button
         type="button"
         onClick={() => show(true)}
-        aria-label="Find a station"
-        title="Find a station  (⌘F)"
+        aria-label={dict.search.open}
+        title={dict.search.openWithKey}
         className="glass pointer-events-auto flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:bg-foreground/15"
       >
         <MagnifyingGlassIcon size={16} weight="bold" />
@@ -207,14 +203,10 @@ export function StationSearch({
       <CommandDialog
         open={open}
         onOpenChange={show}
-        title="Find a station"
-        description="Search the Wiener Linien network by station name."
+        title={dict.search.open}
+        description={dict.search.description}
         className="glass-sheet"
       >
-        {/* This CommandDialog drops its children straight into the dialog, so
-            the cmdk root has to be supplied here or the input has no store.
-            Filtering is ours: items are keyed by DIVA, which cmdk's own matcher
-            would score against instead of the name. */}
         <Command
           shouldFilter={false}
           className="group/cmd bg-transparent"
@@ -225,7 +217,9 @@ export function StationSearch({
           onPointerMove={() => setTouched(true)}
         >
           <CommandInput
-            placeholder={loading ? "Loading stations…" : "Search stations…"}
+            placeholder={
+              loading ? dict.search.loadingStations : dict.search.searchStations
+            }
             value={query}
             onValueChange={setQuery}
             className="text-[0.9375rem]!"
@@ -234,7 +228,7 @@ export function StationSearch({
           <CommandList className="scrollbar-thin max-h-[min(24rem,58vh)] px-1">
             {searching && !matches.length && !loading && (
               <CommandEmpty>
-                Nothing matching{" "}
+                {dict.search.nothingMatching}{" "}
                 <span className="font-medium text-foreground">{query}</span>.
               </CommandEmpty>
             )}
@@ -243,13 +237,13 @@ export function StationSearch({
               <CommandGroup
                 heading={
                   <span className="flex items-center justify-between gap-2">
-                    Recent
+                    {dict.search.recent}
                     <button
                       type="button"
                       onClick={clearRecent}
                       className="cursor-pointer font-normal text-muted-foreground transition-colors hover:text-foreground"
                     >
-                      Clear
+                      {dict.search.clear}
                     </button>
                   </span>
                 }
@@ -278,15 +272,22 @@ export function StationSearch({
                     aria-hidden
                   />
                 )}
-                {loading ? "Reading the network…" : "Type a station name."}
+                {loading ? dict.search.readingNetwork : dict.search.typeName}
               </p>
             )}
 
             {searching && matches.length > 0 && (
               <CommandGroup
-                heading={`${matches.length}${
-                  matches.length === LIMIT ? "+" : ""
-                } station${matches.length === 1 ? "" : "s"}`}
+                heading={fill(
+                  matches.length === 1
+                    ? dict.search.results.one
+                    : dict.search.results.other,
+                  {
+                    n: `${matches.length}${
+                      matches.length === LIMIT ? "+" : ""
+                    }`,
+                  },
+                )}
               >
                 {matches.map((station) => (
                   <CommandItem
@@ -306,7 +307,7 @@ export function StationSearch({
           <div className="flex items-center gap-2 border-t border-foreground/10 px-3 py-2 text-[0.6875rem] text-muted-foreground">
             <Key>↑↓</Key>
             <Key>↵</Key>
-            <span>open</span>
+            <span>{dict.search.hintOpen}</span>
             <Key>esc</Key>
           </div>
         </Command>

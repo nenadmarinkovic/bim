@@ -380,7 +380,7 @@ span.text-brand.italic {
 .bim-place-popup {
   display: flex;
   flex-direction: column;
-  max-width: 15rem;
+  max-width: 16.5rem;
 }
 .bim-popup-title {
   font-weight: 600;

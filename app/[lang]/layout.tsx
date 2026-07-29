@@ -1,72 +1,70 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
-import { Providers } from "./providers";
+import { notFound } from "next/navigation";
+import { Providers } from "../providers";
+import { LocaleProvider } from "@/components/locale-provider";
 import { ThemeColorSync } from "@/components/theme-color-sync";
-import "./globals.css";
+import { getDictionary, isLocale, LOCALES } from "@/lib/i18n";
+import "../globals.css";
 
-export const metadata: Metadata = {
-  title: "Bim — live transit map for Vienna",
-  description:
-    "An unofficial live map of the Wiener Linien network, built on open data.",
-  manifest: "/site.webmanifest",
-  icons: {
-    icon: [
-      {
-        url: "/favicon.svg",
-        type: "image/svg+xml",
-        media: "(prefers-color-scheme: light)",
+export function generateStaticParams() {
+  return LOCALES.map((lang) => ({ lang }));
+}
+
+export async function generateMetadata({
+  params,
+}: LayoutProps<"/[lang]">): Promise<Metadata> {
+  const { lang } = await params;
+  const dict = getDictionary(isLocale(lang) ? lang : "en");
+
+  return {
+    title: dict.meta.title,
+    description: dict.meta.description,
+    manifest: "/site.webmanifest",
+    icons: {
+      icon: [
+        {
+          url: "/favicon.svg",
+          type: "image/svg+xml",
+          media: "(prefers-color-scheme: light)",
+        },
+        {
+          url: "/favicon-dark.svg",
+          type: "image/svg+xml",
+          media: "(prefers-color-scheme: dark)",
+        },
+        { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
+      ],
+      apple: {
+        url: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
       },
-      {
-        url: "/favicon-dark.svg",
-        type: "image/svg+xml",
-        media: "(prefers-color-scheme: dark)",
-      },
-      { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
-    ],
-    apple: {
-      url: "/apple-touch-icon.png",
-      sizes: "180x180",
-      type: "image/png",
     },
-  },
+  };
+}
+
+// The browser resolves these itself, so the chrome is already the right colour
+// before any of our JavaScript runs. ThemeColorSync takes over at hydration for
+// the one case the media queries cannot know about: a theme picked by hand that
+// disagrees with the system preference.
+export const viewport: Viewport = {
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#242c45" },
+  ],
 };
 
-export async function generateViewport(): Promise<Viewport> {
-  const pref = (await cookies()).get("theme-color")?.value;
-  const base: Viewport = {
-    viewportFit: "cover",
-  };
-  if (pref === "dark") return { ...base, themeColor: "#242c45" };
-  if (pref === "light") return { ...base, themeColor: "#fafafa" };
-  return {
-    ...base,
-    themeColor: [
-      { media: "(prefers-color-scheme: light)", color: "#fafafa" },
-      { media: "(prefers-color-scheme: dark)", color: "#242c45" },
-    ],
-  };
-}
-
-const THEME_COLOR_SCRIPT = `(function(){try{
-var t=localStorage.getItem("theme");
-if(t!=="dark"&&t!=="light"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}
-var color=t==="dark"?"#242c45":"#fafafa";
-var metas=document.querySelectorAll('meta[name="theme-color"]');
-for(var i=0;i<metas.length;i++){
-if(i===0){metas[i].setAttribute("content",color);metas[i].setAttribute("media","all");}
-else{metas[i].setAttribute("media","not all");}
-}
-}catch(e){}})();`;
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+  params,
+}: LayoutProps<"/[lang]">) {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
+
   return (
-    <html lang="en" suppressHydrationWarning className="antialiased">
+    <html lang={lang} suppressHydrationWarning className="antialiased">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_COLOR_SCRIPT }} />
         <link
           rel="preload"
           href="/fonts/HankenGrotesk-Variable.woff2"
@@ -83,10 +81,12 @@ export default function RootLayout({
         />
       </head>
       <body className="h-screen overflow-hidden">
-        <Providers>
-          <ThemeColorSync />
-          {children}
-        </Providers>
+        <LocaleProvider locale={lang} dictionary={getDictionary(lang)}>
+          <Providers>
+            <ThemeColorSync />
+            {children}
+          </Providers>
+        </LocaleProvider>
       </body>
     </html>
   );

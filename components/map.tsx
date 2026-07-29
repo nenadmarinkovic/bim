@@ -17,6 +17,8 @@ import { buildStopPopup, rowColour, rowKey } from "./stop-popup";
 import type { BoardRow } from "@/lib/vehicles/board";
 import { PlaceChat, type ChatPlace } from "./place-chat";
 import { buildVehiclePopup } from "./vehicle-popup";
+import { useLocale } from "./locale-provider";
+import { fill, type Dictionary, type Locale } from "@/lib/i18n";
 import {
   addRouteLayers,
   clearRoute,
@@ -88,11 +90,45 @@ function viewportBounds(instance: mapboxgl.Map): Cull | undefined {
 const bboxParam = (c: Cull) =>
   [c.west, c.south, c.east, c.north].map((n) => n.toFixed(4)).join(",");
 
+// Switching language is a route change, which remounts the map. Without this
+// the switch would throw the rider back to Stephansdom mid-look.
+const CAMERA_KEY = "bim:camera";
+
+type SavedCamera = {
+  center: [number, number];
+  zoom: number;
+  pitch: number;
+  bearing: number;
+};
+
+function readCamera(): SavedCamera | null {
+  try {
+    const raw = sessionStorage.getItem(CAMERA_KEY);
+    return raw ? (JSON.parse(raw) as SavedCamera) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCamera(map: mapboxgl.Map) {
+  try {
+    const centre = map.getCenter();
+    sessionStorage.setItem(
+      CAMERA_KEY,
+      JSON.stringify({
+        center: [centre.lng, centre.lat],
+        zoom: map.getZoom(),
+        pitch: map.getPitch(),
+        bearing: map.getBearing(),
+      }),
+    );
+  } catch {}
+}
+
 function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
 }
 
-// Rail before road when badges collide: a rider plans around the U-Bahn.
 const KIND_ORDER = [
   "match",
   ["get", "kind"],
@@ -130,15 +166,10 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
   return true;
 }
 
-// Dusty blue, sage, ochre, mauve — desaturated enough to sit under the network
-// without competing with the line colours, which are the ones carrying meaning.
 const DISTRICT_TINTS = ["#6a8caf", "#7fa07a", "#c2925f", "#9b7fa6"] as const;
 
-// The wash needs a little more body on the night basemap to register at all.
 const DISTRICT_WASH = { light: 0.16, dark: 0.22 } as const;
 
-// The Bezirke are context, not content: a dashed outline and the name Viennese
-// addresses actually use, sitting under everything that moves.
 function addDistrictLayers(map: mapboxgl.Map) {
   if (map.getSource(DISTRICTS_SOURCE)) return;
 
@@ -147,10 +178,6 @@ function addDistrictLayers(map: mapboxgl.Map) {
     data: "/api/districts",
   });
 
-  // Four tints, assigned at ingest so no two neighbours share one — the old
-  // cartographer's trick. Muted and evenly spaced round the wheel, at one
-  // opacity for all four: alternating light and dark gave the districts
-  // different weights, which read as some mattering more than others.
   map.addLayer({
     id: DISTRICTS_FILL_LAYER,
     type: "fill",
@@ -202,7 +229,6 @@ function addDistrictLayers(map: mapboxgl.Map) {
       "text-letter-spacing": 0.08,
       "text-transform": "uppercase",
       "text-padding": 12,
-      // Mapbox puts a point-placed label at the polygon's own centre.
       "symbol-placement": "point",
     },
     paint: {
@@ -222,17 +248,12 @@ function addStopsLayer(map: mapboxgl.Map) {
     data: "/api/stops",
   });
 
-  // Clicks land here, not on the badge. Symbols that lose a collision are not
-  // placed, and an unplaced symbol answers no query — which is how a busy
-  // interchange like Reumannplatz became entirely unclickable.
   map.addLayer({
     id: STOPS_LAYER,
     type: "circle",
     source: STOPS_SOURCE,
     slot: "top",
     paint: {
-      // Big enough that a badge is always reachable, small enough that clicking
-      // beside a station still counts as clicking away from it.
       "circle-radius": [
         "interpolate",
         ["linear"],
@@ -255,8 +276,6 @@ function addStopsLayer(map: mapboxgl.Map) {
     source: STOPS_SOURCE,
     slot: "top",
     layout: {
-      // One image per combination of modes, so a station that has a U-Bahn, a
-      // tram and a bus shows all three badges in a row.
       "icon-image": ["concat", "bim-stop-", ["get", "modes"]],
       "icon-size": [
         "interpolate",
@@ -269,8 +288,7 @@ function addStopsLayer(map: mapboxgl.Map) {
         17,
         1.2,
       ],
-      // Left to collide: 1,726 stations at city zoom is unreadable otherwise,
-      // and the sort key decides who survives.
+
       "icon-allow-overlap": false,
       "icon-padding": 2,
       "symbol-sort-key": KIND_ORDER,
@@ -286,42 +304,46 @@ type PopupContext = {
   following: { current: string | null };
   routeTrip: { current: string | null };
   dark: boolean;
-  // One route layer, two popups that can drive it.
+  dict: Dictionary;
   takeRoute: () => void;
 };
 
 function renderVehiclePopup(ctx: PopupContext, vehicle: Vehicle) {
-  const { map, popup, following, routeTrip, dark, takeRoute } = ctx;
+  const { map, popup, following, routeTrip, dark, dict, takeRoute } = ctx;
 
   popup.setDOMContent(
-    buildVehiclePopup(vehicle, {
-      routeShown: routeTrip.current === vehicle.id,
-      following: following.current === vehicle.id,
-      onToggleRoute: () => {
-        if (routeTrip.current === vehicle.id) {
-          routeTrip.current = null;
-          clearRoute(map);
-          renderVehiclePopup(ctx, vehicle);
-          return;
-        }
-        fetch(`/api/route?trip=${encodeURIComponent(vehicle.id)}`)
-          .then((response) => (response.ok ? response.json() : null))
-          .then((route: TripRoute | null) => {
-            if (!route) return;
-            takeRoute();
-            routeTrip.current = vehicle.id;
-            const base = vehicleColour(vehicle.mode, vehicle.line, dark);
-            showRoute(map, route, base, dark);
+    buildVehiclePopup(
+      vehicle,
+      {
+        routeShown: routeTrip.current === vehicle.id,
+        following: following.current === vehicle.id,
+        onToggleRoute: () => {
+          if (routeTrip.current === vehicle.id) {
+            routeTrip.current = null;
+            clearRoute(map);
             renderVehiclePopup(ctx, vehicle);
-          })
-          .catch(() => {});
+            return;
+          }
+          fetch(`/api/route?trip=${encodeURIComponent(vehicle.id)}`)
+            .then((response) => (response.ok ? response.json() : null))
+            .then((route: TripRoute | null) => {
+              if (!route) return;
+              takeRoute();
+              routeTrip.current = vehicle.id;
+              const base = vehicleColour(vehicle.mode, vehicle.line, dark);
+              showRoute(map, route, base, dark);
+              renderVehiclePopup(ctx, vehicle);
+            })
+            .catch(() => {});
+        },
+        onToggleFollow: () => {
+          following.current =
+            following.current === vehicle.id ? null : vehicle.id;
+          renderVehiclePopup(ctx, vehicle);
+        },
       },
-      onToggleFollow: () => {
-        following.current =
-          following.current === vehicle.id ? null : vehicle.id;
-        renderVehiclePopup(ctx, vehicle);
-      },
-    }),
+      dict,
+    ),
   );
 }
 
@@ -329,6 +351,7 @@ export function MapView() {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const { resolvedTheme } = useTheme();
+  const { locale, dictionary } = useLocale();
   const [error, setError] = useState<string | null>(null);
   const [chatPlace, setChatPlace] = useState<ChatPlace | null>(null);
   const { data, error: vehicleError } = useVehiclesContext();
@@ -351,30 +374,36 @@ export function MapView() {
   const disablePlaces = useRef<(() => void) | null>(null);
   const stopPlaceVisibility = useRef<(() => void) | null>(null);
   const theme = useRef(resolvedTheme);
+  const dict = useRef(dictionary);
+  const lang = useRef<Locale>(locale);
 
   useEffect(() => {
     theme.current = resolvedTheme;
   }, [resolvedTheme]);
 
   useEffect(() => {
+    dict.current = dictionary;
+    lang.current = locale;
+  }, [dictionary, locale]);
+
+  useEffect(() => {
     if (!TOKEN || !container.current || map.current) return;
 
     mapboxgl.accessToken = TOKEN;
 
+    const resumed = readCamera();
+
     const instance = new mapboxgl.Map({
       container: container.current,
       style: STYLE,
-      center: [STEPHANSDOM.lng, STEPHANSDOM.lat],
-      zoom: CAMERA.zoom,
-      pitch: CAMERA.pitch,
-      bearing: CAMERA.bearing,
+      center: resumed?.center ?? [STEPHANSDOM.lng, STEPHANSDOM.lat],
+      zoom: resumed?.zoom ?? CAMERA.zoom,
+      pitch: resumed?.pitch ?? CAMERA.pitch,
+      bearing: resumed?.bearing ?? CAMERA.bearing,
       minZoom: 9,
       maxZoom: 18,
       maxPitch: MAX_PITCH,
       maxBounds: NETWORK_BOUNDS,
-      // Mapbox's own control is replaced by MapAttribution, which carries the
-      // required credit and links in the same glass as the other controls. The
-      // logo control stays: it may be placed and faded, never removed.
       attributionControl: false,
       config: {
         basemap: {
@@ -394,6 +423,8 @@ export function MapView() {
 
     const initial = viewportBounds(instance);
     if (initial) reportViewport(bboxParam(initial));
+
+    instance.on("moveend", () => saveCamera(instance));
 
     const addLayers = () => {
       // Images first: a symbol layer whose icon is missing logs on every tile.
@@ -439,9 +470,7 @@ export function MapView() {
     stopPopup.current.on("close", () => {
       openStop.current = null;
       tracing.current = null;
-      // Whatever the board drew closes with it. Gating this on the tracing flag
-      // meant one flag out of step stranded a route — and its arrows — on the
-      // map with nothing left able to clear them.
+
       if (!routeTrip.current) clearRoute(instance);
     });
 
@@ -454,18 +483,18 @@ export function MapView() {
         content = buildStopPopup({
           selection,
           dark: theme.current === "dark",
+          dict: dict.current,
           tracing: tracing.current,
           untraceable: untraceable.current,
           onTrace: (row) => traceRow(instance, row),
         });
       } catch (cause) {
-        // A popup that failed to draw keeps whatever it last showed, so a
-        // throw here reads as a board that never finishes loading. Say what
-        // actually happened instead.
         console.error("stop popup failed to render", cause);
         content = document.createElement("div");
         content.className = "bim-stop-popup";
-        content.textContent = `${selection.name} — could not draw the board.`;
+        content.textContent = fill(dict.current.stop.drawFailed, {
+          name: selection.name,
+        });
       }
 
       stopPopup.current?.setDOMContent(content);
@@ -493,13 +522,11 @@ export function MapView() {
         .then((route: TripRoute | null) => {
           if (openStop.current?.diva !== station) return;
           if (!route) {
-            // Say so on the row rather than leaving a tap that does nothing.
             untraceable.current.add(key);
             drawStopPopup();
             return;
           }
-          // The board and the vehicle popup share one route layer, so taking it
-          // has to release whoever was holding it.
+
           routeTrip.current = null;
           tracing.current = key;
           const dark = theme.current === "dark";
@@ -525,8 +552,6 @@ export function MapView() {
       const popup = stopPopup.current;
       if (popup) {
         popup.setLngLat(selection.lngLat);
-        // addTo() on an already-open popup removes and re-adds it, and the
-        // close event fired in between clears the selection about to be drawn.
         if (!popup.isOpen()) popup.addTo(instance);
       }
       drawStopPopup(selection);
@@ -539,9 +564,6 @@ export function MapView() {
       if (!id) {
         popup.current?.remove();
         following.current = null;
-        // Deselecting a vehicle fires on any click that missed one, so it must
-        // only drop the route it owns. Wiping a route the board is tracing left
-        // the highlighted row insisting it was still drawn.
         if (routeTrip.current) {
           routeTrip.current = null;
           clearRoute(instance);
@@ -580,24 +602,32 @@ export function MapView() {
     }
 
     if (!disablePlaces.current) {
-      disablePlaces.current = enablePlaces(instance, (place) => {
-        if (!place) {
-          placePopup.current?.remove();
-          return;
-        }
-        placePopup.current
-          ?.setLngLat(place.lngLat)
-          .setDOMContent(
-            buildPlacePopup(place, () =>
-              setChatPlace({
-                title: place.title,
-                kind: place.kind,
-                summary: place.detail,
-              }),
-            ),
-          )
-          .addTo(instance);
-      });
+      disablePlaces.current = enablePlaces(
+        instance,
+        (place) => {
+          if (!place) {
+            placePopup.current?.remove();
+            return;
+          }
+          placePopup.current
+            ?.setLngLat(place.lngLat)
+            .setDOMContent(
+              buildPlacePopup(
+                place,
+                () =>
+                  setChatPlace({
+                    title: place.title,
+                    kind: place.kind,
+                    summary: place.detail,
+                  }),
+                dict.current,
+                lang.current,
+              ),
+            )
+            .addTo(instance);
+        },
+        { dict: dict.current, locale: lang.current },
+      );
     }
     stopPlaceVisibility.current?.();
     stopPlaceVisibility.current = setPlaceVisibility(instance, true);
@@ -650,8 +680,8 @@ export function MapView() {
           following,
           routeTrip,
           dark: theme.current === "dark",
+          dict: dict.current,
           takeRoute: () => {
-            // Reads refs only, so it stays out of effect dependencies.
             if (!tracing.current) return;
             tracing.current = null;
             redrawStop.current?.();
@@ -696,7 +726,8 @@ export function MapView() {
 
       if (instance.getZoom() >= SPRITE_TO_3D_ZOOM) {
         const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
-          mapboxgl.GeoJSONSource | undefined;
+          | mapboxgl.GeoJSONSource
+          | undefined;
         extrusions?.setData(
           toExtrusionCollection(
             tweens.current,
@@ -734,6 +765,7 @@ export function MapView() {
             following,
             routeTrip,
             dark: theme.current === "dark",
+            dict: dict.current,
             takeRoute: () => {
               // Reads refs only, so it stays out of effect dependencies.
               if (!tracing.current) return;
@@ -756,14 +788,17 @@ export function MapView() {
     return (
       <div className="flex h-full w-full items-center justify-center bg-card px-8">
         <div className="max-w-sm text-center">
-          <p className="text-base text-foreground">Mapbox token missing.</p>
+          <p className="text-base text-foreground">
+            {dictionary.map.tokenMissing}
+          </p>
           <p className="mt-2 text-sm text-muted-foreground">
-            Add{" "}
+            {dictionary.map.tokenAddBefore}
             <code className="rounded bg-foreground/6 px-1 py-px font-mono text-xs">
               NEXT_PUBLIC_MAPBOX_TOKEN
-            </code>{" "}
-            to <code className="font-mono text-xs">.env.local</code> and restart
-            the dev server.
+            </code>
+            {dictionary.map.tokenAddBetween}
+            <code className="font-mono text-xs">.env.local</code>
+            {dictionary.map.tokenAddAfter}
           </p>
         </div>
       </div>

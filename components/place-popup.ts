@@ -1,22 +1,26 @@
 import type { Place } from "./places";
+import type { Dictionary, Locale } from "@/lib/i18n";
 
 const SPEAKER =
   '<path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>';
 const STOP = '<rect x="6" y="6" width="12" height="12" rx="1.5"/>';
 
-// One element for the page, so a second place cannot talk over the first.
 let player: HTMLAudioElement | null = null;
 
 function icon(paths: string): string {
   return `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
 }
 
-function buildListenButton(place: Place): HTMLButtonElement {
+function buildListenButton(
+  place: Place,
+  dict: Dictionary,
+  locale: Locale,
+): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "bim-popup-listen";
-  button.title = "Listen";
-  button.setAttribute("aria-label", "Listen");
+  button.title = dict.place.listen;
+  button.setAttribute("aria-label", dict.place.listen);
   button.innerHTML = icon(SPEAKER);
 
   const reset = () => {
@@ -34,7 +38,7 @@ function buildListenButton(place: Place): HTMLButtonElement {
     player?.pause();
     button.dataset.busy = "true";
 
-    const url = `/api/place/audio?name=${encodeURIComponent(place.title)}&kind=${encodeURIComponent(place.kind)}&lang=en`;
+    const url = `/api/place/audio?name=${encodeURIComponent(place.title)}&kind=${encodeURIComponent(place.kind)}&lang=${locale}`;
 
     player = new Audio(url);
     player.dataset.place = place.title;
@@ -44,7 +48,7 @@ function buildListenButton(place: Place): HTMLButtonElement {
     });
     player.addEventListener("ended", reset);
     player.addEventListener("error", () => {
-      button.title = "No audio for this one";
+      button.title = dict.place.noAudio;
       reset();
     });
     player.play().catch(reset);
@@ -53,7 +57,12 @@ function buildListenButton(place: Place): HTMLButtonElement {
   return button;
 }
 
-export function buildPlacePopup(place: Place, onAsk: () => void): HTMLElement {
+export function buildPlacePopup(
+  place: Place,
+  onAsk: () => void,
+  dict: Dictionary,
+  locale: Locale,
+): HTMLElement {
   const root = document.createElement("div");
   root.className = "bim-place-popup";
 
@@ -81,17 +90,17 @@ export function buildPlacePopup(place: Place, onAsk: () => void): HTMLElement {
 
     const source = document.createElement("span");
     source.className = "bim-popup-source";
-    source.textContent = "AI summary";
+    source.textContent = dict.place.aiSummary;
 
     const actions = document.createElement("div");
     actions.className = "bim-popup-ai-actions";
 
-    const listen = buildListenButton(place);
+    const listen = buildListenButton(place, dict, locale);
 
     const ask = document.createElement("button");
     ask.type = "button";
     ask.className = "bim-popup-ask";
-    ask.textContent = "Ask more";
+    ask.textContent = dict.place.askMore;
     ask.addEventListener("click", onAsk);
 
     actions.append(listen, ask);

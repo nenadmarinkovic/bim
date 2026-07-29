@@ -1,5 +1,7 @@
 import type mapboxgl from "mapbox-gl";
 
+import type { Dictionary, Locale } from "@/lib/i18n";
+
 function resolveTargets(map: mapboxgl.Map) {
   type Descriptor = ReturnType<
     mapboxgl.Map["getFeaturesetDescriptors"]
@@ -52,24 +54,23 @@ const titleCase = (value: string) =>
         : word.charAt(0).toUpperCase() + word.slice(1),
     );
 
-const LANG = "en";
-
 type Detail = { title: string; extract: string };
 
-const detailKey = (place: Place) => `${LANG}|${place.title}|${place.kind}`;
+const detailKey = (place: Place, locale: Locale) =>
+  `${locale}|${place.title}|${place.kind}`;
 
 const inFlight = new Map<string, Promise<Detail | null>>();
 const settled = new Map<string, Detail>();
 
-function loadDetail(place: Place): Promise<Detail | null> {
-  const key = detailKey(place);
+function loadDetail(place: Place, locale: Locale): Promise<Detail | null> {
+  const key = detailKey(place, locale);
   const already = inFlight.get(key);
   if (already) return already;
 
   const query = new URLSearchParams({
     name: place.title,
     kind: place.kind,
-    lang: LANG,
+    lang: locale,
   });
 
   const request = fetch(`/api/place?${query}`)
@@ -113,6 +114,7 @@ function describe(
   feature: FeatureLike,
   fallbackKind: string,
   lngLat: mapboxgl.LngLatLike,
+  lookingUp: string,
 ): Place | null {
   const props = feature.properties ?? {};
   const title =
@@ -129,12 +131,13 @@ function describe(
       fallbackKind,
   );
 
-  return { title, kind, detail: "Looking up…", lngLat, pending: true };
+  return { title, kind, detail: lookingUp, lngLat, pending: true };
 }
 
 export function enablePlaces(
   map: mapboxgl.Map,
   onSelect: (place: Place | null) => void,
+  { dict, locale }: { dict: Dictionary; locale: Locale },
 ): () => void {
   const targets = resolveTargets(map);
 
@@ -145,12 +148,17 @@ export function enablePlaces(
     (fallbackKind: string) =>
     (event: { feature?: FeatureLike; lngLat: mapboxgl.LngLat }) => {
       if (!event.feature) return false;
-      const place = describe(event.feature, fallbackKind, event.lngLat);
+      const place = describe(
+        event.feature,
+        fallbackKind,
+        event.lngLat,
+        dict.place.lookingUp,
+      );
       if (!place) return false;
 
       const mine = ++ticket;
 
-      const known = settled.get(detailKey(place));
+      const known = settled.get(detailKey(place, locale));
       if (known) {
         onSelect(withDetail(place, known));
         return true;
@@ -158,7 +166,7 @@ export function enablePlaces(
 
       onSelect(place);
 
-      void loadDetail(place).then((detail) => {
+      void loadDetail(place, locale).then((detail) => {
         if (mine !== ticket) return;
         onSelect(
           detail
@@ -176,13 +184,18 @@ export function enablePlaces(
       map.getCanvas().style.cursor = "pointer";
 
       const place = event.feature
-        ? describe(event.feature, fallbackKind, event.lngLat)
+        ? describe(
+            event.feature,
+            fallbackKind,
+            event.lngLat,
+            dict.place.lookingUp,
+          )
         : null;
-      if (!place || inFlight.has(detailKey(place))) return true;
+      if (!place || inFlight.has(detailKey(place, locale))) return true;
 
       clearTimeout(dwell);
       dwell = window.setTimeout(() => {
-        if (mayWarm()) void loadDetail(place);
+        if (mayWarm()) void loadDetail(place, locale);
       }, DWELL_MS);
 
       return true;
@@ -198,12 +211,12 @@ export function enablePlaces(
     map.addInteraction(IDS.landmarkClick, {
       type: "click",
       target: targets.landmarks,
-      handler: click("Landmark"),
+      handler: click(dict.place.landmark),
     });
     map.addInteraction(IDS.landmarkEnter, {
       type: "mouseenter",
       target: targets.landmarks,
-      handler: pointer("Landmark"),
+      handler: pointer(dict.place.landmark),
     });
     map.addInteraction(IDS.landmarkLeave, {
       type: "mouseleave",
@@ -216,12 +229,12 @@ export function enablePlaces(
     map.addInteraction(IDS.poiClick, {
       type: "click",
       target: targets.poi,
-      handler: click("Place"),
+      handler: click(dict.place.place),
     });
     map.addInteraction(IDS.poiEnter, {
       type: "mouseenter",
       target: targets.poi,
-      handler: pointer("Place"),
+      handler: pointer(dict.place.place),
     });
     map.addInteraction(IDS.poiLeave, {
       type: "mouseleave",

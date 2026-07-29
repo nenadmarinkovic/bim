@@ -12,15 +12,16 @@ import {
   STOPS_BADGE_LAYER,
   STOPS_LAYER,
 } from "@/lib/vehicles/layer-ids";
+import { useDict } from "./locale-provider";
+import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
 
 const SWITCH_TRACK =
   "data-unchecked:bg-foreground/25 dark:data-unchecked:bg-foreground/25";
 
 const LAYER_OPTIONS = [
-  { key: "lines", label: "Line numbers", layers: [VEHICLES_LABEL_LAYER] },
-  // A stop is two layers now: the badge you see and the circle you click.
-  { key: "stops", label: "Stops", layers: [STOPS_LAYER, STOPS_BADGE_LAYER] },
+  { key: "lines", layers: [VEHICLES_LABEL_LAYER] },
+  { key: "stops", layers: [STOPS_LAYER, STOPS_BADGE_LAYER] },
 ] as const;
 
 export function MapSettings({
@@ -33,6 +34,7 @@ export function MapSettings({
   className?: string;
 }) {
   const id = useId();
+  const dict = useDict();
   const [visible, setVisible] = useState<Record<string, boolean>>({
     lines: true,
     stops: true,
@@ -86,7 +88,7 @@ export function MapSettings({
             htmlFor={`${id}-${option.key}`}
             className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
           >
-            {option.label}
+            {dict.settings[option.key]}
           </Label>
           <Switch
             id={`${id}-${option.key}`}
@@ -106,7 +108,7 @@ export function MapSettings({
           htmlFor={`${id}-places`}
           className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
         >
-          Places
+          {dict.settings.places}
         </Label>
         <Switch
           id={`${id}-places`}
@@ -125,7 +127,7 @@ export function MapSettings({
           htmlFor={`${id}-streets`}
           className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
         >
-          Streets
+          {dict.settings.streets}
         </Label>
         <Switch
           id={`${id}-streets`}
@@ -144,7 +146,7 @@ export function MapSettings({
           htmlFor={`${id}-districts`}
           className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
         >
-          Districts
+          {dict.settings.districts}
         </Label>
         <Switch
           id={`${id}-districts`}
@@ -167,9 +169,16 @@ export function MapSettings({
 
       <div className="mt-0.5 flex items-center justify-between gap-6 border-t border-foreground/10 pt-2.5">
         <span className="flex items-center text-[0.8125rem] leading-none font-medium text-foreground select-none">
-          Theme
+          {dict.settings.theme}
         </span>
         <ThemeToggle />
+      </div>
+
+      <div className="flex items-center justify-between gap-6">
+        <span className="flex items-center text-[0.8125rem] leading-none font-medium text-foreground select-none">
+          {dict.settings.language}
+        </span>
+        <LocaleSwitch />
       </div>
     </div>
   );

@@ -10,16 +10,9 @@ const EMPTY: FeatureCollection<Point> = {
   features: [],
 };
 
-// Constant spacing on screen rather than on the ground: a route across the city
-// and a route across a district should look equally busy.
 const SPACING_PX = 62;
-// One full step every this long, so an arrow slides into where its neighbour
-// was and the procession never appears to jump.
 const PERIOD_MS = 1500;
-// Raised because the cap is what decides how much of a long line gets covered.
 const MAX_ARROWS = 400;
-// A route shorter than one screen-spacing would otherwise round down to no
-// arrows at all, which is how short lines ended up with none.
 const MIN_ARROWS = 3;
 
 const EARTH = 6_371_000;
@@ -34,7 +27,6 @@ function metres(a: [number, number], b: [number, number]): number {
   return 2 * EARTH * Math.asin(Math.sqrt(h));
 }
 
-// Clockwise from north, which is what icon-rotate expects of a map-aligned icon.
 function bearing(a: [number, number], b: [number, number]): number {
   const y = Math.sin(rad(b[0] - a[0])) * Math.cos(rad(b[1]));
   const x =
@@ -59,8 +51,6 @@ function measure(line: [number, number][]): Measured {
   return { points: line, upto, total };
 }
 
-// A white chevron, drawn rather than fetched: it is three lines of canvas and
-// saves registering an asset for it.
 function chevron(): ImageData | null {
   const ratio = 4;
   const size = 11 * ratio;
@@ -80,7 +70,6 @@ function chevron(): ImageData | null {
   ctx.lineWidth = size * 0.17;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  // A dark tracer under the white keeps the arrow readable on a pale line.
   ctx.strokeStyle = "rgba(0,0,0,0.28)";
   ctx.lineWidth = size * 0.26;
   ctx.stroke();
@@ -124,9 +113,6 @@ export function addArrowLayer(map: mapboxgl.Map) {
 let measured: Measured | null = null;
 let frame = 0;
 let startedAt = 0;
-// Cancelling the pending frame is not enough on its own: a loop that is midway
-// through its own callback schedules the next one after the cancel. Every run
-// carries a generation, and only the current generation may continue.
 let generation = 0;
 
 let calm: MediaQueryList | null = null;
@@ -137,9 +123,6 @@ const still = () => {
   return calm.matches;
 };
 
-// Both the vertices and the arrow distances are ascending, so one cursor walks
-// the whole frame. Searching from the start for each arrow would be a thousand
-// vertices times a hundred arrows, sixty times a second.
 function at(route: Measured, distance: number, cursor: number) {
   const { points, upto } = route;
 
@@ -161,19 +144,14 @@ function at(route: Measured, distance: number, cursor: number) {
 
 function paint(map: mapboxgl.Map, now: number) {
   const source = map.getSource(ARROW_SOURCE) as
-    mapboxgl.GeoJSONSource | undefined;
+    | mapboxgl.GeoJSONSource
+    | undefined;
   if (!source || !measured) return;
 
-  // Mapbox GL JS counts zoom against 512px tiles, so the world is 2^(z+9)
-  // pixels round. Getting this wrong bunches every arrow into the first
-  // hundred metres of the line.
   const centre = map.getCenter();
   const perPixel =
     (40075016.686 * Math.abs(Math.cos(rad(centre.lat)))) /
     2 ** (map.getZoom() + 9);
-  // Spread across the whole line rather than running out partway. Capping the
-  // count alone left a 19 km route with arrows for its first 9 km and nothing
-  // after, which is what looked like routes missing them.
   const wanted = SPACING_PX * perPixel;
   const spacing = Math.max(
     Math.min(
@@ -233,12 +211,10 @@ export function stopArrows(map: mapboxgl.Map, clear = true) {
   if (!clear) return;
 
   const source = map.getSource(ARROW_SOURCE) as
-    mapboxgl.GeoJSONSource | undefined;
+    | mapboxgl.GeoJSONSource
+    | undefined;
   source?.setData(EMPTY);
 
-  // Emptying the source should be enough, and in every case I could reproduce
-  // it was. Hiding the layer as well means no combination of a missed source,
-  // a stray frame or a queued update can leave arrows over a cleared route.
   setArrowsVisible(map, false);
 }
 
