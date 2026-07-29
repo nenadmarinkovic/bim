@@ -5,7 +5,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { VEHICLES_LABEL_LAYER } from "@/components/vehicle-layer";
-import { STOPS_BADGE_LAYER, STOPS_LAYER } from "@/lib/vehicles/layer-ids";
+import {
+  DISTRICTS_FILL_LAYER,
+  DISTRICTS_LABEL_LAYER,
+  DISTRICTS_LINE_LAYER,
+  STOPS_BADGE_LAYER,
+  STOPS_LAYER,
+} from "@/lib/vehicles/layer-ids";
 import { cn } from "@/lib/utils";
 
 const SWITCH_TRACK =
@@ -33,6 +39,7 @@ export function MapSettings({
   });
   const [places, setPlaces] = useState(false);
   const [streets, setStreets] = useState(false);
+  const [districts, setDistricts] = useState(false);
 
   const apply = useCallback(
     (layers: readonly string[], on: boolean) => {
@@ -77,7 +84,7 @@ export function MapSettings({
         >
           <Label
             htmlFor={`${id}-${option.key}`}
-            className="cursor-pointer text-xs text-foreground"
+            className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
           >
             {option.label}
           </Label>
@@ -97,7 +104,7 @@ export function MapSettings({
       <div className="flex items-center justify-between gap-6">
         <Label
           htmlFor={`${id}-places`}
-          className="cursor-pointer text-xs text-foreground"
+          className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
         >
           Places
         </Label>
@@ -116,7 +123,7 @@ export function MapSettings({
       <div className="flex items-center justify-between gap-6">
         <Label
           htmlFor={`${id}-streets`}
-          className="cursor-pointer text-xs text-foreground"
+          className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
         >
           Streets
         </Label>
@@ -132,8 +139,34 @@ export function MapSettings({
         />
       </div>
 
+      <div className="flex items-center justify-between gap-6">
+        <Label
+          htmlFor={`${id}-districts`}
+          className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
+        >
+          Districts
+        </Label>
+        <Switch
+          id={`${id}-districts`}
+          size="sm"
+          className={SWITCH_TRACK}
+          checked={districts}
+          onCheckedChange={(on) => {
+            setDistricts(on);
+            apply(
+              [
+                DISTRICTS_FILL_LAYER,
+                DISTRICTS_LINE_LAYER,
+                DISTRICTS_LABEL_LAYER,
+              ],
+              on,
+            );
+          }}
+        />
+      </div>
+
       <div className="mt-0.5 flex items-center justify-between gap-6 border-t border-foreground/10 pt-2.5">
-        <span className="flex items-center text-xs leading-none font-medium text-foreground select-none">
+        <span className="flex items-center text-[0.8125rem] leading-none font-medium text-foreground select-none">
           Theme
         </span>
         <ThemeToggle />

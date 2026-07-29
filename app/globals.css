@@ -290,14 +290,26 @@ span.text-brand.italic {
   }
 }
 
-.mapboxgl-ctrl .mapboxgl-ctrl-logo {
-  display: none;
+/* Only the wordmark comes from Mapbox now — the credit itself is rendered by
+   MapAttribution so it can share the controls' glass and animation. Mapbox
+   allows the logo to be placed and faded, not restyled. */
+/* Scoped under the map container on purpose: mapbox-gl.css is bundled after
+   this file, so a rule of equal specificity loses to theirs. */
+.bim-map .mapboxgl-ctrl-bottom-left {
+  z-index: 5;
 }
-
-.mapboxgl-ctrl-attrib,
-.mapboxgl-ctrl .mapboxgl-ctrl-logo {
-  display: none;
+/* Left edge on the same 1rem as the panels above, and lifted so the 23px mark
+   sits centred against the 36px info button opposite it: 16 + (36 - 23) / 2. */
+/* The logo element carries margin: 0 0 -4px -4px of its own, so the wrapper
+   has to add those 4px back before positioning it: 16 + 4 on the left, and
+   (34 - 23/2) + 4 at the bottom to centre it on the 36px info button opposite.
+   Compensating out here keeps the mark itself unstyled. */
+.bim-map .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl {
+  margin: 0 0 1.65625rem 1.25rem;
 }
+/* The wordmark is left entirely alone. Mapbox's terms allow it to be moved to
+   another corner and nothing else: not resized, not recoloured, not faded. It
+   ships at 88x23 with its own outline, so it reads on either basemap unaided. */
 
 /* Same glass as the map controls and the header, so a popup reads as another
    panel floating over the map rather than a separate kind of surface. */

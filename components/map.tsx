@@ -11,6 +11,7 @@ import { enablePlaces, setPlaceVisibility } from "./places";
 import { buildPlacePopup } from "./place-popup";
 import { enableStops, type Station, type StopSelection } from "./stops";
 import { StationSearch } from "./station-search";
+import { MapAttribution } from "./map-attribution";
 import { installStopIcons } from "./stop-icons";
 import { buildStopPopup, rowColour, rowKey } from "./stop-popup";
 import type { BoardRow } from "@/lib/vehicles/board";
@@ -25,6 +26,10 @@ import {
 import { vehicleColour } from "@/lib/vehicles/colors";
 import type { Vehicle } from "@/lib/vehicles/types";
 import {
+  DISTRICTS_FILL_LAYER,
+  DISTRICTS_LABEL_LAYER,
+  DISTRICTS_LINE_LAYER,
+  DISTRICTS_SOURCE,
   STOPS_BADGE_LAYER,
   STOPS_LAYER,
   STOPS_SOURCE,
@@ -105,8 +110,108 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
 
   map.setConfigProperty("basemap", "lightPreset", dark ? "night" : "day");
 
+  if (map.getLayer(DISTRICTS_FILL_LAYER)) {
+    map.setPaintProperty(
+      DISTRICTS_FILL_LAYER,
+      "fill-opacity",
+      DISTRICT_WASH[dark ? "dark" : "light"],
+    );
+  }
+
+  const ink = dark ? "#ffff01" : "#0040ff";
+  if (map.getLayer(DISTRICTS_LINE_LAYER)) {
+    map.setPaintProperty(DISTRICTS_LINE_LAYER, "line-color", ink);
+  }
+  if (map.getLayer(DISTRICTS_LABEL_LAYER)) {
+    map.setPaintProperty(DISTRICTS_LABEL_LAYER, "text-color", ink);
+  }
+
   setVehicleTheme(map, dark);
   return true;
+}
+
+// Dusty blue, sage, ochre, mauve — desaturated enough to sit under the network
+// without competing with the line colours, which are the ones carrying meaning.
+const DISTRICT_TINTS = ["#6a8caf", "#7fa07a", "#c2925f", "#9b7fa6"] as const;
+
+// The wash needs a little more body on the night basemap to register at all.
+const DISTRICT_WASH = { light: 0.16, dark: 0.22 } as const;
+
+// The Bezirke are context, not content: a dashed outline and the name Viennese
+// addresses actually use, sitting under everything that moves.
+function addDistrictLayers(map: mapboxgl.Map) {
+  if (map.getSource(DISTRICTS_SOURCE)) return;
+
+  map.addSource(DISTRICTS_SOURCE, {
+    type: "geojson",
+    data: "/api/districts",
+  });
+
+  // Four tints, assigned at ingest so no two neighbours share one — the old
+  // cartographer's trick. Muted and evenly spaced round the wheel, at one
+  // opacity for all four: alternating light and dark gave the districts
+  // different weights, which read as some mattering more than others.
+  map.addLayer({
+    id: DISTRICTS_FILL_LAYER,
+    type: "fill",
+    source: DISTRICTS_SOURCE,
+    slot: "bottom",
+    layout: { visibility: "none" },
+    paint: {
+      "fill-color": [
+        "match",
+        ["get", "tint"],
+        0,
+        DISTRICT_TINTS[0],
+        1,
+        DISTRICT_TINTS[1],
+        2,
+        DISTRICT_TINTS[2],
+        DISTRICT_TINTS[3],
+      ],
+      "fill-opacity": DISTRICT_WASH.light,
+      "fill-emissive-strength": 1,
+    },
+  });
+
+  map.addLayer({
+    id: DISTRICTS_LINE_LAYER,
+    type: "line",
+    source: DISTRICTS_SOURCE,
+    slot: "middle",
+    layout: { visibility: "none", "line-cap": "round" },
+    paint: {
+      "line-color": "#0040ff",
+      "line-emissive-strength": 1,
+      "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.5, 15, 0.28],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 2],
+      "line-dasharray": [2, 2],
+    },
+  });
+
+  map.addLayer({
+    id: DISTRICTS_LABEL_LAYER,
+    type: "symbol",
+    source: DISTRICTS_SOURCE,
+    slot: "top",
+    layout: {
+      visibility: "none",
+      "text-field": ["get", "label"],
+      "text-font": ["DIN Pro Bold", "Arial Unicode MS Regular"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 10, 10, 14, 14],
+      "text-letter-spacing": 0.08,
+      "text-transform": "uppercase",
+      "text-padding": 12,
+      // Mapbox puts a point-placed label at the polygon's own centre.
+      "symbol-placement": "point",
+    },
+    paint: {
+      "text-color": "#0040ff",
+      "text-emissive-strength": 1,
+      "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.75, 15, 0.4],
+      "text-halo-width": 0,
+    },
+  });
 }
 
 function addStopsLayer(map: mapboxgl.Map) {
@@ -267,6 +372,9 @@ export function MapView() {
       maxZoom: 18,
       maxPitch: MAX_PITCH,
       maxBounds: NETWORK_BOUNDS,
+      // Mapbox's own control is replaced by MapAttribution, which carries the
+      // required credit and links in the same glass as the other controls. The
+      // logo control stays: it may be placed and faded, never removed.
       attributionControl: false,
       config: {
         basemap: {
@@ -290,6 +398,7 @@ export function MapView() {
     const addLayers = () => {
       // Images first: a symbol layer whose icon is missing logs on every tile.
       void installStopIcons(instance).then(() => addStopsLayer(instance));
+      addDistrictLayers(instance);
       addRouteLayers(instance);
       addVehicleLayers(instance, theme.current === "dark");
       applyMapTheme(instance, theme.current === "dark");
@@ -663,7 +772,7 @@ export function MapView() {
 
   return (
     <div className="relative h-full w-full">
-      <div ref={container} className="h-full w-full" />
+      <div ref={container} className="bim-map h-full w-full" />
       <div className="pointer-events-none absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
         <StationSearch
           onPick={(station) => {
@@ -680,12 +789,13 @@ export function MapView() {
       </div>
       <MapControls
         getMap={() => map.current}
-        className="absolute right-4 bottom-8 z-10"
+        className="absolute right-4 bottom-16 z-10"
       />
+      <MapAttribution className="absolute right-4 bottom-4 z-10" />
       <MapSettings
         getMap={() => map.current}
         onPlacesChange={setPlacesEnabled}
-        className="absolute bottom-8 left-4 z-10"
+        className="absolute bottom-16 left-4 z-10"
       />
       {(error || vehicleError) && (
         <p className="absolute bottom-4 left-4 rounded-md bg-card px-3 py-2 text-sm text-destructive">

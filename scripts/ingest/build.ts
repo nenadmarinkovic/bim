@@ -13,6 +13,7 @@ import { extractEntries } from "./unzip.ts";
 import { buildTrips, previousServiceDate, serviceDate } from "./trips.ts";
 import { buildUndergroundRanges, fetchWays } from "./underground.ts";
 import { buildSbahn, type RailStop } from "./sbahn.ts";
+import { fetchDistricts, tintDistricts } from "./districts.ts";
 import { normaliseName, stripCity } from "../../lib/vehicles/names.ts";
 import {
   classifyMatch,
@@ -541,6 +542,14 @@ async function main() {
     generatedAt: new Date().toISOString(),
     stops: result.stops,
   });
+  const districts = await fetchDistricts();
+  const tints = tintDistricts(districts);
+  await writeArtifact("districts.json", {
+    generatedAt: new Date().toISOString(),
+    type: "FeatureCollection",
+    features: districts,
+  });
+
   await writeArtifact("stations.json", {
     generatedAt: new Date().toISOString(),
     stations: result.stations,
@@ -637,6 +646,7 @@ async function main() {
   console.log(`    by distance ${matched - byName}`);
   console.log(`    unmatched   ${result.unmatched.length}`);
   console.log(`    stations    ${result.stations.length}`);
+  console.log(`    districts   ${districts.length} (${tints} tints)`);
   console.log(`    no mode     ${unclassified}`);
   console.log(`    rejected    ${result.rejected.length}`);
   console.log("\ncoverage of stops actually served by a line");
