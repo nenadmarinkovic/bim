@@ -86,6 +86,7 @@ export type StationRecord = {
   stopIds: number[];
   gtfsStopIds: string[];
   modes: StationMode[];
+  railStopIds: string[];
 };
 
 let stationsLoading: Promise<StationRecord[]> | null = null;

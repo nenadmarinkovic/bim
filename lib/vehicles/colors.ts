@@ -59,7 +59,9 @@ export function vehicleColour(
       ? (METRO_COLOR[line] ?? TRAM_RED)
       : mode === "tram"
         ? TRAM_RED
-        : BUS_BLUE;
+        : mode === "train"
+          ? SBAHN_BLUE
+          : BUS_BLUE;
   return dark ? forNight(base) : base;
 }
 
@@ -73,6 +75,15 @@ export const DIMENSIONS: Record<
     windowTop: number;
   }
 > = {
+  // A Wiener S-Bahn set is a 4746/8073 double-decker pair or a Talent — longer
+  // than a U-Bahn train and wider than a tram.
+  train: {
+    length: 132,
+    width: 3.0,
+    height: 4.6,
+    windowBase: 1.7,
+    windowTop: 3.4,
+  },
   metro: {
     length: 111,
     width: 2.85,

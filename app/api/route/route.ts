@@ -15,7 +15,10 @@ function stationNames(): Promise<Map<string, string>> {
   places ??= loadStations().then((stations) => {
     const byPlatform = new Map<string, string>();
     for (const station of stations) {
+      // Rail platforms too, or an S-Bahn terminus inside Vienna has no name to
+      // match a board row against.
       for (const id of station.gtfsStopIds) byPlatform.set(id, station.name);
+      for (const id of station.railStopIds) byPlatform.set(id, station.name);
     }
     return byPlatform;
   });
@@ -125,6 +128,7 @@ export async function GET(request: Request) {
       if (Number.isInteger(from) && from > 0) {
         const station = (await loadStations()).find((s) => s.diva === from);
         for (const id of station?.gtfsStopIds ?? []) serving.add(id);
+        for (const id of station?.railStopIds ?? []) serving.add(id);
       }
       found = pickTrip(schedule, line!, towards!, serving, named);
     }

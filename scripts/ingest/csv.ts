@@ -1,4 +1,5 @@
 import { createReadStream } from "node:fs";
+import type { Readable } from "node:stream";
 import { createInterface } from "node:readline";
 
 function splitLine(line: string, delimiter: string): string[] {
@@ -44,10 +45,16 @@ export async function* readCsv(
   path: string,
   delimiter = ",",
 ): AsyncGenerator<CsvRow> {
-  const lines = createInterface({
-    input: createReadStream(path),
-    crlfDelay: Infinity,
-  });
+  yield* readCsvStream(createReadStream(path), delimiter);
+}
+
+// Straight off a stream, so a 666 MB shapes.txt can be filtered as it comes out
+// of the archive instead of being written to disk first.
+export async function* readCsvStream(
+  input: Readable,
+  delimiter = ",",
+): AsyncGenerator<CsvRow> {
+  const lines = createInterface({ input, crlfDelay: Infinity });
 
   let header: string[] | null = null;
 

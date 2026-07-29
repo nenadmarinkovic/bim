@@ -7,6 +7,7 @@ const SPEC: Record<
   VehicleMode,
   { length: number; width: number; joints: number }
 > = {
+  train: { length: 38, width: 10, joints: 3 },
   metro: { length: 34, width: 9, joints: 3 },
   tram: { length: 26, width: 8, joints: 2 },
   bus: { length: 16, width: 8, joints: 0 },
@@ -109,6 +110,7 @@ export const SPRITES: { mode: VehicleMode; line: string }[] = [
   { mode: "metro", line: "" },
   { mode: "tram", line: "" },
   { mode: "bus", line: "" },
+  { mode: "train", line: "" },
 ];
 
 export const SPRITE_PIXEL_RATIO = PIXEL_RATIO;

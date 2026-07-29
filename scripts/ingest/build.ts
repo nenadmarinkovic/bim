@@ -5,12 +5,15 @@ import {
   CACHE_DIR,
   DATA_DIR,
   GTFS_ZIP,
+  OEBB_ZIP,
   WL_FILES,
   fetchCached,
 } from "./sources.ts";
 import { extractEntries } from "./unzip.ts";
 import { buildTrips, previousServiceDate, serviceDate } from "./trips.ts";
 import { buildUndergroundRanges, fetchWays } from "./underground.ts";
+import { buildSbahn, type RailStop } from "./sbahn.ts";
+import { normaliseName, stripCity } from "../../lib/vehicles/names.ts";
 import {
   classifyMatch,
   distanceMetres,
@@ -65,6 +68,9 @@ type StationRecord = {
   stopIds: number[];
   gtfsStopIds: string[];
   modes: StationMode[];
+  // ÖBB platform ids at this station, for the S-Bahn departures the Wiener
+  // Linien monitor knows nothing about.
+  railStopIds: string[];
 };
 
 async function download() {
@@ -74,7 +80,8 @@ async function download() {
     wl[name as keyof typeof WL_FILES] = await fetchCached(url, `${name}.csv`);
   }
   const zip = await fetchCached(GTFS_ZIP, "wl-gtfs.zip");
-  return { wl, zip };
+  const oebb = await fetchCached(OEBB_ZIP, "oebb-gtfs.zip");
+  return { wl, zip, oebb };
 }
 
 async function readGtfsStops(file: string) {
@@ -188,6 +195,7 @@ function buildStation(members: PendingStop[]): StationRecord {
     stopIds: members.map((m) => m.stopId).sort((a, b) => a - b),
     gtfsStopIds: members[0].group.map((s) => s.stopId).sort(),
     modes: [],
+    railStopIds: [],
   };
 }
 
@@ -195,6 +203,44 @@ type LineForModes = {
   transport: string;
   patterns: Record<string, { stopIds: number[] }>;
 };
+
+// Wiener Linien calls it "Floridsdorf S U", ÖBB calls it "Wien Floridsdorf",
+// and neither id system knows the other — so the join is geographic, at a
+// radius that comfortably covers a station's own platforms and nothing else.
+const RAIL_JOIN_METRES = 250;
+
+// Proximity alone is not enough: plenty of bus stops sit beside a railway
+// without being at the station. The names have to agree too, allowing for the
+// city prefix ÖBB uses and the "S U" suffix Wiener Linien adds.
+function samePlace(station: string, rail: string): boolean {
+  const a = normaliseName(station);
+  const b = normaliseName(stripCity(rail));
+  if (a.length < 4 || b.length < 4) return false;
+  return a.includes(b) || b.includes(a);
+}
+
+function attachRail(stations: StationRecord[], rail: RailStop[]): number {
+  let joined = 0;
+
+  for (const station of stations) {
+    const near = rail.filter(
+      (stop) =>
+        distanceMetres(station, stop) <= RAIL_JOIN_METRES &&
+        samePlace(station.name, stop.name),
+    );
+    if (!near.length) continue;
+
+    station.railStopIds = near.map((stop) => stop.id).sort();
+    if (!station.modes.includes("train")) {
+      station.modes = MODE_RANK.filter(
+        (mode) => mode === "train" || station.modes.includes(mode),
+      );
+    }
+    joined++;
+  }
+
+  return joined;
+}
 
 function attachModes(stations: StationRecord[], lines: LineForModes[]) {
   const atStop = new Map<number, Set<StationMode>>();
@@ -412,7 +458,7 @@ async function writeArtifact(name: string, value: unknown) {
 }
 
 async function main() {
-  const { wl, zip } = await download();
+  const { wl, zip, oebb } = await download();
 
   console.log("\nextracting gtfs");
   const gtfs = await extractEntries(
@@ -443,6 +489,27 @@ async function main() {
     `\nschedule for ${date} (+ after-midnight runs from ${previous})`,
   );
   const schedule = await buildTrips(gtfs, date, previous);
+
+  // The S-Bahn is ÖBB's and arrives with no realtime behind it, so these trips
+  // carry no delay anchors and the map marks them timetable-only of its own
+  // accord — the same treatment the unmeasured tram lines already get.
+  console.log("\nS-Bahn (ÖBB)");
+  const sbahn = await buildSbahn(oebb, date, previous);
+  Object.assign(schedule.routes, sbahn.routes);
+  Object.assign(schedule.trips, sbahn.trips);
+  Object.assign(shapes, sbahn.shapes);
+  for (const run of sbahn.runs) {
+    const existing = schedule.runs.find((one) => one.date === run.date);
+    if (existing) existing.tripIds.push(...run.tripIds);
+    else schedule.runs.push(run);
+  }
+  const railStations = attachRail(result.stations, sbahn.stops);
+  console.log(
+    `  ${sbahn.lines.length} lines: ${sbahn.lines.join(", ")}\n` +
+      `  ${sbahn.tripCount} trips, ${sbahn.shapePoints} shape points\n` +
+      `  ${sbahn.stops.length} platforms joined to ${railStations} stations`,
+  );
+
   const tripCount = Object.keys(schedule.trips).length;
   const shapeMissing = Object.values(schedule.trips).filter(
     (t) => !shapes[t.s],

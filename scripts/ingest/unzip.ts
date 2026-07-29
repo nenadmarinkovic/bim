@@ -11,18 +11,21 @@ export async function extractEntries(
 ): Promise<Record<string, string>> {
   await mkdir(destDir, { recursive: true });
 
+  // Matched and written by basename: the ÖBB archive nests everything under a
+  // GTFS_Fahrplan_2026/ directory, the Wiener Linien one does not.
   const wanted = new Set(names);
   const written: Record<string, string> = {};
   const zip = await open(zipPath);
 
   try {
     for await (const entry of zip) {
-      if (!wanted.has(entry.filename)) continue;
+      const name = path.basename(entry.filename);
+      if (!wanted.has(name)) continue;
 
-      const target = path.join(destDir, entry.filename);
+      const target = path.join(destDir, name);
       const readStream = await entry.openReadStream();
       await pipeline(readStream, createWriteStream(target));
-      written[entry.filename] = target;
+      written[name] = target;
     }
   } finally {
     await zip.close();

@@ -1,4 +1,10 @@
-import { loadStations, type StationRecord } from "./schedule.ts";
+import {
+  loadSchedule,
+  loadStations,
+  serviceDayStart,
+  type StationRecord,
+} from "./schedule.ts";
+import { stripCity } from "./names.ts";
 
 const MONITOR = "https://www.wienerlinien.at/ogd_realtime/monitor";
 
@@ -77,6 +83,92 @@ export async function station(
   diva: number,
 ): Promise<StationRecord | undefined> {
   return (await stations()).get(diva);
+}
+
+// Wiener Linien's monitor knows nothing about the S-Bahn — ÖBB runs it — so
+// those departures come from the timetable instead. No realtime behind them,
+// which is why they carry no delay and the board shows them as scheduled.
+const RAIL_HORIZON_MS = 90 * 60_000;
+
+type RailDeparture = { line: string; towards: string; at: number };
+
+let railStops: Promise<Map<string, RailDeparture[]>> | null = null;
+
+function railIndex(): Promise<Map<string, RailDeparture[]>> {
+  railStops ??= loadSchedule().then(({ schedule }) => {
+    const out = new Map<string, RailDeparture[]>();
+
+    for (const run of schedule.runs) {
+      const dayStart = serviceDayStart(run.date);
+
+      for (const tripId of run.tripIds) {
+        const trip = schedule.trips[tripId];
+        const route = trip && schedule.routes[trip.r];
+        if (!trip || route?.type !== 2) continue;
+
+        // Every call but the last: you cannot board a train that terminates.
+        for (let i = 0; i < trip.p.length - 1; i++) {
+          const stop = trip.p[i]!;
+          const found = out.get(stop);
+          const departure = {
+            line: route.name,
+            towards: stripCity(trip.h ?? ""),
+            at: dayStart + trip.t[i]! * 1000,
+          };
+          if (found) found.push(departure);
+          else out.set(stop, [departure]);
+        }
+      }
+    }
+
+    for (const list of out.values()) list.sort((a, b) => a.at - b.at);
+    return out;
+  });
+  return railStops;
+}
+
+async function railRows(station: StationRecord): Promise<BoardRow[]> {
+  if (!station.railStopIds.length) return [];
+
+  const index = await railIndex();
+  const now = Date.now();
+  const rows = new Map<string, BoardRow>();
+  const seen = new Set<string>();
+
+  for (const stop of station.railStopIds) {
+    for (const departure of index.get(stop) ?? []) {
+      if (departure.at < now) continue;
+      if (departure.at - now > RAIL_HORIZON_MS) break;
+
+      // The same train is listed once per platform it is scheduled against.
+      const identity = `${departure.line}|${departure.towards}|${departure.at}`;
+      if (seen.has(identity)) continue;
+      seen.add(identity);
+
+      const key = `${departure.line}|${departure.towards}`;
+      let row = rows.get(key);
+      if (!row) {
+        row = {
+          line: departure.line,
+          mode: "train",
+          towards: departure.towards,
+          departures: [],
+        };
+        rows.set(key, row);
+      }
+      row.departures.push({
+        countdown: Math.round((departure.at - now) / 60_000),
+        delay: null,
+      });
+    }
+  }
+
+  for (const row of rows.values()) {
+    row.departures.sort((a, b) => a.countdown - b.countdown);
+    row.departures.length = Math.min(row.departures.length, MAX_DEPARTURES);
+  }
+
+  return [...rows.values()];
 }
 
 function toRows(monitors: Monitor[]): BoardRow[] {
@@ -169,10 +261,19 @@ async function callMonitor(query: string): Promise<Monitor[]> {
 async function fetchBoard(station: StationRecord): Promise<StopBoard> {
   const query = station.stopIds.map((id) => `stopId=${id}`).join("&");
 
+  const [monitors, rail] = await Promise.all([
+    callMonitor(query),
+    railRows(station),
+  ]);
+
+  const rows = [...toRows(monitors), ...rail]
+    .sort((a, b) => a.departures[0]!.countdown - b.departures[0]!.countdown)
+    .slice(0, MAX_ROWS);
+
   return {
     diva: station.diva,
     name: station.name,
-    rows: toRows(await callMonitor(query)),
+    rows,
     at: Date.now(),
   };
 }

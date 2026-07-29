@@ -1,4 +1,4 @@
-export type VehicleMode = "tram" | "metro" | "bus";
+export type VehicleMode = "tram" | "metro" | "bus" | "train";
 
 export type Certainty = "measured" | "interpolated" | "scheduled";
 

@@ -19,6 +19,11 @@ export const WL_FILES = {
 export const GTFS_ZIP =
   "https://wiener-linien-gtfs-rt.zuugle-services.com/gtfs/wiener-linien-gtfs.zip";
 
+// The S-Bahn is ÖBB's, not Wiener Linien's, and it is a third of how the city
+// moves. Timetable only — there is no realtime feed behind this one. CC BY 4.0.
+export const OEBB_ZIP =
+  "https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip";
+
 const MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
 async function isFresh(file: string): Promise<boolean> {
