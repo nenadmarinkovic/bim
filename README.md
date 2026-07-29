@@ -1,6 +1,7 @@
 # Bim
 
-A live map of the Wiener Linien network.
+A live map of the Wiener Linien network, plus the ÖBB S-Bahn that runs through
+it.
 
 Wiener Linien publishes no vehicle positions. The public real-time API is
 stop-based: it returns departure countdowns per stop, never coordinates. So
@@ -19,12 +20,43 @@ npm run dev
 ```
 
 `NEXT_PUBLIC_MAPBOX_TOKEN` is required for the map to render; without it the map
-area explains what is missing rather than failing. The base style follows the
-colour theme (`light-v11` / `dark-v11`), and `/api/stops` serves the ingested
-stop index as GeoJSON — 4,432 points, which is what the map draws today.
+area explains what is missing rather than failing. The base style is Mapbox
+Standard, whose `lightPreset` follows the colour theme — `day` or `night`,
+rather than two separate styles.
 
 Type is Hanken Grotesk with Newsreader italic for brand accents, self-hosted
 from `public/fonts` and sharing the token scale used in nomos.
+
+## What the map draws
+
+| Layer               | Source                              | Default |
+| ------------------- | ----------------------------------- | ------- |
+| Vehicles and labels | `/api/vehicles`, polled every 6 s   | on      |
+| Stations            | `/api/stops` — 1,726 GeoJSON points | on      |
+| Districts           | `/api/districts` — the 23 Bezirke   | off     |
+| Places              | Mapbox POI and landmark featuresets | off     |
+
+The settings panel toggles stations, districts, places, the line numbers beside
+the vehicles, and the basemap's own road labels, which are off so the network
+reads as the only thing written on the city.
+
+A station is drawn twice: a mode badge you read, and an invisible circle you
+click. Clicking one reads its departure board from `/api/stop`, which proxies
+the Wiener Linien monitor for every platform under that DIVA and refreshes
+while the popup is open. Clicking a vehicle draws its trip — the shape it is
+running, its two termini, and arrows stepping along it in the direction of
+travel — and follows it with the camera.
+
+Searching (⌘K, ⌘F, or the search button) is a client-side pass over the same
+station index the map draws, matched on the normalised name, with the last five
+picks kept in `localStorage`.
+
+Places are off by default because they cost a model call. With
+`MISTRAL_API_KEY` set, clicking a POI writes two sentences about it — what it
+is and something the map cannot show — cached in `data/place-descriptions.json`
+so a place is paid for once. The popup then takes follow-up questions, and with
+`ELEVENLABS_API_KEY` set it reads the description aloud from `data/audio`,
+which is cached on the same terms.
 
 ## Data
 
@@ -37,6 +69,9 @@ from `public/fonts` and sharing the token scale used in nomos.
 | `wienerlinien-ogd-linien.csv`           | LineID → line name, mode, real-time support          |
 | `wienerlinien-ogd-fahrwegverlaeufe.csv` | LineID + PatternID → ordered StopID sequence         |
 | GTFS zip (zuugle-services, CC BY 4.0)   | `stops.txt`, `routes.txt`, `trips.txt`, `shapes.txt` |
+| ÖBB GTFS (`data.oebb.at`, CC BY 4.0)    | the S-Bahn, which Wiener Linien does not run         |
+| Stadt Wien WFS                          | the 23 district outlines                             |
+| OpenStreetMap, via Overpass             | which stretches of the U-Bahn are in tunnel          |
 
 `haltepunkte.csv` is not listed in the OGD documentation, and the documented
 `steige.csv` is a 449-row stub mapping StopID to a platform letter. Without
@@ -99,6 +134,39 @@ A delay revision moves the computed point discontinuously: a bus going from
 on-time to five minutes late legitimately jumps a kilometre back. Movement over
 300 m in one poll is applied instantly rather than animated, since sliding it
 would draw a bus at several hundred km/h.
+
+### The S-Bahn, which Wiener Linien does not run
+
+Vienna's rapid transit is two operators. The S-Bahn is ÖBB's, so it is absent
+from every Wiener Linien source, and a map without it has a hole where the
+Stammstrecke should be. ÖBB publish a national GTFS, which is merged into the
+same schedule at ingest: routes named `S1`…`S80` of GTFS type 2, filtered to a
+box around Vienna, since Salzburg and Graz number their lines S1, S2 and S3 as
+well. Ids are namespaced `oebb:` — nothing guarantees the two operators never
+picked the same string — and the ÖBB platforms are joined onto Wiener Linien
+stations, so an interchange badges as both.
+
+`shapes.txt` in that archive is 666 MB uncompressed for a country's worth of
+track, and the ten lines that reach Vienna need a sliver of it, so only the
+referenced shapes are read out of the zip.
+
+**No live data covers the S-Bahn.** The GTFS-RT feed is a conversion of the
+Wiener Linien monitor, and the monitor knows nothing about ÖBB, so every train
+on the map is positioned from the timetable alone and marked `scheduled`. They
+are the one mode where a dot is a claim about the schedule rather than about a
+vehicle.
+
+### Tunnels
+
+Nothing in any transit export says whether a stretch of track is underground,
+which matters for the U-Bahn: half of it is in tunnel, and a dot gliding over
+the rooftops of the Innere Stadt is a dot the map should be quieter about.
+Level comes from OpenStreetMap instead: a `railway=subway` way counts as
+underground if it is tagged `tunnel` or sits below `layer` 0, and never if it
+is on a bridge. Those ways are matched onto the GTFS shapes within 30 m and
+stored as distance ranges, in the same `shape_dist_traveled` units that placed
+the vehicle. Of 331.8 km of metro shape, 175.3 km resolves as underground, and
+a vehicle inside one of those ranges says so in its popup.
 
 ### How much to trust a dot
 
@@ -169,24 +237,35 @@ of yesterday's trips that run past midnight, so night service is positioned
 correctly. **It must be re-run daily** — the schedule artifact is one service
 day only.
 
+A stale artifact is otherwise a silent failure: every trip in it is in the
+past, nothing is placed, and an empty map reads as a quiet night. So
+`/api/vehicles` compares the clock against the last departure the artifact
+knows about and returns 503 with what went wrong once it is past — the same
+treatment a missing artifact gets, and the client shows the message. Between
+midnight and the end of the night service the artifact is genuinely still
+right about the runs it holds, so those keep being placed and the server logs
+the warning once instead.
+
 ### Current state
 
 ```
 stops     4432/4496 matched (98.6%)   3694 by name, 738 by distance
+stations  1726 (platforms merged by DIVA)
 coverage  4225/4257 locatable stops served by a line (99.2%)
-lines     204 lines, 6538 patterns
-shapes    5431 shapes, 987710 points
-schedule  24372 trips (23424 today + 948 running past midnight), 0 without geometry
+lines     204 lines, 6542 patterns
+shapes    5773 shapes, 979980 points
+tunnels   28 metro shapes, 175.3 of 331.8 km underground
+schedule  34111 trips + 1006 of yesterday's running past midnight, 0 without geometry
 ```
 
-A Sunday 07:30 sample places 340 vehicles — 182 bus, 118 tram, 40 metro — of
-which 283 carry a real-time delay. Median movement between 12 s snapshots is
-56 m (~17 km/h) and the fastest thing on the map is the Badner Bahn at 60 km/h,
-which is what it actually does. `npm run vehicles:check` re-runs those
-plausibility checks against the live feed; `npm run vehicles:lines` breaks the
-current placement down by line.
+A Wednesday 21:30 sample places 551 vehicles — 272 bus, 186 tram, 47 S-Bahn,
+46 metro — of which 352 carry a real-time delay, none of them trains. Median
+movement over 30 s is 18.5 km/h, and the fastest things on the map are S-Bahn
+runs at 85–90 km/h, which is what they actually do. `npm run vehicles:check`
+re-runs those plausibility checks against the live feed; `npm run
+vehicles:lines` breaks the current placement down by line.
 
-The 558 StopIDs with no DIVA and zeroed coordinates are operational points —
+The 565 StopIDs with no DIVA and zeroed coordinates are operational points —
 depot runs, short workings, terminus markers. They appear in route patterns but
 carry no location by construction, so they are excluded from coverage rather
 than counted as failures.
@@ -217,20 +296,25 @@ npm run start     # binds :3000 — put nginx or Caddy in front for TLS
 `NEXT_PUBLIC_MAPBOX_TOKEN` has to be present **at build time**, not just at
 runtime: Next inlines `NEXT_PUBLIC_*` into the client bundle, so setting it only
 in the service environment is too late and the map renders its "token missing"
-state instead. `MISTRAL_API_KEY` is read on the server per request and can live
-in the service environment; without it, place descriptions are omitted and
-nothing else changes.
+state instead. `MISTRAL_API_KEY`, `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID`
+are read on the server per request and can live in the service environment.
+Without the first, place descriptions are omitted; without the second, they are
+shown but not spoken. Nothing else changes either way.
 
 ### Keeping the timetable fresh
 
-`npm run ingest` builds a static snapshot. Wiener Linien reissue the timetable,
-and a stale `data/` places vehicles on trips that no longer run — so re-run it on
-a schedule, weekly is ample, and **restart the app afterwards**:
+`npm run ingest` builds a static snapshot of **one service day**, so this is a
+daily job, not a weekly one — and the app must be restarted afterwards:
 
 ```
 # example — refresh the timetable, then restart
-0 4 * * 1 cd /srv/bim && npm run ingest && systemctl restart bim
+0 4 * * * cd /srv/bim && npm run ingest && systemctl restart bim
 ```
+
+Four in the morning because the artifact covers its own date plus the night
+runs spilling past midnight, which end around five. Rebuilding before then
+replaces it while it is still serving correctly, and the new build carries the
+same night runs forward.
 
 The restart is not optional. `lib/vehicles/schedule.ts` and
 `app/api/stops/route.ts` both memoise their parse in module scope for the life of

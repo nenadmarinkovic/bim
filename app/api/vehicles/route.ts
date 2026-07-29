@@ -1,5 +1,8 @@
 import { vehiclesAt } from "@/lib/vehicles/feed";
-import { MissingArtifactError } from "@/lib/vehicles/schedule";
+import {
+  MissingArtifactError,
+  StaleArtifactError,
+} from "@/lib/vehicles/schedule";
 import type { VehiclesResponse } from "@/lib/vehicles/types";
 
 function parseViewport(url: URL) {
@@ -23,7 +26,10 @@ export async function GET(request: Request) {
       headers: { "cache-control": "no-store" },
     });
   } catch (error) {
-    if (error instanceof MissingArtifactError) {
+    if (
+      error instanceof MissingArtifactError ||
+      error instanceof StaleArtifactError
+    ) {
       return Response.json({ error: error.message }, { status: 503 });
     }
     throw error;

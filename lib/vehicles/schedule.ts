@@ -25,12 +25,17 @@ export type Schedule = {
 
 export class MissingArtifactError extends Error {}
 
+// Past the end of the one service day the artifact holds, nothing is placed at
+// all — an empty map reads as a quiet night rather than as a stale ingest.
+export class StaleArtifactError extends Error {}
+
 export type UndergroundRanges = Record<string, [number, number][]>;
 
 let loading: Promise<{
   schedule: Schedule;
   shapes: Record<string, Shape>;
   underground: UndergroundRanges;
+  coverageEndMs: number;
 }> | null = null;
 
 async function readArtifact<T>(name: string): Promise<T> {
@@ -45,6 +50,20 @@ async function readArtifact<T>(name: string): Promise<T> {
   }
 }
 
+function coverageEnd(schedule: Schedule): number {
+  let end = 0;
+  for (const run of schedule.runs) {
+    const dayStart = serviceDayStart(run.date);
+    for (const tripId of run.tripIds) {
+      const times = schedule.trips[tripId]?.t;
+      if (!times?.length) continue;
+      const last = dayStart + times[times.length - 1] * 1000;
+      if (last > end) end = last;
+    }
+  }
+  return end;
+}
+
 export function loadSchedule() {
   loading ??= (async () => {
     const [schedule, shapes, underground] = await Promise.all([
@@ -53,7 +72,12 @@ export function loadSchedule() {
       // Optional: the map still works without tunnel data.
       readArtifact<UndergroundRanges>("underground.json").catch(() => ({})),
     ]);
-    return { schedule, shapes, underground };
+    return {
+      schedule,
+      shapes,
+      underground,
+      coverageEndMs: coverageEnd(schedule),
+    };
   })();
   return loading;
 }
@@ -178,6 +202,18 @@ function offsetMs(epochMs: number): number {
     get("second"),
   );
   return asUtc - epochMs;
+}
+
+// Must agree with serviceDate() in scripts/ingest/trips.ts.
+export function currentServiceDate(nowMs = Date.now()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: VIENNA,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(nowMs);
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${get("year")}${get("month")}${get("day")}`;
 }
 
 export function serviceDayStart(date: string): number {
