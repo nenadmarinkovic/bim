@@ -2,9 +2,6 @@ import { cachedBoard, loadBoard, station } from "@/lib/vehicles/board";
 import { MissingArtifactError } from "@/lib/vehicles/schedule";
 import { clientKey, retryAfter } from "@/lib/places/rate-limit";
 
-// A board is a cached JSON proxy, not a model call. One person hovering dots
-// and leaving a board open to refresh spends twenty a minute by themselves, so
-// the place-description ceiling would lock them out mid-browse.
 const BOARDS_PER_MINUTE = 90;
 
 const send = (board: unknown) =>

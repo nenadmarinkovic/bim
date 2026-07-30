@@ -13,7 +13,6 @@ type StationsFile = { generatedAt: string; stations: StationRecord[] };
 
 let cached: string | null = null;
 
-// Missing artifact is normal on a fresh checkout, not an error.
 async function loadGeoJson(): Promise<string | null> {
   if (cached) return cached;
 
@@ -37,9 +36,7 @@ async function loadGeoJson(): Promise<string | null> {
       properties: {
         diva: station.diva,
         name: station.name,
-        // Styling matches on one kind; the popup names them all.
         kind: station.modes[0] ?? "bus",
-        // Never empty: the icon image is looked up by this exact string.
         modes: (station.modes.length ? station.modes : ["bus"]).join(","),
       },
     })),

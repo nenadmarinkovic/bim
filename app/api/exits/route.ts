@@ -3,9 +3,6 @@ import path from "node:path";
 
 const FILE = path.join(process.cwd(), "data", "exits.json");
 
-// Keyed on the artifact's own timestamp, so a re-run of the ingest changes the
-// key and neither this cache nor the browser's can go on serving yesterday's
-// doors. Without it the failure is invisible: the data is right, the map is not.
 let cached: { stamp: number; body: string } | null = null;
 
 async function load(): Promise<{ stamp: number; body: string } | null> {
@@ -51,8 +48,6 @@ export async function GET(request: Request) {
     headers: {
       "content-type": "application/geo+json",
       etag,
-      // Cacheable but always revalidated: 66 KB of doors is cheap to confirm and
-      // expensive to get wrong.
       "cache-control": "public, max-age=0, must-revalidate",
     },
   });

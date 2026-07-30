@@ -3,8 +3,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const ENDPOINT = "https://api.elevenlabs.io/v1/text-to-speech";
-// A premade voice. Library voices are rejected on free accounts, and listing
-// voices needs a permission an API key does not have by default.
 const DEFAULT_VOICE = "JBFqnCBsd6RMkjVDRZzb";
 const MODEL = "eleven_multilingual_v2";
 const FORMAT = "mp3_44100_128";
@@ -44,7 +42,6 @@ export async function speak(key: string, text: string): Promise<Buffer | null> {
       },
     );
     if (!response.ok) {
-      // Quota, permissions and voice errors all look alike from outside.
       const detail = await response.text().catch(() => "");
       console.error(`elevenlabs ${response.status}: ${detail.slice(0, 200)}`);
       return null;

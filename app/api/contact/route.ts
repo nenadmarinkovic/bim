@@ -1,14 +1,11 @@
 import { clientKey, retryAfter } from "@/lib/places/rate-limit";
 
-// A public form on a map anyone can open, so it is bounded before it is useful:
-// five a minute per address is generous for a person and useless to a script.
 const MAX_PER_WINDOW = 5;
 
 const MAX_EMAIL = 200;
 const MAX_MESSAGE = 2000;
 const MIN_MESSAGE = 10;
 
-// Single-line fields: every control character goes, runs of space collapse.
 const clean = (value: unknown, max: number) =>
   typeof value === "string"
     ? value
@@ -18,8 +15,6 @@ const clean = (value: unknown, max: number) =>
         .slice(0, max)
     : "";
 
-// The message keeps its line breaks — someone reporting two separate things
-// writes two paragraphs, and flattening them loses their structure.
 const cleanMessage = (value: unknown) =>
   typeof value === "string"
     ? value
@@ -30,8 +25,6 @@ const cleanMessage = (value: unknown) =>
         .slice(0, MAX_MESSAGE)
     : "";
 
-// Deliberately loose: the only address worth rejecting is one that could not
-// receive a reply at all. Anything stricter turns away real people.
 const looksLikeEmail = (value: string) =>
   /^[^\s@]+@[^\s@.]+\.[^\s@]+$/.test(value);
 
@@ -60,8 +53,6 @@ export async function POST(request: Request) {
 
   const body = payload as Record<string, unknown>;
 
-  // A field no person sees and every naive bot fills in. Answered with a plain
-  // acceptance so a script learns nothing from being refused.
   if (clean(body.website, 200)) {
     return Response.json({ ok: true });
   }
@@ -82,14 +73,7 @@ export async function POST(request: Request) {
 
   const key = process.env.BREVO_API_KEY;
 
-  // Brevo goes here: POST https://api.brevo.com/v3/smtp/email with an `api-key`
-  // header, `sender` on a verified domain, `to` wherever these should land, and
-  // `replyTo` set to contact.email so a reply goes straight back. Everything
-  // above — the rate limit, the honeypot, the validation — already holds for it.
   if (!key) {
-    // Refused rather than pretended: a form that says "sent" and drops the
-    // message is worse than one that admits it is not finished yet. The line
-    // below is how these are read until the key exists.
     console.info("[contact] no BREVO_API_KEY — message not sent", {
       ...contact,
       message: `${contact.message.slice(0, 120)}${contact.message.length > 120 ? "…" : ""}`,

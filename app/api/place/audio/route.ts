@@ -40,8 +40,6 @@ export async function GET(request: Request) {
   const known = await cachedSpeech(key);
   if (known) return send(known);
 
-  // Only ever voices a description the server already wrote. Speaking text
-  // supplied by the caller would let anyone spend the whole voice quota.
   const text = await cachedDescription(name, kind, lang);
   if (!text) {
     return Response.json({ error: "nothing to read" }, { status: 404 });

@@ -35,8 +35,6 @@ export async function GET(request: Request) {
     return Response.json({ error: "unsupported language" }, { status: 400 });
   }
 
-  // Served before the rate limit: a known place costs nothing, so browsing the
-  // city should never run a visitor out of allowance.
   const known = await cachedDescription(name, kind, lang);
   if (known) return ok(known, name, lang);
 
@@ -53,7 +51,6 @@ export async function GET(request: Request) {
   if (!extract) {
     return Response.json(
       { error: "no description" },
-      // Short, because the model declines non-deterministically.
       { status: 404, headers: { "cache-control": "public, max-age=60" } },
     );
   }

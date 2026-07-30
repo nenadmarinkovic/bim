@@ -9,7 +9,6 @@ export function clientKey(request: Request): string {
   return request.headers.get("x-real-ip")?.trim() || "unknown";
 }
 
-// Callers with a cheaper request than an LLM completion pass their own ceiling.
 export function retryAfter(key: string, max = MAX_PER_WINDOW): number {
   const now = Date.now();
   const cutoff = now - WINDOW_MS;

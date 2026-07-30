@@ -39,7 +39,6 @@ async function persist() {
     await mkdir(path.dirname(FILE), { recursive: true });
     const temp = `${FILE}.${process.pid}.tmp`;
     await writeFile(temp, JSON.stringify(snapshot));
-    // Renamed into place so a crash mid-write cannot leave a truncated file.
     await rename(temp, FILE);
   } catch {
     dirty = true;

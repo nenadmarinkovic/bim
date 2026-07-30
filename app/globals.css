@@ -136,9 +136,6 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  /* One dial for every floating panel: controls, header and popups. White is
-     right here; it is the opacity that wants to sit lower than the night
-     theme's, because a pale panel needs less help to keep dark text legible. */
   --glass-fill: color-mix(in oklch, var(--popover) 78%, transparent);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -172,8 +169,6 @@
   --border: rgb(255 255 255 / 12%);
   --input: rgb(255 255 255 / 16%);
   --ring: #7b86a8;
-  /* Raised where the light panel is not: over a night basemap the map showed
-     straight through the small text at the old value. */
   --glass-fill: color-mix(in oklch, var(--popover) 78%, #00000052);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -272,7 +267,6 @@ span.text-brand.italic {
     inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 
-/* Dialogs keep their own fill: they sit over a dimmed backdrop, not the map. */
 .glass-sheet {
   background: color-mix(in oklch, var(--popover) 72%, transparent);
   backdrop-filter: blur(24px) saturate(180%);
@@ -294,29 +288,13 @@ span.text-brand.italic {
   }
 }
 
-/* Only the wordmark comes from Mapbox now — the credit itself is rendered by
-   MapAttribution so it can share the controls' glass and animation. Mapbox
-   allows the logo to be placed and faded, not restyled. */
-/* Scoped under the map container on purpose: mapbox-gl.css is bundled after
-   this file, so a rule of equal specificity loses to theirs. */
 .bim-map .mapboxgl-ctrl-bottom-left {
   z-index: 5;
 }
-/* Left edge on the same 1rem as the panels above, and lifted so the 23px mark
-   sits centred against the 36px info button opposite it: 16 + (36 - 23) / 2. */
-/* The logo element carries margin: 0 0 -4px -4px of its own, so the wrapper
-   has to add those 4px back before positioning it: 16 + 4 on the left, and
-   (34 - 23/2) + 4 at the bottom to centre it on the 36px info button opposite.
-   Compensating out here keeps the mark itself unstyled. */
 .bim-map .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl {
   margin: 0 0 1.65625rem 1.25rem;
 }
-/* The wordmark is left entirely alone. Mapbox's terms allow it to be moved to
-   another corner and nothing else: not resized, not recoloured, not faded. It
-   ships at 88x23 with its own outline, so it reads on either basemap unaided. */
 
-/* Same glass as the map controls and the header, so a popup reads as another
-   panel floating over the map rather than a separate kind of surface. */
 .bim-popup .mapboxgl-popup-content {
   background: var(--glass-fill);
   backdrop-filter: blur(28px) saturate(180%);
@@ -390,14 +368,10 @@ span.text-brand.italic {
   font-weight: 600;
   line-height: 1.25;
 }
-/* Scoped to the board: a station name heads a table of numbers and needs to
-   carry it. Place popups lead with prose and are better left alone. */
 .bim-stop-popup .bim-popup-title {
   font-size: 0.9375rem;
   letter-spacing: -0.01em;
 }
-/* A popup's supporting text sits over the map itself, where a control label sits
-   on a panel — so it is set stronger than a footnote would be on a page. */
 .bim-popup-kind {
   margin-top: 0.15rem;
   font-size: 0.6875rem;
@@ -408,8 +382,6 @@ span.text-brand.italic {
 .bim-popup-detail {
   margin-top: 0.45rem;
   line-height: 1.45;
-  /* Full strength: this is the popup's actual content, not a caption around it.
-     The softened tiers are for the labels that frame it. */
   color: var(--foreground);
 }
 .bim-popup-detail[data-pending="true"] {
@@ -422,9 +394,6 @@ span.text-brand.italic {
   text-transform: uppercase;
   color: color-mix(in oklch, var(--foreground) 65%, transparent);
 }
-/* Stacked rather than side by side: the attribution gets the popup's full width,
-   which is the only way "KI-Zusammenfassung" fits on one line, and the buttons
-   get a row of their own instead of competing with it. */
 .bim-popup-ai {
   display: flex;
   flex-direction: column;
@@ -440,7 +409,6 @@ span.text-brand.italic {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  /* Trailing edge, so the buttons line up with the popup's right margin. */
   align-self: flex-end;
 }
 .bim-popup-listen {
@@ -498,8 +466,6 @@ span.text-brand.italic {
 .bim-stop-mode {
   display: inline-flex;
   line-height: 0;
-  /* The same 0.5px white rim the map sprites are drawn with, so a badge in the
-     popup and a badge on the map are the same object. */
   padding: 0.5px;
   border-radius: 999px;
   background: #ffffff;
@@ -508,8 +474,6 @@ span.text-brand.italic {
   margin-top: 0;
   margin-left: 0.15rem;
 }
-/* Only the few stations whose exits are mapped carry this, so it reads as extra
-   rather than as permanent popup furniture. */
 .bim-stop-exits {
   display: flex;
   align-items: center;
@@ -519,16 +483,14 @@ span.text-brand.italic {
   padding-top: 0.5rem;
   border-top: 1px solid color-mix(in oklch, var(--foreground) 12%, transparent);
 }
-/* Label left, switch right — the same row the settings panel uses. Set at the
-   weight the popup's other standing text carries, not the near-invisible grey a
-   footnote gets: it is the only thing naming what the switch does. */
 .bim-exits-label {
   font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: color-mix(in oklch, var(--foreground) 78%, transparent);
-}.bim-stop-note {
+}
+.bim-stop-note {
   margin-top: 0.45rem;
   color: color-mix(in oklch, var(--foreground) 78%, transparent);
 }
@@ -536,7 +498,6 @@ span.text-brand.italic {
   color: color-mix(in oklch, var(--foreground) 62%, transparent);
   font-style: italic;
 }
-/* One grid for every row, so the badges and the numbers line up column-wise. */
 .bim-stop-rows {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -550,7 +511,6 @@ span.text-brand.italic {
 .bim-stop-row {
   display: contents;
 }
-/* Subgrid so a whole row is one button without leaving the shared columns. */
 .bim-stop-pick {
   display: grid;
   grid-column: 1 / -1;

@@ -2,12 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { CACHE_DIR } from "./sources.ts";
 
-// The doors into a station, which are the one thing about a station's inside
-// that no transit feed publishes and that a rider actually needs: OpenStreetMap
-// names all eighteen at Karlsplatz with the words written on the sign above
-// them, and marks which of them you can reach without stairs.
-// The main instance answers 504 whenever it is busy, which is often enough that
-// a single-endpoint ingest fails for no reason of ours. Tried in order.
+// The main instance 504s when busy; tried in order.
 const OVERPASS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -16,23 +11,17 @@ const OVERPASS = [
 
 const BBOX = "47.97,16.15,48.33,16.60";
 
-// Karlsplatz's complex spans 365 m, and a tighter radius drops its Secession
-// exit. Reaching this far is safe: every door is assigned to its nearest
-// station, so a neighbour's does not become this one's.
+// Karlsplatz spans 365 m; anything tighter drops its Secession exit.
 const RADIUS_METRES = 300;
 
-// What OSM says about getting through this door. Kept as four states rather
-// than a boolean: `limited` is a real answer, and an untagged door is not the
-// same as one recorded as having steps.
+// Four states, not a boolean: `limited` is a real answer, and untagged is not `no`.
 export type ExitAccess = "free" | "steps" | "limited" | "unknown";
 
 export type ExitFeature = {
   type: "Feature";
   properties: {
     station: string;
-    // What the sign above it says — "Secession", "Künstlerhaus, Musikverein".
-    // Absent on plenty of doors, which are kept anyway: at Hietzing the only two
-    // step-free entrances are unnamed, and dropping them hid both of its lifts.
+    // Often absent, and kept anyway: Hietzing's only step-free doors are unnamed.
     name?: string;
     access: ExitAccess;
   };

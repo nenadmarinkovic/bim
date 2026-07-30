@@ -14,8 +14,6 @@ export const LOCALE_LABEL: Record<Locale, string> = {
   de: "DE",
 };
 
-// Strings carrying {placeholders}. Missing keys render as the template rather
-// than throwing, so a gap in a translation is visible without breaking a popup.
 export function fill(
   template: string,
   values: Record<string, string | number>,
@@ -27,5 +25,8 @@ export function fill(
 
 export type Plural = { one: string; other: string };
 
-export const plural = (forms: Plural, n: number, values?: Record<string, string | number>) =>
-  fill(n === 1 ? forms.one : forms.other, { n, ...values });
+export const plural = (
+  forms: Plural,
+  n: number,
+  values?: Record<string, string | number>,
+) => fill(n === 1 ? forms.one : forms.other, { n, ...values });

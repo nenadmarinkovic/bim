@@ -67,7 +67,6 @@ export function loadSchedule() {
     const [schedule, shapes, underground] = await Promise.all([
       readArtifact<Schedule>("schedule.json"),
       readArtifact<Record<string, Shape>>("shapes.json"),
-      // Optional: the map still works without tunnel data.
       readArtifact<UndergroundRanges>("underground.json").catch(() => ({})),
     ]);
     return {

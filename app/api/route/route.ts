@@ -7,16 +7,12 @@ import {
 } from "@/lib/vehicles/schedule";
 import { normaliseName, stripCity } from "@/lib/vehicles/names";
 
-// Every platform of every station, so a trip's ends can be named and a board
-// row can be answered with a run that actually calls at the station.
 let places: Promise<Map<string, string>> | null = null;
 
 function stationNames(): Promise<Map<string, string>> {
   places ??= loadStations().then((stations) => {
     const byPlatform = new Map<string, string>();
     for (const station of stations) {
-      // Rail platforms too, or an S-Bahn terminus inside Vienna has no name to
-      // match a board row against.
       for (const id of station.gtfsStopIds) byPlatform.set(id, station.name);
       for (const id of station.railStopIds) byPlatform.set(id, station.name);
     }
@@ -28,9 +24,6 @@ function stationNames(): Promise<Map<string, string>> {
 const endsAt = (trip: TripRecord, named: Map<string, string>) =>
   named.get(trip.p[trip.p.length - 1] ?? "") ?? "";
 
-// The board says "Bhf. Meidling S U" while GTFS says "Wien Meidling", so the
-// headsign alone will not find the run. The terminus station is the reliable
-// key, with the headsign kept as a second chance.
 function destinations(trip: TripRecord, named: Map<string, string>): string[] {
   const headsign = trip.h ?? "";
   return [endsAt(trip, named), headsign, stripCity(headsign)].map(
@@ -38,10 +31,6 @@ function destinations(trip: TripRecord, named: Map<string, string>): string[] {
   );
 }
 
-// Short of an exact match, one name being contained in the other still pins the
-// place down once the line and the calling station have already narrowed it —
-// "Bhf. Hütteldorf S U" against "Hütteldorf S U". Too short and it would start
-// matching unrelated stops.
 const MIN_LOOSE = 6;
 
 const loose = (a: string, b: string) =>
@@ -49,8 +38,6 @@ const loose = (a: string, b: string) =>
   b.length >= MIN_LOOSE &&
   (a.includes(b) || b.includes(a));
 
-// The fullest run wins: a short working would draw only part of the line and
-// leave the destination the reader asked about off the map.
 function pickTrip(
   schedule: Schedule,
   line: string,
@@ -146,8 +133,6 @@ export async function GET(request: Request) {
         line: shape,
         start: shape[0],
         end: shape[shape.length - 1],
-        // Station names, so the map's end labels read like the board's rows
-        // rather than like GTFS headsigns.
         origin: named.get(trip.p[0] ?? "") ?? "",
         towards: endsAt(trip, named) || stripCity(trip.h ?? ""),
       },
