@@ -8,6 +8,14 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { MapControls } from "./map-controls";
 import { MapSettings } from "./map-settings";
 import { enablePlaces, setPlaceVisibility } from "./places";
+import {
+  addExitLayers,
+  exitStationName,
+  exitsFor,
+  loadExits,
+  setExitTheme,
+  showExitsFor,
+} from "./exits";
 import { buildPlacePopup } from "./place-popup";
 import { enableStops, type Station, type StopSelection } from "./stops";
 import { StationSearch } from "./station-search";
@@ -162,6 +170,7 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
     map.setPaintProperty(DISTRICTS_LABEL_LAYER, "text-color", ink);
   }
 
+  setExitTheme(map, dark);
   setVehicleTheme(map, dark);
   return true;
 }
@@ -371,6 +380,8 @@ export function MapView() {
   const pickStation = useRef<((station: Station) => void) | null>(null);
   const following = useRef<string | null>(null);
   const routeTrip = useRef<string | null>(null);
+  // Which station has asked for its doors; they stay until asked again.
+  const exitsOpen = useRef<string | null>(null);
   const disablePlaces = useRef<(() => void) | null>(null);
   const stopPlaceVisibility = useRef<(() => void) | null>(null);
   const theme = useRef(resolvedTheme);
@@ -430,6 +441,10 @@ export function MapView() {
       // Images first: a symbol layer whose icon is missing logs on every tile.
       void installStopIcons(instance).then(() => addStopsLayer(instance));
       addDistrictLayers(instance);
+      void addExitLayers(instance);
+      // A popup built before this lands would be missing its exits, so the open
+      // one is drawn again once they are known.
+      void loadExits().then(() => redrawStop.current?.());
       addRouteLayers(instance);
       addVehicleLayers(instance, theme.current === "dark");
       applyMapTheme(instance, theme.current === "dark");
@@ -480,6 +495,7 @@ export function MapView() {
 
       let content: HTMLElement;
       try {
+        const exits = exitsFor(selection.name);
         content = buildStopPopup({
           selection,
           dark: theme.current === "dark",
@@ -487,6 +503,17 @@ export function MapView() {
           tracing: tracing.current,
           untraceable: untraceable.current,
           onTrace: (row) => traceRow(instance, row),
+          exits,
+          exitsShown: exitsOpen.current === selection.name,
+          onToggleExits: () => {
+            const open = exitsOpen.current === selection.name;
+            exitsOpen.current = open ? null : selection.name;
+            showExitsFor(
+              instance,
+              open ? null : exitStationName(selection.name),
+            );
+            redrawStop.current?.();
+          },
         });
       } catch (cause) {
         console.error("stop popup failed to render", cause);
@@ -833,7 +860,12 @@ export function MapView() {
         className="absolute bottom-16 left-4 z-10"
       />
       {(error || vehicleError) && (
-        <p className="absolute bottom-4 left-4 rounded-md bg-card px-3 py-2 text-sm text-destructive">
+        // Centred: at the bottom left it sat under the Mapbox logo and read as
+        // part of the furniture rather than as something having gone wrong.
+        <p
+          role="status"
+          className="glass pointer-events-none absolute top-1/2 left-1/2 z-20 max-w-[min(26rem,80vw)] -translate-x-1/2 -translate-y-1/2 rounded-xl px-4 py-3 text-center text-sm text-destructive"
+        >
           {error ?? vehicleError}
         </p>
       )}

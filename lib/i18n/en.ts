@@ -42,6 +42,13 @@ export const en = {
     language: "Language",
   },
 
+  exits: {
+    show: "Show exits on the map",
+    count: "{count} exits",
+    withStepFree: "{count} exits · {stepFree} step-free",
+    stepFree: "Step-free entrance",
+  },
+
   theme: {
     label: "Theme",
     system: "System",

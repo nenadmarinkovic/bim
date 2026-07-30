@@ -1,6 +1,6 @@
 import type mapboxgl from "mapbox-gl";
 
-import { STOPS_LAYER } from "@/lib/vehicles/layer-ids";
+import { STOPS_BADGE_LAYER, STOPS_LAYER } from "@/lib/vehicles/layer-ids";
 import type { StopBoard } from "@/lib/vehicles/board";
 
 export type StopSelection = {
@@ -64,6 +64,13 @@ function loadBoard(diva: number): Promise<StopBoard | null> {
 // Hovering a dot predicts clicking it, so the board is usually waiting by the
 // time the popup opens. Bounded, because the server allows twenty uncached
 // lookups a minute and a mouse crossing the map would spend them all.
+// Both, and not just the circle: the badges are one image up to four wide, so at
+// a station with a U-Bahn, an S-Bahn and a bus the outer icons sit thirty pixels
+// from the point the circle covers, and clicking what you can see did nothing.
+// The circle still earns its place — it stays hittable when a badge is
+// decluttered away, and only rendered features answer a query.
+const TARGETS = [STOPS_LAYER, STOPS_BADGE_LAYER];
+
 const DWELL_MS = 160;
 const WARM_WINDOW_MS = 60_000;
 const WARM_PER_WINDOW = 8;
@@ -160,10 +167,9 @@ export function enableStops(
 
   const onMapClick = (event: mapboxgl.MapMouseEvent) => {
     if (!refresh && ticket === 0) return;
-    if (!map.getLayer(STOPS_LAYER)) return;
-    const hits = map.queryRenderedFeatures(event.point, {
-      layers: [STOPS_LAYER],
-    });
+    const layers = TARGETS.filter((layer) => map.getLayer(layer));
+    if (!layers.length) return;
+    const hits = map.queryRenderedFeatures(event.point, { layers });
     if (!hits.length) close();
   };
 
@@ -187,10 +193,10 @@ export function enableStops(
     map.getCanvas().style.cursor = "";
   };
 
-  map.on("click", STOPS_LAYER, onClick);
+  map.on("click", TARGETS, onClick);
   map.on("click", onMapClick);
-  map.on("mouseenter", STOPS_LAYER, pointer);
-  map.on("mouseleave", STOPS_LAYER, resetPointer);
+  map.on("mouseenter", TARGETS, pointer);
+  map.on("mouseleave", TARGETS, resetPointer);
 
   return {
     select,
@@ -198,10 +204,10 @@ export function enableStops(
       ticket++;
       clearInterval(refresh);
       clearTimeout(dwell);
-      map.off("click", STOPS_LAYER, onClick);
+      map.off("click", TARGETS, onClick);
       map.off("click", onMapClick);
-      map.off("mouseenter", STOPS_LAYER, pointer);
-      map.off("mouseleave", STOPS_LAYER, resetPointer);
+      map.off("mouseenter", TARGETS, pointer);
+      map.off("mouseleave", TARGETS, resetPointer);
       map.getCanvas().style.cursor = "";
     },
   };

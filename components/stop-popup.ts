@@ -8,9 +8,16 @@ import {
 import type { BoardRow, StopBoard } from "@/lib/vehicles/board";
 import { lateness } from "./vehicle-popup";
 import type { StopSelection } from "./stops";
+import type { Exit } from "./exits";
 import { badgeMarkup, type StationMode } from "./stop-icons";
 import type { Dictionary } from "@/lib/i18n";
 import { fill } from "@/lib/i18n/locales";
+import { cn } from "@/lib/utils";
+import {
+  SWITCH_ROOT,
+  SWITCH_THUMB,
+  SWITCH_TRACK,
+} from "@/components/ui/switch-classes";
 
 export const rowKey = (row: BoardRow) => `${row.line}|${row.towards}`;
 
@@ -68,6 +75,10 @@ export type BoardView = {
   // Wiener Linien publishes departures for but does not operate.
   untraceable: Set<string>;
   onTrace: (row: BoardRow) => void;
+  // Only the stations whose doors are mapped get these.
+  exits?: Exit[];
+  exitsShown?: boolean;
+  onToggleExits?: () => void;
 };
 
 // The rows share one grid, so the "min" heading sits directly over the numbers
@@ -152,6 +163,53 @@ function buildBoard(board: StopBoard, view: BoardView): HTMLElement {
   return list;
 }
 
+// The doors themselves belong on the map, not listed twice, so the popup keeps
+// only the count and the switch that puts them there.
+function buildExits(exits: Exit[], view: BoardView): HTMLElement {
+  const { dict } = view;
+  const on = Boolean(view.exitsShown);
+
+  const row = document.createElement("div");
+  row.className = "bim-stop-exits";
+
+  const label = document.createElement("span");
+  label.className = "bim-exits-label";
+  const stepFree = exits.filter((exit) => exit.access === "free").length;
+  label.textContent = stepFree
+    ? fill(dict.exits.withStepFree, {
+        count: String(exits.length),
+        stepFree: String(stepFree),
+      })
+    : fill(dict.exits.count, { count: String(exits.length) });
+
+  // The same control as the map settings panel, built by hand because a popup is
+  // DOM rather than React. Merged rather than concatenated: the track colour and
+  // the root's default are the same property, and only tailwind-merge drops the
+  // loser — plain concatenation leaves both and the cascade picks the wrong one.
+  const track = document.createElement("button");
+  track.type = "button";
+  track.role = "switch";
+  track.className = cn(SWITCH_ROOT, SWITCH_TRACK);
+  track.dataset.slot = "switch";
+  track.dataset.size = "sm";
+  track.setAttribute("aria-checked", String(on));
+  track.setAttribute("aria-label", dict.exits.show);
+  track.setAttribute(on ? "data-checked" : "data-unchecked", "");
+
+  const thumb = document.createElement("span");
+  thumb.className = SWITCH_THUMB;
+  thumb.dataset.slot = "switch-thumb";
+  thumb.setAttribute(on ? "data-checked" : "data-unchecked", "");
+  track.append(thumb);
+
+  if (view.onToggleExits) {
+    track.addEventListener("click", view.onToggleExits);
+  }
+
+  row.append(label, track);
+  return row;
+}
+
 export function buildStopPopup(view: BoardView): HTMLElement {
   const { selection, dict } = view;
 
@@ -163,6 +221,11 @@ export function buildStopPopup(view: BoardView): HTMLElement {
   title.textContent = selection.name;
 
   root.append(title);
+
+  if (view.exits?.length) {
+    root.append(buildExits(view.exits, view));
+  }
+
 
   if (selection.modes.length) {
     root.append(buildModes(selection.modes, dict));

@@ -42,6 +42,13 @@ export const de: Dictionary = {
     language: "Sprache",
   },
 
+  exits: {
+    show: "Ausgänge auf der Karte zeigen",
+    count: "{count} Ausgänge",
+    withStepFree: "{count} Ausgänge · {stepFree} barrierefrei",
+    stepFree: "Barrierefreier Zugang",
+  },
+
   theme: {
     label: "Design",
     system: "System",
@@ -96,7 +103,7 @@ export const de: Dictionary = {
     listen: "Anhören",
     noAudio: "Dafür gibt es keine Tonaufnahme",
     aiSummary: "KI-Zusammenfassung",
-    askMore: "Mehr erfahren",
+    askMore: "Mehr dazu",
   },
 
   chat: {

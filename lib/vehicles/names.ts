@@ -28,3 +28,9 @@ export function normaliseName(name: string): string {
 
 // GTFS headsigns carry a city prefix the boards never show.
 export const stripCity = (name: string) => name.replace(/^\s*wien\s+/i, "");
+
+// Wiener Linien marks an interchange inside the stop name — "Karlsplatz U",
+// "Floridsdorf S U" — where every other source just names the place. The
+// markers always trail, so nothing but them comes off.
+export const stripModeMarkers = (name: string) =>
+  name.replace(/(\s+[SU])+\s*$/i, "").trim();

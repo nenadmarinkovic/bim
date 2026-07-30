@@ -8,3 +8,7 @@ export const DISTRICTS_SOURCE = "districts";
 export const DISTRICTS_FILL_LAYER = "districts-fill";
 export const DISTRICTS_LINE_LAYER = "districts-outline";
 export const DISTRICTS_LABEL_LAYER = "districts-labels";
+
+export const EXITS_SOURCE = "exits";
+// Icon and name are one symbol, so a label can never drift from its door.
+export const EXITS_LAYER = "exits-markers";

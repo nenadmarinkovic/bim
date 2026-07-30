@@ -3,6 +3,7 @@
 import { useCallback, useId, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { SWITCH_TRACK } from "@/components/ui/switch-classes";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { VEHICLES_LABEL_LAYER } from "@/components/vehicle-layer";
 import {
@@ -15,9 +16,6 @@ import {
 import { useDict } from "./locale-provider";
 import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
-
-const SWITCH_TRACK =
-  "data-unchecked:bg-foreground/25 dark:data-unchecked:bg-foreground/25";
 
 const LAYER_OPTIONS = [
   { key: "lines", layers: [VEHICLES_LABEL_LAYER] },

@@ -12,6 +12,7 @@ import {
 import { extractEntries } from "./unzip.ts";
 import { buildTrips, previousServiceDate, serviceDate } from "./trips.ts";
 import { buildUndergroundRanges, fetchWays } from "./underground.ts";
+import { buildExits } from "./exits.ts";
 import { buildSbahn, type RailStop } from "./sbahn.ts";
 import { fetchDistricts, tintDistricts } from "./districts.ts";
 import { normaliseName, stripCity } from "../../lib/vehicles/names.ts";
@@ -578,6 +579,22 @@ async function main() {
   );
 
   await writeArtifact("underground.json", underground.ranges);
+
+  console.log("\nstation exits");
+  const exits = await buildExits();
+  console.log(
+    `  ${exits.stats.exits} named doors at ${exits.stats.stationsCovered} of ` +
+      `${exits.stats.subwayStations} stations: ${exits.stats.free} step-free, ` +
+      `${exits.stats.steps} with steps, ${exits.stats.limited} limited, ` +
+      `${exits.stats.unknown} unrecorded\n` +
+      `  ${exits.stats.unnamed} unnamed dropped`,
+  );
+  await writeArtifact("exits.json", {
+    generatedAt: new Date().toISOString(),
+    type: "FeatureCollection",
+    features: exits.features,
+  });
+
   await writeArtifact("schedule.json", {
     date,
     generatedAt: new Date().toISOString(),
@@ -622,6 +639,7 @@ async function main() {
     },
     shapes: { total: Object.keys(shapes).length, points },
     underground: underground.stats,
+    exits: exits.stats,
     schedule: {
       date,
       trips: tripCount,

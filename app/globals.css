@@ -136,8 +136,10 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  /* One dial for every floating panel: controls, header and popups. */
-  --glass-fill: color-mix(in oklch, var(--popover) 88%, transparent);
+  /* One dial for every floating panel: controls, header and popups. White is
+     right here; it is the opacity that wants to sit lower than the night
+     theme's, because a pale panel needs less help to keep dark text legible. */
+  --glass-fill: color-mix(in oklch, var(--popover) 78%, transparent);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -170,7 +172,9 @@
   --border: rgb(255 255 255 / 12%);
   --input: rgb(255 255 255 / 16%);
   --ring: #7b86a8;
-  --glass-fill: color-mix(in oklch, var(--popover) 62%, #00000052);
+  /* Raised where the light panel is not: over a night basemap the map showed
+     straight through the small text at the old value. */
+  --glass-fill: color-mix(in oklch, var(--popover) 78%, #00000052);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -276,7 +280,7 @@ span.text-brand.italic {
 }
 
 .dark .glass-sheet {
-  background: color-mix(in oklch, var(--sheet) 52.5%, #00000094);
+  background: color-mix(in oklch, var(--sheet) 68%, #00000094);
 }
 
 @media (prefers-reduced-transparency: reduce) {
@@ -392,41 +396,52 @@ span.text-brand.italic {
   font-size: 0.9375rem;
   letter-spacing: -0.01em;
 }
+/* A popup's supporting text sits over the map itself, where a control label sits
+   on a panel — so it is set stronger than a footnote would be on a page. */
 .bim-popup-kind {
   margin-top: 0.15rem;
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: color-mix(in oklch, var(--foreground) 55%, transparent);
+  color: color-mix(in oklch, var(--foreground) 72%, transparent);
 }
 .bim-popup-detail {
   margin-top: 0.45rem;
   line-height: 1.45;
-  color: color-mix(in oklch, var(--foreground) 78%, transparent);
+  /* Full strength: this is the popup's actual content, not a caption around it.
+     The softened tiers are for the labels that frame it. */
+  color: var(--foreground);
 }
 .bim-popup-detail[data-pending="true"] {
-  color: color-mix(in oklch, var(--foreground) 45%, transparent);
+  color: color-mix(in oklch, var(--foreground) 60%, transparent);
   font-style: italic;
 }
 .bim-popup-source {
   font-size: 0.625rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: color-mix(in oklch, var(--foreground) 45%, transparent);
+  color: color-mix(in oklch, var(--foreground) 65%, transparent);
 }
+/* Stacked rather than side by side: the attribution gets the popup's full width,
+   which is the only way "KI-Zusammenfassung" fits on one line, and the buttons
+   get a row of their own instead of competing with it. */
 .bim-popup-ai {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.4rem;
   margin-top: 0.6rem;
   padding-top: 0.5rem;
   border-top: 1px solid color-mix(in oklch, var(--foreground) 12%, transparent);
+}
+.bim-popup-ai > .bim-popup-source {
+  overflow-wrap: break-word;
 }
 .bim-popup-ai-actions {
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  /* Trailing edge, so the buttons line up with the popup's right margin. */
+  align-self: flex-end;
 }
 .bim-popup-listen {
   display: inline-flex;
@@ -493,12 +508,32 @@ span.text-brand.italic {
   margin-top: 0;
   margin-left: 0.15rem;
 }
-.bim-stop-note {
+/* Only the few stations whose exits are mapped carry this, so it reads as extra
+   rather than as permanent popup furniture. */
+.bim-stop-exits {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.55rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid color-mix(in oklch, var(--foreground) 12%, transparent);
+}
+/* Label left, switch right — the same row the settings panel uses. Set at the
+   weight the popup's other standing text carries, not the near-invisible grey a
+   footnote gets: it is the only thing naming what the switch does. */
+.bim-exits-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--foreground) 78%, transparent);
+}.bim-stop-note {
   margin-top: 0.45rem;
   color: color-mix(in oklch, var(--foreground) 78%, transparent);
 }
 .bim-stop-note[data-pending="true"] {
-  color: color-mix(in oklch, var(--foreground) 45%, transparent);
+  color: color-mix(in oklch, var(--foreground) 62%, transparent);
   font-style: italic;
 }
 /* One grid for every row, so the badges and the numbers line up column-wise. */
@@ -548,7 +583,7 @@ span.text-brand.italic {
   font-size: 0.625rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: color-mix(in oklch, var(--foreground) 45%, transparent);
+  color: color-mix(in oklch, var(--foreground) 62%, transparent);
 }
 .bim-stop-badge {
   display: inline-flex;
