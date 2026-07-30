@@ -1,5 +1,7 @@
 "use client";
 
+import { CircleNotchIcon } from "@phosphor-icons/react";
+
 import { useVehiclesContext } from "./vehicles-provider";
 import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
@@ -12,6 +14,17 @@ function Counted({ template, n }: { template: string; n: number }) {
       <span className="tabular-nums">{n}</span>
       {after}
     </>
+  );
+}
+
+function Spinner() {
+  return (
+    <CircleNotchIcon
+      size={13}
+      weight="bold"
+      aria-hidden
+      className="mr-1.5 shrink-0 animate-spin opacity-70 motion-reduce:animate-none"
+    />
   );
 }
 
@@ -29,7 +42,8 @@ export function VehicleCount({ className }: { className?: string }) {
 
   if (!data) {
     return (
-      <p className={cn(className, "animate-pulse")} role="status">
+      <p className={cn(className, "inline-flex items-center")} role="status">
+        <Spinner />
         {dict.count.loading}
       </p>
     );

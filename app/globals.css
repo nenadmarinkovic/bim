@@ -155,7 +155,7 @@
   --popover: #2a3350;
   --popover-foreground: #ffffff;
   --sheet: #2a3350;
-  --field: #303a5b;
+  --field: rgb(255 255 255 / 5%);
   --brand: #ffff01;
   --primary: oklch(0.922 0 0);
   --primary-foreground: #242c45;

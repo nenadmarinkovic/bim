@@ -99,6 +99,9 @@ export function SiteNav({ className }: { className?: string }) {
             <DialogDescription className="text-sm font-medium text-foreground">
               {dict.about.subtitle}
             </DialogDescription>
+            <p className="text-sm font-medium text-foreground">
+              {dict.about.estimate}
+            </p>
           </DialogHeader>
 
           <div className="grid gap-6 sm:grid-cols-2">

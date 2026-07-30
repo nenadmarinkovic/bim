@@ -173,21 +173,23 @@ export const en = {
   },
 
   about: {
-    moreInfo: "For more:",
     howTitle: "How a vehicle gets placed",
     dataTitle: "Where the data comes from",
+    estimate:
+      "Every vehicle on this map is an estimate, not a live position. Wiener Linien does not publish where its vehicles are.",
+    moreInfo: "For more:",
     title: "Bim",
     subtitle: "Unofficial live map of the Wiener Linien network.",
-    lead: "Wiener Linien publishes no vehicle positions. Every tram, bus and U-Bahn here is placed by taking its timetable, bending it by the delay reported at nearby stops, and sliding it along the real track geometry.",
-    purpose:
-      "Bim is an observatory for the network rather than a trip planner. It is built on Wiener Linien’s open data and is not affiliated with them.",
+    lead: "Each one is placed from its timetable, shifted by the delay reported at nearby stops, and slid along the real track geometry.",
+    accuracy:
+      "That lands within roughly one stop-to-stop segment: near exact on the U-Bahn, looser for a tram in traffic.",
     trustTitle: "How much to trust a vehicle",
     trustBody:
-      "It varies. Wiener Linien only measures departures at part of the network. Click any vehicle to see whether its position was just measured at a stop, interpolated between reporting stops, or is running on the timetable alone.",
-    accuracy:
-      "Positions are accurate to roughly one stop-to-stop segment: near exact on the U-Bahn, looser for a tram in traffic.",
+      "Wiener Linien measures departures at only part of the network. Click any vehicle to see whether its position was measured at a stop, interpolated between reporting stops, or is running on the timetable alone.",
     dataNote:
-      "Data from Wiener Linien and Stadt Wien open data, with track geometry from a community GTFS conversion (CC BY 4.0).",
+      "Wiener Linien and Stadt Wien open data. Track geometry from a community GTFS conversion (CC BY 4.0), station entrances from OpenStreetMap (ODbL).",
+    purpose:
+      "Bim shows the network rather than planning journeys, and is not affiliated with Wiener Linien.",
     openSource: "Open-source",
     projectBy: "project by",
   },

@@ -180,21 +180,23 @@ export const de: Dictionary = {
   },
 
   about: {
-    moreInfo: "Mehr unter:",
     howTitle: "Wie ein Fahrzeug platziert wird",
     dataTitle: "Woher die Daten kommen",
+    estimate:
+      "Jedes Fahrzeug auf dieser Karte ist eine Schätzung, keine Live-Position. Wiener Linien veröffentlicht nicht, wo seine Fahrzeuge sind.",
+    moreInfo: "Mehr unter:",
     title: "Bim",
     subtitle: "Inoffizielle Live-Karte des Wiener-Linien-Netzes.",
-    lead: "Wiener Linien veröffentlicht keine Fahrzeugpositionen. Jede Straßenbahn, jeder Bus und jede U-Bahn hier wird gesetzt, indem der Fahrplan genommen, um die an nahen Haltestellen gemeldete Verspätung gebogen und entlang der echten Gleisgeometrie verschoben wird.",
-    purpose:
-      "Bim ist eine Beobachtungsstelle für das Netz, kein Routenplaner. Die Karte basiert auf den offenen Daten der Wiener Linien und steht in keiner Verbindung zu ihnen.",
+    lead: "Jedes wird aus seinem Fahrplan gesetzt, um die an nahen Haltestellen gemeldete Verspätung verschoben und entlang der echten Gleisgeometrie bewegt.",
+    accuracy:
+      "Das trifft auf etwa einen Abschnitt zwischen zwei Haltestellen genau: bei der U-Bahn beinahe exakt, bei einer Straßenbahn im Verkehr ungenauer.",
     trustTitle: "Wie verlässlich ist ein Fahrzeug",
     trustBody:
-      "Das ist unterschiedlich. Wiener Linien misst Abfahrten nur an einem Teil des Netzes. Klicken Sie ein Fahrzeug an, um zu sehen, ob seine Position gerade an einer Haltestelle gemessen, zwischen meldenden Haltestellen interpoliert oder allein aus dem Fahrplan abgeleitet wurde.",
-    accuracy:
-      "Die Positionen stimmen etwa auf einen Abschnitt zwischen zwei Haltestellen genau: bei der U-Bahn beinahe exakt, bei einer Straßenbahn im Verkehr ungenauer.",
+      "Wiener Linien misst Abfahrten nur an einem Teil des Netzes. Klicken Sie ein Fahrzeug an, um zu sehen, ob seine Position an einer Haltestelle gemessen, zwischen meldenden Haltestellen interpoliert oder allein aus dem Fahrplan abgeleitet wurde.",
     dataNote:
-      "Daten von Wiener Linien und Stadt Wien Open Data, Gleisgeometrie aus einer GTFS-Konvertierung der Community (CC BY 4.0).",
+      "Offene Daten von Wiener Linien und Stadt Wien. Gleisgeometrie aus einer GTFS-Konvertierung der Community (CC BY 4.0), Stationszugänge aus OpenStreetMap (ODbL).",
+    purpose:
+      "Bim zeigt das Netz, plant aber keine Fahrten, und steht in keiner Verbindung zu Wiener Linien.",
     openSource: "Open-Source-Projekt",
     projectBy: "von",
   },
