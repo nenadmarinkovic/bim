@@ -80,7 +80,6 @@ function Badges({ modes }: { modes: string[] }) {
         <span
           key={mode}
           className="inline-flex leading-none"
-          // Our own markup, the same badges the map draws.
           dangerouslySetInnerHTML={{
             __html: badgeMarkup(mode as StationMode, 14),
           }}
@@ -90,8 +89,6 @@ function Badges({ modes }: { modes: string[] }) {
   );
 }
 
-// Only the plain case is highlighted: the ranking key expands abbreviations and
-// folds diacritics, so its offsets do not map back onto the name being shown.
 function Name({ name, query }: { name: string; query: string }) {
   const at = query ? name.toLowerCase().indexOf(query.toLowerCase()) : -1;
   if (at < 0) return <span className="truncate">{name}</span>;
@@ -148,8 +145,6 @@ export function StationSearch({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Fetched on first open rather than at load: the map already pulls this file
-  // for its own source, so by now it is usually a cache hit.
   useEffect(() => {
     if (!open || stations.length) return;
     void loadStations().then(setStations);

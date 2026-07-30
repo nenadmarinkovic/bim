@@ -25,8 +25,6 @@ export type Schedule = {
 
 export class MissingArtifactError extends Error {}
 
-// Past the end of the one service day the artifact holds, nothing is placed at
-// all — an empty map reads as a quiet night rather than as a stale ingest.
 export class StaleArtifactError extends Error {}
 
 export type UndergroundRanges = Record<string, [number, number][]>;

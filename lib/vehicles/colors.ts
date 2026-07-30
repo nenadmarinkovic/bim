@@ -1,6 +1,5 @@
 import type { VehicleMode } from "./types.ts";
 
-// Wiener Linien's published line colours.
 export const METRO_COLOR: Record<string, string> = {
   U1: "#e3000f",
   U2: "#a862a4",
@@ -10,9 +9,6 @@ export const METRO_COLOR: Record<string, string> = {
   U6: "#9d6830",
 };
 
-// Vienna Red: the paint on the trams themselves, and on the buses too. Buses
-// take their signage blue instead, because a map that draws both in one red
-// cannot tell them apart.
 export const TRAM_RED = "#e3000f";
 export const BUS_BLUE = "#009bac";
 export const SBAHN_BLUE = "#009ddd";
@@ -75,8 +71,6 @@ export const DIMENSIONS: Record<
     windowTop: number;
   }
 > = {
-  // A Wiener S-Bahn set is a 4746/8073 double-decker pair or a Talent — longer
-  // than a U-Bahn train and wider than a tram.
   train: {
     length: 132,
     width: 3.0,
@@ -115,7 +109,6 @@ export const ROOF = { light: "#ffffff", dark: "#f2f5fa" } as const;
 const UNDERGROUND_MUTE = 0.55;
 const TOWARD = { light: [255, 255, 255], dark: [23, 23, 25] } as const;
 
-// Mixing toward achromatic desaturates without rotating hue, so a dimmed U3 still reads orange.
 export function undergroundColour(hex: string, dark: boolean): string {
   const n = parseInt(hex.slice(1), 16);
   const base = [(n >> 16) & 255, (n >> 8) & 255, n & 255];

@@ -61,14 +61,6 @@ function loadBoard(diva: number): Promise<StopBoard | null> {
   return request;
 }
 
-// Hovering a dot predicts clicking it, so the board is usually waiting by the
-// time the popup opens. Bounded, because the server allows twenty uncached
-// lookups a minute and a mouse crossing the map would spend them all.
-// Both, and not just the circle: the badges are one image up to four wide, so at
-// a station with a U-Bahn, an S-Bahn and a bus the outer icons sit thirty pixels
-// from the point the circle covers, and clicking what you can see did nothing.
-// The circle still earns its place — it stays hittable when a badge is
-// decluttered away, and only rendered features answer a query.
 const TARGETS = [STOPS_LAYER, STOPS_BADGE_LAYER];
 
 const DWELL_MS = 160;
@@ -89,7 +81,6 @@ function stopAt(feature: mapboxgl.GeoJSONFeature) {
   const name = feature.properties?.name;
   if (typeof diva !== "number" || typeof name !== "string") return null;
 
-  // Vector-tile properties are flat, so the modes travel as one string.
   const modes = String(feature.properties?.modes ?? "")
     .split(",")
     .filter(Boolean);
@@ -112,7 +103,6 @@ export type Station = {
 
 export type StopHandle = {
   disable: () => void;
-  // Opening a station without clicking it, for search.
   select: (station: Station) => void;
 };
 
@@ -136,7 +126,6 @@ export function enableStops(
     clearInterval(refresh);
     clearTimeout(dwell);
 
-    // Warmed by the hover above, or by an earlier visit: no waiting line.
     const known = ready(stop.diva);
     onSelect({ ...stop, board: known, failed: false });
 
@@ -145,7 +134,6 @@ export function enableStops(
       onSelect({ ...stop, board, failed: !board });
     };
 
-    // Joins the hover's request instead of racing it with a second one.
     void loadBoard(stop.diva).then(show);
 
     refresh = window.setInterval(() => {

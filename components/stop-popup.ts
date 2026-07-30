@@ -21,7 +21,6 @@ import {
 
 export const rowKey = (row: BoardRow) => `${row.line}|${row.towards}`;
 
-// What a rider would call it, not what the feed calls it.
 const modeLabel = (dict: Dictionary, mode: string): string | undefined =>
   (dict.stop.modes as Record<string, string>)[mode];
 
@@ -31,7 +30,6 @@ const describeModes = (modes: string[], dict: Dictionary) =>
     .filter(Boolean)
     .join(" · ");
 
-// The same marks the map draws, so the popup confirms what was clicked.
 function buildModes(modes: string[], dict: Dictionary): HTMLElement {
   const row = document.createElement("div");
   row.className = "bim-stop-modes";
@@ -71,18 +69,13 @@ export type BoardView = {
   dark: boolean;
   dict: Dictionary;
   tracing: string | null;
-  // Rows the schedule has no geometry for — the Badner Bahn and other lines
-  // Wiener Linien publishes departures for but does not operate.
   untraceable: Set<string>;
   onTrace: (row: BoardRow) => void;
-  // Only the stations whose doors are mapped get these.
   exits?: Exit[];
   exitsShown?: boolean;
   onToggleExits?: () => void;
 };
 
-// The rows share one grid, so the "min" heading sits directly over the numbers
-// it labels rather than being stranded at the foot of the popup.
 function buildHeading(dict: Dictionary): HTMLElement {
   const element = document.createElement("li");
   element.className = "bim-stop-row";
@@ -109,10 +102,10 @@ function buildRow(row: BoardRow, view: BoardView): HTMLElement {
   pick.type = "button";
   pick.className = "bim-stop-pick";
   pick.dataset.active = String(active);
-  pick.title = fill(
-    active ? view.dict.stop.untrace : view.dict.stop.trace,
-    { line: row.line, towards: row.towards },
-  );
+  pick.title = fill(active ? view.dict.stop.untrace : view.dict.stop.trace, {
+    line: row.line,
+    towards: row.towards,
+  });
   pick.addEventListener("click", () => view.onTrace(row));
 
   const badge = document.createElement("span");
@@ -131,9 +124,7 @@ function buildRow(row: BoardRow, view: BoardView): HTMLElement {
     const time = document.createElement("span");
     time.className = "bim-stop-time";
     time.textContent =
-      departure.countdown === 0
-        ? view.dict.stop.now
-        : `${departure.countdown}`;
+      departure.countdown === 0 ? view.dict.stop.now : `${departure.countdown}`;
     if (departure.delay === null) {
       time.dataset.scheduled = "true";
       time.title = view.dict.vehicle.scheduled;
@@ -163,8 +154,6 @@ function buildBoard(board: StopBoard, view: BoardView): HTMLElement {
   return list;
 }
 
-// The doors themselves belong on the map, not listed twice, so the popup keeps
-// only the count and the switch that puts them there.
 function buildExits(exits: Exit[], view: BoardView): HTMLElement {
   const { dict } = view;
   const on = Boolean(view.exitsShown);
@@ -182,10 +171,6 @@ function buildExits(exits: Exit[], view: BoardView): HTMLElement {
       })
     : fill(dict.exits.count, { count: String(exits.length) });
 
-  // The same control as the map settings panel, built by hand because a popup is
-  // DOM rather than React. Merged rather than concatenated: the track colour and
-  // the root's default are the same property, and only tailwind-merge drops the
-  // loser — plain concatenation leaves both and the cascade picks the wrong one.
   const track = document.createElement("button");
   track.type = "button";
   track.role = "switch";
@@ -225,7 +210,6 @@ export function buildStopPopup(view: BoardView): HTMLElement {
   if (view.exits?.length) {
     root.append(buildExits(view.exits, view));
   }
-
 
   if (selection.modes.length) {
     root.append(buildModes(selection.modes, dict));

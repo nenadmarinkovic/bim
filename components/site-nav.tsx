@@ -30,16 +30,11 @@ const NAV_LINK =
 const LINK =
   "cursor-pointer text-brand font-medium underline-offset-4 transition-opacity hover:opacity-70";
 
-// Capped and scrollable: on a short phone the contribute sheet is taller than
-// the viewport, and without this its Send button sits below the fold with no way
-// to reach it.
 const SHEET =
   "glass-sheet max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto overscroll-contain p-6";
 
 const FOOTER = "-mx-6 -mb-6 bg-transparent p-6";
 
-// A tinted square behind each mark: enough to group the icon with its heading
-// without turning the row into a box.
 const CHIP =
   "flex size-6 shrink-0 items-center justify-center rounded-md bg-foreground/8 text-foreground";
 
@@ -49,12 +44,8 @@ const ISSUES = `${REPO}/issues`;
 
 const SITE = "https://nenadmarinkovic.com";
 
-// Straight into the editor over Vienna, rather than the front page: the ask is
-// specific, so the link should be too.
 const OSM_EDIT = "https://www.openstreetmap.org/edit#map=13/48.2082/16.3738";
 
-// A leading mark, a heading, and whatever the section has to say. Both dialogs
-// build every block this way, which is what makes them look like one thing.
 function Panel({
   icon,
   title,
@@ -104,9 +95,7 @@ export function SiteNav({ className }: { className?: string }) {
             <DialogTitle className="text-xl font-semibold">
               {dict.about.title}
             </DialogTitle>
-            {/* The subtitle is the description: the long explanation belongs to
-                the panel that is headed for it, and printing it here as well
-                said the same paragraph twice. */}
+
             <DialogDescription className="text-sm font-medium text-foreground">
               {dict.about.subtitle}
             </DialogDescription>
@@ -139,9 +128,7 @@ export function SiteNav({ className }: { className?: string }) {
                 <p className={BODY}>{dict.about.purpose}</p>
               </Panel>
 
-              {/* Credit sits at the foot of the column, the way the contribute
-                  sheet puts the site link at the foot of its own. */}
-              <div className={cn(BODY, "mt-auto grid gap-1 pt-1")}>
+              <div className={cn(BODY, "mt-auto grid gap-0.5 pt-1")}>
                 <p>
                   <a
                     href={REPO}
@@ -173,7 +160,9 @@ export function SiteNav({ className }: { className?: string }) {
       </Dialog>
 
       <Dialog>
-        <DialogTrigger className={NAV_LINK}>{dict.nav.contribute}</DialogTrigger>
+        <DialogTrigger className={NAV_LINK}>
+          {dict.nav.contribute}
+        </DialogTrigger>
         <DialogContent className={cn(SHEET, "sm:max-w-3xl")}>
           <DialogHeader>
             <div className="grid gap-1">
@@ -189,12 +178,6 @@ export function SiteNav({ className }: { className?: string }) {
             </DialogDescription>
           </DialogHeader>
 
-          {/* Still 50/50, but the halves now carry comparable content: two
-              things a reader can go and do on the left, one way to reach a
-              person on the right. The dead space before came from moving the
-              second ask out of the left column. No boxes — a single rule does
-              the dividing, and only the form gets a surface, because it is the
-              only part you interact with. */}
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="flex flex-col gap-5">
               <Panel

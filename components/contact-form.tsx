@@ -49,7 +49,6 @@ export function ContactForm({ className }: { className?: string }) {
         error?: string;
       } | null;
 
-      // Named rather than numbered, so the reader is told which thing to fix.
       const errors = dict.contact.errors;
       const known: Record<string, string> = {
         email: errors.email,
@@ -76,7 +75,7 @@ export function ContactForm({ className }: { className?: string }) {
   return (
     <form onSubmit={submit} className={cn("grid gap-3", className)}>
       <div className="grid gap-1.5">
-        <Label htmlFor="contact-email" className="text-xs">
+        <Label htmlFor="contact-email" className="text-sm">
           {dict.contact.email}
         </Label>
         <Input
@@ -91,7 +90,7 @@ export function ContactForm({ className }: { className?: string }) {
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="contact-message" className="text-xs">
+        <Label htmlFor="contact-message" className="text-sm">
           {dict.contact.message}
         </Label>
         <Textarea
@@ -106,14 +105,13 @@ export function ContactForm({ className }: { className?: string }) {
         />
       </div>
 
-      {/* Seen by no person and filled in by every naive bot. */}
       <input
         type="text"
         name="website"
         tabIndex={-1}
         autoComplete="off"
         aria-hidden="true"
-        className="pointer-events-none absolute -left-[9999px] h-0 w-0 opacity-0"
+        className="pointer-events-none absolute left-[-9999px] h-0 w-0 opacity-0"
       />
 
       {problem && (

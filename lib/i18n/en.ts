@@ -139,9 +139,10 @@ export const en = {
 
   contact: {
     email: "Your email",
-    emailPlaceholder: "so I can reply",
-    message: "Message",
-    messagePlaceholder: "What is wrong, or what would you like to know?",
+    emailPlaceholder: "you@example.com",
+    message: "Your message",
+    messagePlaceholder:
+      "A wrong departure, a missing entrance, a question about how something works…",
     send: "Send",
     sending: "Sending…",
     sent: "Thanks — got it. I will reply to the address you gave.",
@@ -165,13 +166,14 @@ export const en = {
     codeBody:
       "A departure that does not match the platform, a station in the wrong place, anything that looks off. GitHub is the best place for it.",
     writeTitle: "Write to me",
-    askBody: "Questions are welcome. So is telling me I got something wrong.",
+    askBody:
+      "All messages are welcome, especially if something is wrong or does not work properly.",
     openIssues: "Open an issue",
     editOsm: "Edit in OpenStreetMap",
   },
 
   about: {
-    moreInfo: "More about me and other projects:",
+    moreInfo: "For more:",
     howTitle: "How a vehicle gets placed",
     dataTitle: "Where the data comes from",
     title: "Bim",

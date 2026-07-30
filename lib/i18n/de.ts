@@ -144,9 +144,10 @@ export const de: Dictionary = {
 
   contact: {
     email: "Ihre E-Mail",
-    emailPlaceholder: "damit ich antworten kann",
-    message: "Nachricht",
-    messagePlaceholder: "Was ist falsch, oder was möchten Sie wissen?",
+    emailPlaceholder: "name@beispiel.at",
+    message: "Ihre Nachricht",
+    messagePlaceholder:
+      "Eine falsche Abfahrt, ein fehlender Zugang, eine Frage dazu wie etwas funktioniert…",
     send: "Senden",
     sending: "Wird gesendet…",
     sent: "Danke — angekommen. Ich antworte an die Adresse, die Sie angegeben haben.",
@@ -173,13 +174,13 @@ export const de: Dictionary = {
       "Eine Abfahrt, die nicht zum Bahnsteig passt, eine Station an der falschen Stelle, irgendetwas das nicht stimmt. Am besten auf GitHub.",
     writeTitle: "Schreiben Sie mir",
     askBody:
-      "Fragen sind willkommen. Und der Hinweis, dass ich etwas falsch gemacht habe, auch.",
+      "Alle Nachrichten sind willkommen, besonders wenn etwas falsch ist oder nicht richtig funktioniert.",
     openIssues: "Issue eröffnen",
     editOsm: "In OpenStreetMap bearbeiten",
   },
 
   about: {
-    moreInfo: "Mehr über mich und andere Projekte:",
+    moreInfo: "Mehr unter:",
     howTitle: "Wie ein Fahrzeug platziert wird",
     dataTitle: "Woher die Daten kommen",
     title: "Bim",
