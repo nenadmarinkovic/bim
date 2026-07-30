@@ -139,9 +139,49 @@ export const de: Dictionary = {
 
   nav: {
     about: "Über",
+    contribute: "Mitmachen",
+  },
+
+  contact: {
+    email: "Ihre E-Mail",
+    emailPlaceholder: "damit ich antworten kann",
+    message: "Nachricht",
+    messagePlaceholder: "Was ist falsch, oder was möchten Sie wissen?",
+    send: "Senden",
+    sending: "Wird gesendet…",
+    sent: "Danke — angekommen. Ich antworte an die Adresse, die Sie angegeben haben.",
+    errors: {
+      email: "Diese Adresse sieht nicht richtig aus. Bitte nachschauen?",
+      message: "Ein paar Worte mehr wären hilfreich.",
+      rate: "Das sind ein paar Nachrichten in einer Minute. Kurz warten, bitte.",
+      unconfigured:
+        "Das Senden ist noch nicht eingerichtet. Ein GitHub-Issue geht in der Zwischenzeit.",
+      failed:
+        "Das ist nicht durchgegangen. Noch einmal versuchen, oder ein GitHub-Issue eröffnen.",
+    },
+  },
+  contribute: {
+    title: "Mitmachen",
+    subtitle:
+      "Bim ist Open Source. Man muss nicht programmieren können, um zu helfen.",
+    lead: "Wenn auf der Karte etwas falsch aussieht oder einer Station ein Detail fehlt, können Sie es selbst ausbessern — oder es mir einfach sagen.",
+    osmTitle: "Einen Stationszugang ergänzen",
+    osmBody:
+      "Die Zugänge auf dieser Karte kommen aus OpenStreetMap: wie sie heißen, und ob man ohne Stufen hineinkommt. Viele fehlen noch. Wenn Sie einen kennen, können Sie ihn dort eintragen, und beim nächsten Datenlauf ist er hier zu sehen.",
+    codeTitle: "Etwas melden, das falsch ist",
+    codeBody:
+      "Eine Abfahrt, die nicht zum Bahnsteig passt, eine Station an der falschen Stelle, irgendetwas das nicht stimmt. Am besten auf GitHub.",
+    writeTitle: "Schreiben Sie mir",
+    askBody:
+      "Fragen sind willkommen. Und der Hinweis, dass ich etwas falsch gemacht habe, auch.",
+    openIssues: "Issue eröffnen",
+    editOsm: "In OpenStreetMap bearbeiten",
   },
 
   about: {
+    moreInfo: "Mehr über mich und andere Projekte:",
+    howTitle: "Wie ein Fahrzeug platziert wird",
+    dataTitle: "Woher die Daten kommen",
     title: "Bim",
     subtitle: "Inoffizielle Live-Karte des Wiener-Linien-Netzes.",
     lead: "Wiener Linien veröffentlicht keine Fahrzeugpositionen. Jede Straßenbahn, jeder Bus und jede U-Bahn hier wird gesetzt, indem der Fahrplan genommen, um die an nahen Haltestellen gemeldete Verspätung gebogen und entlang der echten Gleisgeometrie verschoben wird.",

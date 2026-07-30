@@ -134,9 +134,46 @@ export const en = {
 
   nav: {
     about: "About",
+    contribute: "Contribute",
+  },
+
+  contact: {
+    email: "Your email",
+    emailPlaceholder: "so I can reply",
+    message: "Message",
+    messagePlaceholder: "What is wrong, or what would you like to know?",
+    send: "Send",
+    sending: "Sending…",
+    sent: "Thanks — got it. I will reply to the address you gave.",
+    errors: {
+      email: "That address does not look right. Could you check it?",
+      message: "A few more words would help.",
+      rate: "That is a few messages in a minute. Try again in a moment.",
+      unconfigured:
+        "Sending is not set up yet. A GitHub issue works in the meantime.",
+      failed: "That did not go through. Try again, or open a GitHub issue.",
+    },
+  },
+  contribute: {
+    title: "Contribute",
+    subtitle: "Bim is open source. You do not need to write code to help.",
+    lead: "If something on the map looks wrong, or a station is missing a detail, you can fix it yourself — or just tell me.",
+    osmTitle: "Add a station entrance",
+    osmBody:
+      "The station doors on this map come from OpenStreetMap: what they are called, and whether you can get in without stairs. Plenty are still missing. If you know one, you can add it there, and it shows up here the next time the data is rebuilt.",
+    codeTitle: "Report something wrong",
+    codeBody:
+      "A departure that does not match the platform, a station in the wrong place, anything that looks off. GitHub is the best place for it.",
+    writeTitle: "Write to me",
+    askBody: "Questions are welcome. So is telling me I got something wrong.",
+    openIssues: "Open an issue",
+    editOsm: "Edit in OpenStreetMap",
   },
 
   about: {
+    moreInfo: "More about me and other projects:",
+    howTitle: "How a vehicle gets placed",
+    dataTitle: "Where the data comes from",
     title: "Bim",
     subtitle: "Unofficial live map of the Wiener Linien network.",
     lead: "Wiener Linien publishes no vehicle positions. Every tram, bus and U-Bahn here is placed by taking its timetable, bending it by the delay reported at nearby stops, and sliding it along the real track geometry.",

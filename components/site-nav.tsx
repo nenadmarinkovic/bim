@@ -1,5 +1,16 @@
 "use client";
 
+import type React from "react";
+import {
+  ArrowUpRightIcon,
+  DatabaseIcon,
+  GaugeIcon,
+  GithubLogoIcon,
+  MapTrifoldIcon,
+  PaperPlaneTiltIcon,
+  PathIcon,
+} from "@phosphor-icons/react";
+
 import {
   Dialog,
   DialogContent,
@@ -9,6 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { ContactForm } from "./contact-form";
 import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
 
@@ -18,9 +30,67 @@ const NAV_LINK =
 const LINK =
   "cursor-pointer text-brand font-medium underline-offset-4 transition-opacity hover:opacity-70";
 
-const SHEET = "glass-sheet gap-5 p-6";
+// Capped and scrollable: on a short phone the contribute sheet is taller than
+// the viewport, and without this its Send button sits below the fold with no way
+// to reach it.
+const SHEET =
+  "glass-sheet max-h-[calc(100dvh-2rem)] gap-5 overflow-y-auto overscroll-contain p-6";
 
 const FOOTER = "-mx-6 -mb-6 bg-transparent p-6";
+
+// A tinted square behind each mark: enough to group the icon with its heading
+// without turning the row into a box.
+const CHIP =
+  "flex size-6 shrink-0 items-center justify-center rounded-md bg-foreground/8 text-foreground";
+
+const REPO = "https://github.com/nenadmarinkovic/bim";
+
+const ISSUES = `${REPO}/issues`;
+
+const SITE = "https://nenadmarinkovic.com";
+
+// Straight into the editor over Vienna, rather than the front page: the ask is
+// specific, so the link should be too.
+const OSM_EDIT = "https://www.openstreetmap.org/edit#map=13/48.2082/16.3738";
+
+// A leading mark, a heading, and whatever the section has to say. Both dialogs
+// build every block this way, which is what makes them look like one thing.
+function Panel({
+  icon,
+  title,
+  children,
+  action,
+  href,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  action?: string;
+  href?: string;
+}) {
+  return (
+    <section className="grid gap-1.5">
+      <div className="flex items-center gap-2">
+        <span className={CHIP}>{icon}</span>
+        <h3 className="text-sm font-medium text-foreground">{title}</h3>
+      </div>
+      {children}
+      {action && href && (
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer noopener"
+          className={cn(LINK, "inline-flex items-center gap-1 text-sm")}
+        >
+          {action}
+          <ArrowUpRightIcon size={13} weight="bold" />
+        </a>
+      )}
+    </section>
+  );
+}
+
+const BODY = "text-sm text-foreground/80";
 
 export function SiteNav({ className }: { className?: string }) {
   const dict = useDict();
@@ -29,54 +99,138 @@ export function SiteNav({ className }: { className?: string }) {
     <nav className={cn("flex shrink-0 items-center gap-3", className)}>
       <Dialog>
         <DialogTrigger className={NAV_LINK}>{dict.nav.about}</DialogTrigger>
-        <DialogContent className={cn(SHEET, "sm:max-w-md")}>
+        <DialogContent className={cn(SHEET, "sm:max-w-3xl")}>
           <DialogHeader>
-            <div className="grid gap-1">
-              <DialogTitle className="text-xl font-semibold">
-                {dict.about.title}
-              </DialogTitle>
-              <p className="text-sm font-medium text-foreground">
-                {dict.about.subtitle}
-              </p>
-            </div>
-            <DialogDescription className="text-foreground">
-              {dict.about.lead}
+            <DialogTitle className="text-xl font-semibold">
+              {dict.about.title}
+            </DialogTitle>
+            {/* The subtitle is the description: the long explanation belongs to
+                the panel that is headed for it, and printing it here as well
+                said the same paragraph twice. */}
+            <DialogDescription className="text-sm font-medium text-foreground">
+              {dict.about.subtitle}
             </DialogDescription>
           </DialogHeader>
 
-          <p className="text-sm text-foreground">{dict.about.purpose}</p>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="flex flex-col gap-5">
+              <Panel
+                icon={<PathIcon size={16} weight="bold" />}
+                title={dict.about.howTitle}
+              >
+                <p className={BODY}>{dict.about.lead}</p>
+                <p className={BODY}>{dict.about.accuracy}</p>
+              </Panel>
 
-          <div className="rounded-xl border border-foreground/10 bg-foreground/3 p-4">
-            <p className="mb-2 text-sm font-medium tracking-wide text-foreground uppercase">
-              {dict.about.trustTitle}
-            </p>
-            <p className="text-sm text-foreground">{dict.about.trustBody}</p>
+              <Panel
+                icon={<GaugeIcon size={16} weight="bold" />}
+                title={dict.about.trustTitle}
+              >
+                <p className={BODY}>{dict.about.trustBody}</p>
+              </Panel>
+            </div>
+
+            <div className="flex flex-col gap-5 border-t border-foreground/10 pt-5 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
+              <Panel
+                icon={<DatabaseIcon size={16} weight="bold" />}
+                title={dict.about.dataTitle}
+              >
+                <p className={BODY}>{dict.about.dataNote}</p>
+                <p className={BODY}>{dict.about.purpose}</p>
+              </Panel>
+
+              {/* Credit sits at the foot of the column, the way the contribute
+                  sheet puts the site link at the foot of its own. */}
+              <div className={cn(BODY, "mt-auto grid gap-1 pt-1")}>
+                <p>
+                  <a
+                    href={REPO}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className={LINK}
+                  >
+                    {dict.about.openSource}
+                  </a>{" "}
+                  {dict.about.projectBy} Nenad Marinković.
+                </p>
+                <p>
+                  {dict.about.moreInfo}{" "}
+                  <a
+                    href={SITE}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className={LINK}
+                  >
+                    {SITE.replace("https://", "")}
+                  </a>
+                </p>
+              </div>
+            </div>
           </div>
 
-          <p className="text-sm text-foreground">{dict.about.accuracy}</p>
+          <DialogFooter showCloseButton className={FOOTER} />
+        </DialogContent>
+      </Dialog>
 
-          <div className="grid gap-2 border-t border-foreground/10 pt-4">
-            <p className="text-sm text-foreground/70">{dict.about.dataNote}</p>
-            <p className="text-sm text-foreground">
-              <a
-                href="https://github.com/nenadmarinkovic/bim"
-                target="_blank"
-                rel="noreferrer noopener"
-                className={LINK}
+      <Dialog>
+        <DialogTrigger className={NAV_LINK}>{dict.nav.contribute}</DialogTrigger>
+        <DialogContent className={cn(SHEET, "sm:max-w-3xl")}>
+          <DialogHeader>
+            <div className="grid gap-1">
+              <DialogTitle className="text-xl font-semibold">
+                {dict.contribute.title}
+              </DialogTitle>
+              <p className="text-sm font-medium text-foreground">
+                {dict.contribute.subtitle}
+              </p>
+            </div>
+            <DialogDescription className="text-foreground">
+              {dict.contribute.lead}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Still 50/50, but the halves now carry comparable content: two
+              things a reader can go and do on the left, one way to reach a
+              person on the right. The dead space before came from moving the
+              second ask out of the left column. No boxes — a single rule does
+              the dividing, and only the form gets a surface, because it is the
+              only part you interact with. */}
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="flex flex-col gap-5">
+              <Panel
+                icon={<MapTrifoldIcon size={16} weight="bold" />}
+                title={dict.contribute.osmTitle}
+                action={dict.contribute.editOsm}
+                href={OSM_EDIT}
               >
-                {dict.about.openSource}
-              </a>{" "}
-              {dict.about.projectBy}{" "}
-              <a
-                href="https://nenadmarinkovic.com"
-                target="_blank"
-                rel="noreferrer noopener"
-                className={LINK}
+                <p className={BODY}>{dict.contribute.osmBody}</p>
+              </Panel>
+              <Panel
+                icon={<GithubLogoIcon size={16} weight="bold" />}
+                title={dict.contribute.codeTitle}
+                action={dict.contribute.openIssues}
+                href={ISSUES}
               >
-                Nenad Marinković
-              </a>
-              .
-            </p>
+                <p className={BODY}>{dict.contribute.codeBody}</p>
+              </Panel>
+            </div>
+
+            <div className="grid content-start gap-3 border-t border-foreground/10 pt-5 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
+              <div className="flex items-center gap-2">
+                <span className={CHIP}>
+                  <PaperPlaneTiltIcon size={16} weight="bold" />
+                </span>
+                <p className="text-sm font-medium text-foreground">
+                  {dict.contribute.writeTitle}
+                </p>
+              </div>
+
+              <p className="text-sm text-foreground/80">
+                {dict.contribute.askBody}
+              </p>
+
+              <ContactForm className="mt-1" />
+            </div>
           </div>
 
           <DialogFooter showCloseButton className={FOOTER} />
