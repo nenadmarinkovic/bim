@@ -308,6 +308,28 @@ are read on the server per request and can live in the service environment.
 Without the first, place descriptions are omitted; without the second, they are
 shown but not spoken. Nothing else changes either way.
 
+### Being embedded
+
+`?embed=1` renders the map as a figure inside someone else's page: no site nav,
+no settings panel, and no theme or language toggles, since those belong to
+whoever owns the window. It opens on a composed shot of the Nordbahnviertel
+(`lib/map-camera.ts`) with places on, and on a touch screen it takes two fingers
+to pan so the host page can still be scrolled.
+
+`EMBED_PARENTS` is the origins allowed to frame it and drive it — anything else
+is ignored:
+
+```
+EMBED_PARENTS=http://localhost:3000,https://nenadmarinkovic.com
+```
+
+Over that channel the host pushes the theme in, and the map publishes its layer
+controls out — keys, labels, hints and current state, already localised — so the
+host can draw them in its own type and toggle them back. Leave the variable
+unset and the map still draws, but it neither follows the host's theme nor
+offers it anything to draw. The host has to list this app in its own
+`EMBED_APPS` for the reverse direction.
+
 ### Keeping the timetable fresh
 
 `npm run ingest` builds a static snapshot of **one service day**, so this is a

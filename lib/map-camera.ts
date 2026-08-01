@@ -1,8 +1,13 @@
 export const STEPHANSDOM = { lng: 16.37317, lat: 48.20849 } as const;
 
-// Pitched far enough that the horizon and a band of sky sit in frame on load —
-// the city reads as somewhere you are standing in rather than a plan of itself.
 export const CAMERA = { zoom: 15.5, pitch: 76, bearing: 0 } as const;
+
+export const EMBED_CENTRE = { lng: 16.39597, lat: 48.2286 } as const;
+export const EMBED_CAMERA = {
+  zoom: 15.72,
+  pitch: 80.0,
+  bearing: -37.4,
+} as const;
 
 export const MAX_PITCH = 80;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
@@ -18,6 +18,7 @@ import {
   STOPS_LAYER,
 } from "@/lib/vehicles/layer-ids";
 import { useDict } from "./locale-provider";
+import { listenToParents, postToParents } from "./embed-channel";
 import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
 
@@ -33,13 +34,19 @@ const LAYER_OPTIONS = [
   { key: "stops", layers: [STOPS_LAYER, STOPS_BADGE_LAYER] },
 ] as const;
 
+const EMPTY: string[] = [];
+
 export function MapSettings({
   getMap,
   onPlacesChange,
+  embed = false,
+  parents = EMPTY,
   className,
 }: {
   getMap: () => mapboxgl.Map | null;
   onPlacesChange: (on: boolean) => void;
+  embed?: boolean;
+  parents?: string[];
   className?: string;
 }) {
   const id = useId();
@@ -48,7 +55,7 @@ export function MapSettings({
     lines: true,
     stops: true,
   });
-  const [places, setPlaces] = useState(false);
+  const [places, setPlaces] = useState(embed);
   const [streets, setStreets] = useState(false);
   const [districts, setDistricts] = useState(false);
 
@@ -126,6 +133,42 @@ export function MapSettings({
       },
     },
   ];
+
+  // Embedded, the panel is the host page's to draw: it publishes what it has —
+  // keys, labels, hints and current state, already in the frame's language —
+  // and takes the toggles back over the same channel. The state and the map
+  // calls stay here, so a layer added below turns up in the host for free.
+  const latest = useRef(views);
+  useEffect(() => {
+    latest.current = views;
+  });
+
+  useEffect(() => {
+    if (!embed) return;
+    return listenToParents(parents, (data) => {
+      if (data.type !== "control" || typeof data.on !== "boolean") return;
+      latest.current.find((view) => view.key === data.key)?.onChange(data.on);
+    });
+  }, [embed, parents]);
+
+  const published = JSON.stringify(
+    views.map((view) => ({
+      key: view.key,
+      label: view.label,
+      hint: view.hint,
+      on: view.on,
+    })),
+  );
+
+  useEffect(() => {
+    if (!embed) return;
+    postToParents(parents, {
+      type: "controls",
+      controls: JSON.parse(published),
+    });
+  }, [embed, parents, published]);
+
+  if (embed) return null;
 
   return (
     <div

@@ -6,6 +6,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { MapControls } from "./map-controls";
+import { useMapReady } from "./map-ready";
 import { MapSettings } from "./map-settings";
 import { enablePlaces, setPlaceVisibility } from "./places";
 import {
@@ -46,9 +47,11 @@ import {
 } from "@/lib/vehicles/layer-ids";
 import {
   CAMERA,
+  EMBED_CAMERA,
   MAX_PITCH,
   NETWORK_BOUNDS,
   STEPHANSDOM,
+  EMBED_CENTRE,
 } from "@/lib/map-camera";
 import { POLL_MS } from "./use-vehicles";
 import { useVehiclesContext, useViewportReporter } from "./vehicles-provider";
@@ -131,6 +134,33 @@ function saveCamera(map: mapboxgl.Map) {
       }),
     );
   } catch {}
+}
+
+// Development only. Prints the two lines of lib/map-camera.ts after every move,
+// so an opening shot can be composed by dragging the map rather than guessing
+// numbers — and clicking anywhere reports that point, for finding a landmark.
+// The frame size goes in the comment because the same camera reads differently
+// in a different shape.
+function attachCameraLog(map: mapboxgl.Map) {
+  const report = () => {
+    const { lng, lat } = map.getCenter();
+    const canvas = map.getCanvas();
+    const dpr = window.devicePixelRatio || 1;
+    console.log(
+      `// ${Math.round(canvas.width / dpr)}x${Math.round(canvas.height / dpr)} frame\n` +
+        `export const EMBED_CENTRE = { lng: ${lng.toFixed(5)}, lat: ${lat.toFixed(5)} } as const;\n` +
+        `export const EMBED_CAMERA = { zoom: ${map.getZoom().toFixed(2)}, ` +
+        `pitch: ${map.getPitch().toFixed(1)}, ` +
+        `bearing: ${map.getBearing().toFixed(1)} } as const;`,
+    );
+  };
+
+  map.on("moveend", report);
+  map.once("load", report);
+  map.on("click", (event) => {
+    const { lng, lat } = event.lngLat;
+    console.log(`point { lng: ${lng.toFixed(5)}, lat: ${lat.toFixed(5)} }`);
+  });
 }
 
 function lightPresetFor(resolvedTheme: string | undefined) {
@@ -356,9 +386,16 @@ function renderVehiclePopup(ctx: PopupContext, vehicle: Vehicle) {
   );
 }
 
-export function MapView() {
+export function MapView({
+  embed = false,
+  parents = [],
+}: {
+  embed?: boolean;
+  parents?: string[];
+}) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const { setReady } = useMapReady();
   const { resolvedTheme } = useTheme();
   const { locale, dictionary } = useLocale();
   const [error, setError] = useState<string | null>(null);
@@ -397,25 +434,40 @@ export function MapView() {
     lang.current = locale;
   }, [dictionary, locale]);
 
+  // Without a token there is no map to wait for, and anything gated on it
+  // would wait forever.
+  useEffect(() => {
+    if (!TOKEN) setReady(true);
+  }, [setReady]);
+
   useEffect(() => {
     if (!TOKEN || !container.current || map.current) return;
 
     mapboxgl.accessToken = TOKEN;
 
-    const resumed = readCamera();
+    // An embed always opens on its own shot. Resuming wherever the reader last
+    // left the standalone app would make it a different figure each visit.
+    const resumed = embed ? null : readCamera();
+    const opening = embed ? EMBED_CAMERA : CAMERA;
+    const centre = embed ? EMBED_CENTRE : STEPHANSDOM;
 
     const instance = new mapboxgl.Map({
       container: container.current,
       style: STYLE,
-      center: resumed?.center ?? [STEPHANSDOM.lng, STEPHANSDOM.lat],
-      zoom: resumed?.zoom ?? CAMERA.zoom,
-      pitch: resumed?.pitch ?? CAMERA.pitch,
-      bearing: resumed?.bearing ?? CAMERA.bearing,
+      center: resumed?.center ?? [centre.lng, centre.lat],
+      zoom: resumed?.zoom ?? opening.zoom,
+      pitch: resumed?.pitch ?? opening.pitch,
+      bearing: resumed?.bearing ?? opening.bearing,
       minZoom: 9,
       maxZoom: 18,
       maxPitch: MAX_PITCH,
       maxBounds: NETWORK_BOUNDS,
       attributionControl: false,
+      // Framed in an article on a touch screen, a one-finger drag has to scroll
+      // the page rather than pan the map, or the figure traps the reader.
+      // Two fingers still move it.
+      cooperativeGestures:
+        embed && window.matchMedia("(pointer: coarse)").matches,
       config: {
         basemap: {
           theme: "faded",
@@ -437,6 +489,8 @@ export function MapView() {
 
     instance.on("moveend", () => saveCamera(instance));
 
+    if (process.env.NODE_ENV !== "production") attachCameraLog(instance);
+
     const addLayers = () => {
       // Images first: a symbol layer whose icon is missing logs on every tile.
       void installStopIcons(instance).then(() => addStopsLayer(instance));
@@ -453,6 +507,7 @@ export function MapView() {
     };
     instance.on("load", addLayers);
     instance.on("style.load", addLayers);
+    instance.once("idle", () => setReady(true));
 
     popup.current = new mapboxgl.Popup({
       closeButton: true,
@@ -613,7 +668,7 @@ export function MapView() {
       instance.remove();
       map.current = null;
     };
-  }, [reportViewport]);
+  }, [embed, reportViewport, setReady]);
 
   const setPlacesEnabled = useCallback((on: boolean) => {
     const instance = map.current;
@@ -659,6 +714,16 @@ export function MapView() {
     stopPlaceVisibility.current?.();
     stopPlaceVisibility.current = setPlaceVisibility(instance, true);
   }, []);
+
+  // Places are what makes the frame worth looking at in an article, so they
+  // start on there — the standalone app still opens without them.
+  useEffect(() => {
+    const instance = map.current;
+    if (!embed || !instance) return;
+    const enable = () => setPlacesEnabled(true);
+    if (instance.isStyleLoaded()) enable();
+    else instance.once("load", enable);
+  }, [embed, setPlacesEnabled]);
 
   useEffect(() => {
     const instance = map.current;
@@ -857,6 +922,8 @@ export function MapView() {
       <MapSettings
         getMap={() => map.current}
         onPlacesChange={setPlacesEnabled}
+        embed={embed}
+        parents={parents}
         className="absolute bottom-16 left-4 z-10"
       />
       {(error || vehicleError) && (
