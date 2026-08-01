@@ -30,6 +30,7 @@ export const de: Dictionary = {
     dataSources: "Datenquellen",
     improve: "Diese Karte verbessern",
     routeStart: "Start",
+    loading: "Karte wird geladen…",
   },
 
   settings: {

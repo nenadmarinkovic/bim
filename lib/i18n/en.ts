@@ -30,6 +30,7 @@ export const en = {
     dataSources: "Data sources",
     improve: "Improve this map",
     routeStart: "Start",
+    loading: "Loading the map…",
   },
 
   settings: {

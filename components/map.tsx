@@ -6,7 +6,6 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { MapControls } from "./map-controls";
-import { useMapReady } from "./map-ready";
 import { MapSettings } from "./map-settings";
 import { enablePlaces, setPlaceVisibility } from "./places";
 import {
@@ -395,7 +394,6 @@ export function MapView({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const { setReady } = useMapReady();
   const { resolvedTheme } = useTheme();
   const { locale, dictionary } = useLocale();
   const [error, setError] = useState<string | null>(null);
@@ -433,12 +431,6 @@ export function MapView({
     dict.current = dictionary;
     lang.current = locale;
   }, [dictionary, locale]);
-
-  // Without a token there is no map to wait for, and anything gated on it
-  // would wait forever.
-  useEffect(() => {
-    if (!TOKEN) setReady(true);
-  }, [setReady]);
 
   useEffect(() => {
     if (!TOKEN || !container.current || map.current) return;
@@ -507,7 +499,6 @@ export function MapView({
     };
     instance.on("load", addLayers);
     instance.on("style.load", addLayers);
-    instance.once("idle", () => setReady(true));
 
     popup.current = new mapboxgl.Popup({
       closeButton: true,
@@ -668,7 +659,7 @@ export function MapView({
       instance.remove();
       map.current = null;
     };
-  }, [embed, reportViewport, setReady]);
+  }, [embed, reportViewport]);
 
   const setPlacesEnabled = useCallback((on: boolean) => {
     const instance = map.current;

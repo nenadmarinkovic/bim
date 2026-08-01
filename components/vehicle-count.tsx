@@ -3,7 +3,6 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
 
 import { useVehiclesContext } from "./vehicles-provider";
-import { useMapReady } from "./map-ready";
 import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +30,6 @@ function Spinner() {
 
 export function VehicleCount({ className }: { className?: string }) {
   const { data, error } = useVehiclesContext();
-  const { ready } = useMapReady();
   const dict = useDict();
 
   if (error) {
@@ -42,10 +40,7 @@ export function VehicleCount({ className }: { className?: string }) {
     );
   }
 
-  // Counts are held back until the map has settled too: announcing 137 moving
-  // vehicles over a blank frame reads as a glitch, and the pill would swap
-  // width twice on the way in.
-  if (!data || !ready) {
+  if (!data) {
     return (
       <p className={cn(className, "inline-flex items-center")} role="status">
         <Spinner />
