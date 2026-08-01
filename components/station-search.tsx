@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MagnifyingGlassIcon, SpinnerGapIcon } from "@phosphor-icons/react";
+import {
+  ArrowDownIcon,
+  ArrowElbowDownLeftIcon,
+  ArrowUpIcon,
+  MagnifyingGlassIcon,
+  SpinnerGapIcon,
+} from "@phosphor-icons/react";
 
 import {
   Command,
@@ -75,7 +81,7 @@ function rememberRecent(station: Station): Station[] {
 
 function Badges({ modes }: { modes: string[] }) {
   return (
-    <span className="flex shrink-0 items-center gap-1">
+    <span className="ml-auto flex shrink-0 items-center gap-1">
       {modes.map((mode) => (
         <span
           key={mode}
@@ -91,10 +97,10 @@ function Badges({ modes }: { modes: string[] }) {
 
 function Name({ name, query }: { name: string; query: string }) {
   const at = query ? name.toLowerCase().indexOf(query.toLowerCase()) : -1;
-  if (at < 0) return <span className="truncate">{name}</span>;
+  if (at < 0) return <span className="min-w-0 flex-1 truncate">{name}</span>;
 
   return (
-    <span className="truncate">
+    <span className="min-w-0 flex-1 truncate">
       {name.slice(0, at)}
       <mark className="bg-transparent font-semibold text-foreground">
         {name.slice(at, at + query.length)}
@@ -106,7 +112,7 @@ function Name({ name, query }: { name: string; query: string }) {
 
 function Key({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded border border-foreground/15 bg-foreground/5 px-1.5 py-0.5 font-sans text-[0.625rem] leading-none">
+    <kbd className="inline-flex items-center gap-0.5 rounded border border-foreground/15 bg-foreground/5 px-1.5 py-1 font-sans text-[0.6875rem] leading-none">
       {children}
     </kbd>
   );
@@ -248,10 +254,10 @@ export function StationSearch({
                     key={station.diva}
                     value={`recent-${station.diva}`}
                     onSelect={() => pick(station)}
-                    className="cursor-pointer gap-2.5 py-2 group-data-[touched=false]/cmd:data-selected:bg-transparent"
+                    className="cursor-pointer gap-2.5 py-2 group-data-[touched=false]/cmd:data-selected:bg-transparent [&>svg]:hidden"
                   >
-                    <Badges modes={station.modes} />
                     <Name name={station.name} query="" />
+                    <Badges modes={station.modes} />
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -289,19 +295,24 @@ export function StationSearch({
                     key={station.diva}
                     value={String(station.diva)}
                     onSelect={() => pick(station)}
-                    className="cursor-pointer gap-2.5 py-2 group-data-[touched=false]/cmd:data-selected:bg-transparent"
+                    className="cursor-pointer gap-2.5 py-2 group-data-[touched=false]/cmd:data-selected:bg-transparent [&>svg]:hidden"
                   >
-                    <Badges modes={station.modes} />
                     <Name name={station.name} query={query.trim()} />
+                    <Badges modes={station.modes} />
                   </CommandItem>
                 ))}
               </CommandGroup>
             )}
           </CommandList>
 
-          <div className="flex items-center gap-2 border-t border-foreground/10 px-3 py-2 text-[0.6875rem] text-muted-foreground">
-            <Key>↑↓</Key>
-            <Key>↵</Key>
+          <div className="flex items-center gap-2 border-t border-foreground/10 px-3 py-2 text-[0.6875rem] font-medium text-muted-foreground">
+            <Key>
+              <ArrowUpIcon size={11} weight="bold" />
+              <ArrowDownIcon size={11} weight="bold" />
+            </Key>
+            <Key>
+              <ArrowElbowDownLeftIcon size={11} weight="bold" />
+            </Key>
             <span>{dict.search.hintOpen}</span>
             <Key>esc</Key>
           </div>
