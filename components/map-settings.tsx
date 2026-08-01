@@ -2,6 +2,7 @@
 
 import { useCallback, useId, useState } from "react";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { SWITCH_TRACK } from "@/components/ui/switch-classes";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -16,6 +17,11 @@ import {
 import { useDict } from "./locale-provider";
 import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
+
+const ROW = "flex min-h-9 items-center justify-between gap-4";
+
+const LABEL =
+  "text-[0.8125rem] leading-none font-medium text-foreground select-none";
 
 const LAYER_OPTIONS = [
   { key: "lines", layers: [VEHICLES_LABEL_LAYER] },
@@ -73,18 +79,15 @@ export function MapSettings({
   return (
     <div
       className={cn(
-        "glass pointer-events-auto flex flex-col gap-2.5 rounded-2xl px-3.5 py-3",
+        "glass pointer-events-auto flex w-56 flex-col rounded-2xl px-3.5 py-1.5",
         className,
       )}
     >
       {LAYER_OPTIONS.map((option) => (
-        <div
-          key={option.key}
-          className="flex items-center justify-between gap-6"
-        >
+        <div key={option.key} className={ROW}>
           <Label
             htmlFor={`${id}-${option.key}`}
-            className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
+            className={cn(LABEL, "cursor-pointer")}
           >
             {dict.settings[option.key]}
           </Label>
@@ -101,11 +104,8 @@ export function MapSettings({
         </div>
       ))}
 
-      <div className="flex items-center justify-between gap-6">
-        <Label
-          htmlFor={`${id}-places`}
-          className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
-        >
+      <div className={ROW}>
+        <Label htmlFor={`${id}-places`} className={cn(LABEL, "cursor-pointer")}>
           {dict.settings.places}
         </Label>
         <Switch
@@ -120,10 +120,10 @@ export function MapSettings({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-6">
+      <div className={ROW}>
         <Label
           htmlFor={`${id}-streets`}
-          className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
+          className={cn(LABEL, "cursor-pointer")}
         >
           {dict.settings.streets}
         </Label>
@@ -139,10 +139,10 @@ export function MapSettings({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-6">
+      <div className={ROW}>
         <Label
           htmlFor={`${id}-districts`}
-          className="cursor-pointer text-[0.8125rem] font-medium text-foreground"
+          className={cn(LABEL, "cursor-pointer")}
         >
           {dict.settings.districts}
         </Label>
@@ -165,17 +165,15 @@ export function MapSettings({
         />
       </div>
 
-      <div className="mt-0.5 flex items-center justify-between gap-6 border-t border-foreground/10 pt-2.5">
-        <span className="flex items-center text-[0.8125rem] leading-none font-medium text-foreground select-none">
-          {dict.settings.theme}
-        </span>
+      <Separator className="my-2 bg-foreground/10" />
+
+      <div className={ROW}>
+        <span className={LABEL}>{dict.settings.theme}</span>
         <ThemeToggle />
       </div>
 
-      <div className="flex items-center justify-between gap-6">
-        <span className="flex items-center text-[0.8125rem] leading-none font-medium text-foreground select-none">
-          {dict.settings.language}
-        </span>
+      <div className={ROW}>
+        <span className={LABEL}>{dict.settings.language}</span>
         <LocaleSwitch />
       </div>
     </div>
