@@ -33,11 +33,18 @@ export const de: Dictionary = {
   },
 
   settings: {
+    groupContext: "Auf der Karte",
+    groupApp: "Einstellungen",
     lines: "Liniennummern",
+    linesHint: "Die Linie, auf der ein Fahrzeug unterwegs ist, daneben notiert",
     stops: "Haltestellen",
+    stopsHint: "Alle Haltestellen und Stationen im Netz",
     places: "Orte",
+    placesHint: "Sehenswürdigkeiten und markante Orte, jeweils mit Beschreibung",
     streets: "Straßen",
+    streetsHint: "Straßennamen auf der Grundkarte",
     districts: "Bezirke",
+    districtsHint: "Die 23 Bezirke, umrandet und eingefärbt",
     theme: "Design",
     language: "Sprache",
   },

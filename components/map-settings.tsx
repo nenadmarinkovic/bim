@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useId, useState } from "react";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SWITCH_TRACK } from "@/components/ui/switch-classes";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { VEHICLES_LABEL_LAYER } from "@/components/vehicle-layer";
@@ -18,10 +21,12 @@ import { useDict } from "./locale-provider";
 import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
 
-const ROW = "flex min-h-9 items-center justify-between gap-4";
+const ROW = "flex min-h-10 items-center justify-between gap-4";
 
-const LABEL =
-  "text-[0.8125rem] leading-none font-medium text-foreground select-none";
+const LABEL = "text-sm leading-none font-medium text-foreground select-none";
+
+const GROUP =
+  "mt-3 mb-1 text-[0.625rem] font-semibold tracking-[0.09em] text-foreground/40 uppercase select-none";
 
 const LAYER_OPTIONS = [
   { key: "lines", layers: [VEHICLES_LABEL_LAYER] },
@@ -76,96 +81,87 @@ export function MapSettings({
     [getMap],
   );
 
+  const views = [
+    ...LAYER_OPTIONS.map((option) => ({
+      key: option.key as string,
+      label: dict.settings[option.key],
+      hint: dict.settings[`${option.key}Hint`],
+      on: visible[option.key],
+      onChange: (on: boolean) => {
+        setVisible((current) => ({ ...current, [option.key]: on }));
+        apply(option.layers, on);
+      },
+    })),
+    {
+      key: "places",
+      label: dict.settings.places,
+      hint: dict.settings.placesHint,
+      on: places,
+      onChange: (on: boolean) => {
+        setPlaces(on);
+        onPlacesChange(on);
+      },
+    },
+    {
+      key: "streets",
+      label: dict.settings.streets,
+      hint: dict.settings.streetsHint,
+      on: streets,
+      onChange: (on: boolean) => {
+        setStreets(on);
+        applyConfig("showRoadLabels", on);
+      },
+    },
+    {
+      key: "districts",
+      label: dict.settings.districts,
+      hint: dict.settings.districtsHint,
+      on: districts,
+      onChange: (on: boolean) => {
+        setDistricts(on);
+        apply(
+          [DISTRICTS_FILL_LAYER, DISTRICTS_LINE_LAYER, DISTRICTS_LABEL_LAYER],
+          on,
+        );
+      },
+    },
+  ];
+
   return (
     <div
       className={cn(
-        "glass pointer-events-auto flex w-56 flex-col rounded-2xl px-3.5 py-1.5",
+        "glass pointer-events-auto flex w-56 flex-col rounded-2xl px-4 pt-1.5 pb-3",
         className,
       )}
     >
-      {LAYER_OPTIONS.map((option) => (
-        <div key={option.key} className={ROW}>
-          <Label
-            htmlFor={`${id}-${option.key}`}
-            className={cn(LABEL, "cursor-pointer")}
-          >
-            {dict.settings[option.key]}
-          </Label>
+      <p className={cn(GROUP, "mt-1.5")}>{dict.settings.groupContext}</p>
+
+      {views.map((view) => (
+        <div key={view.key} className={ROW}>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <label
+                  htmlFor={`${id}-${view.key}`}
+                  className={cn(LABEL, "cursor-pointer")}
+                />
+              }
+            >
+              {view.label}
+            </TooltipTrigger>
+            <TooltipContent side="right">{view.hint}</TooltipContent>
+          </Tooltip>
           <Switch
-            id={`${id}-${option.key}`}
+            id={`${id}-${view.key}`}
             size="sm"
             className={SWITCH_TRACK}
-            checked={visible[option.key]}
-            onCheckedChange={(on) => {
-              setVisible((current) => ({ ...current, [option.key]: on }));
-              apply(option.layers, on);
-            }}
+            checked={view.on}
+            onCheckedChange={view.onChange}
           />
         </div>
       ))}
 
-      <div className={ROW}>
-        <Label htmlFor={`${id}-places`} className={cn(LABEL, "cursor-pointer")}>
-          {dict.settings.places}
-        </Label>
-        <Switch
-          id={`${id}-places`}
-          size="sm"
-          className={SWITCH_TRACK}
-          checked={places}
-          onCheckedChange={(on) => {
-            setPlaces(on);
-            onPlacesChange(on);
-          }}
-        />
-      </div>
-
-      <div className={ROW}>
-        <Label
-          htmlFor={`${id}-streets`}
-          className={cn(LABEL, "cursor-pointer")}
-        >
-          {dict.settings.streets}
-        </Label>
-        <Switch
-          id={`${id}-streets`}
-          size="sm"
-          className={SWITCH_TRACK}
-          checked={streets}
-          onCheckedChange={(on) => {
-            setStreets(on);
-            applyConfig("showRoadLabels", on);
-          }}
-        />
-      </div>
-
-      <div className={ROW}>
-        <Label
-          htmlFor={`${id}-districts`}
-          className={cn(LABEL, "cursor-pointer")}
-        >
-          {dict.settings.districts}
-        </Label>
-        <Switch
-          id={`${id}-districts`}
-          size="sm"
-          className={SWITCH_TRACK}
-          checked={districts}
-          onCheckedChange={(on) => {
-            setDistricts(on);
-            apply(
-              [
-                DISTRICTS_FILL_LAYER,
-                DISTRICTS_LINE_LAYER,
-                DISTRICTS_LABEL_LAYER,
-              ],
-              on,
-            );
-          }}
-        />
-      </div>
-
-      <Separator className="my-2 bg-foreground/10" />
+      <p className={GROUP}>{dict.settings.groupApp}</p>
 
       <div className={ROW}>
         <span className={LABEL}>{dict.settings.theme}</span>

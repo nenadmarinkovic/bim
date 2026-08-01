@@ -33,11 +33,18 @@ export const en = {
   },
 
   settings: {
+    groupContext: "On the map",
+    groupApp: "Settings",
     lines: "Line numbers",
+    linesHint: "The line each vehicle is running, drawn beside it",
     stops: "Stops",
+    stopsHint: "Every stop and station on the network",
     places: "Places",
+    placesHint: "Landmarks and points of interest, each with a description",
     streets: "Streets",
+    streetsHint: "Street names on the base map",
     districts: "Districts",
+    districtsHint: "The 23 districts, outlined and tinted",
     theme: "Theme",
     language: "Language",
   },

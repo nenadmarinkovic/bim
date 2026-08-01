@@ -169,7 +169,8 @@
   --border: rgb(255 255 255 / 12%);
   --input: rgb(255 255 255 / 16%);
   --ring: #7b86a8;
-  --glass-fill: color-mix(in oklch, var(--popover) 78%, #00000052);
+  --glass-tint: color-mix(in oklch, var(--sheet) 79%, #000000);
+  --glass-fill: color-mix(in oklch, var(--glass-tint) 95%, transparent);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -274,7 +275,7 @@ span.text-brand.italic {
 }
 
 .dark .glass-sheet {
-  background: color-mix(in oklch, var(--sheet) 68%, #00000094);
+  background: var(--glass-fill);
 }
 
 @media (prefers-reduced-transparency: reduce) {
