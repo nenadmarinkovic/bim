@@ -136,7 +136,7 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --glass-fill: color-mix(in oklch, var(--popover) 92%, transparent);
+  --glass-fill: color-mix(in oklch, var(--popover) 88%, transparent);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -169,8 +169,8 @@
   --border: rgb(255 255 255 / 12%);
   --input: rgb(255 255 255 / 16%);
   --ring: #7b86a8;
-  --glass-tint: color-mix(in oklch, var(--sheet) 79%, #000000);
-  --glass-fill: color-mix(in oklch, var(--glass-tint) 95%, transparent);
+  --glass-tint: color-mix(in oklch, var(--sheet) 80%, #000000);
+  --glass-fill: color-mix(in oklch, var(--glass-tint) 92%, transparent);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
