@@ -136,7 +136,7 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
-  --glass-fill: color-mix(in oklch, var(--popover) 78%, transparent);
+  --glass-fill: color-mix(in oklch, var(--popover) 92%, transparent);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -253,7 +253,7 @@ span.text-brand.italic {
   background: var(--glass-fill);
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid color-mix(in oklch, var(--foreground) 9%, transparent);
+  border: 1px solid color-mix(in oklch, var(--foreground) 13%, transparent);
   box-shadow:
     0 1px 2px rgb(0 0 0 / 0.04),
     0 10px 30px -8px rgb(0 0 0 / 0.16),
