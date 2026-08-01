@@ -150,6 +150,13 @@ stations, so an interchange badges as both.
 track, and the ten lines that reach Vienna need a sliver of it, so only the
 referenced shapes are read out of the zip.
 
+The archive is named after the timetable year — `GTFS_Fahrplan_2026.zip` — which
+turns in mid-December, so a hardcoded name is a dated fuse on a nightly job.
+`oebbZips` derives the year and offers the neighbouring one as a fallback, and
+the ingest takes the first that answers. The fallback matters in both directions:
+before ÖBB publish the coming year, and after they do while the current file is
+still the correct one.
+
 **No live data covers the S-Bahn.** The GTFS-RT feed is a conversion of the
 Wiener Linien monitor, and the monitor knows nothing about ÖBB, so every train
 on the map is positioned from the timetable alone and marked `scheduled`. They
@@ -307,7 +314,7 @@ shown but not spoken. Nothing else changes either way.
 daily job, not a weekly one — and the app must be restarted afterwards:
 
 ```
-# example — refresh the timetable, then restart
+# the shape of it — refresh the timetable, then restart
 0 4 * * * cd /srv/bim && npm run ingest && systemctl restart bim
 ```
 
@@ -316,8 +323,155 @@ runs spilling past midnight, which end around five. Rebuilding before then
 replaces it while it is still serving correctly, and the new build carries the
 same night runs forward.
 
+`deploy/` has this as a systemd timer instead, which is what the VPS runs: the
+journal keeps the output, `Persistent=true` catches a run missed while the
+machine was down, and a failure is visible in `systemctl status` rather than in
+a mail spool nobody reads.
+
+```bash
+cp deploy/bim-ingest.{service,timer} /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now bim-ingest.timer
+systemctl start bim-ingest.service    # prove it works now, not at 04:00
+```
+
+The unit runs as root because `ExecStartPost` restarts the service, and drops to
+the app user with `setpriv` for the ingest itself. `ExecStartPost` only fires on
+success, so a failed ingest never restarts the app onto whatever it left behind.
+Node has to be on a minimal `PATH`, so install it system-wide rather than under
+nvm — a login shell's `PATH` is not what the unit gets.
+
+A failed ingest is quiet by default — the map simply goes empty the next morning
+— so `deploy/bim-alert@.service` mails the status and the last sixty journal
+lines when a unit fails. Wire it up by adding one line to the `[Unit]` section of
+whatever should report:
+
+```ini
+OnFailure=bim-alert@%n.service
+```
+
+The addresses live in the unit, not in the script — `BIM_ALERT_TO` for the
+destination and `BIM_ALERT_FROM` for the sender — so the repo carries no personal
+address and the VPS copy under `/etc/systemd/system/` is the only place they
+appear. `alert.sh` refuses to run rather than mailing nowhere if `BIM_ALERT_TO`
+is unset.
+
+Sending needs a relay of its own: Proton has no plain SMTP outside Business, so
+the destination can be a Proton address while the relay is a separate account.
+`deploy/msmtprc.example` is the `msmtp` side of it, on port 587 — Hetzner blocks
+outbound 25 by default. `BIM_ALERT_FROM` has to be a sender that relay allows, or
+it will be rejected downstream.
+
+`deploy/ingest.sh` retries three times before giving up, clearing `.cache/ingest`
+between attempts. The retry is not just for flaky networks: `fetchCached` judges
+freshness by mtime alone, so an interrupted download leaves a truncated file that
+counts as fresh for twelve hours and fails the same way on every run inside that
+window. Clearing the cache is what breaks the loop. (`Restart=` is no use here —
+systemd does not accept it on a `Type=oneshot` unit.)
+
 The restart is not optional. `lib/vehicles/schedule.ts` and
 `app/api/stops/route.ts` both memoise their parse in module scope for the life of
 the process, so re-ingesting without restarting leaves the old timetable serving.
 Restarting also drops the in-process place-description cache, which refills on
 demand.
+
+Each artifact is written beside its target and renamed into place, so a run that
+dies halfway leaves yesterday's file rather than a truncated one — the next
+restart still starts. It does not make the set of them consistent with each
+other, though: a failed run can leave a new `schedule.json` beside an old
+`shapes.json`, and only a successful rebuild puts that right.
+
+#### When the failure email arrives
+
+**You have about an hour.** The mail goes out at 04:00, and the app is still
+serving correctly at that moment — it holds yesterday's artifact, which covers
+yesterday plus the night runs spilling past midnight. Those end around five, and
+`checkFreshness` starts returning 503 the moment the clock passes the last
+departure it knows about. So a fix before roughly 05:00 is invisible to anyone
+using the map; after that it is an empty map with an error on it.
+
+Read what actually happened first — the mail carries the last sixty lines, but
+the failure is usually further up:
+
+```bash
+journalctl -u bim-ingest.service -n 200 --no-pager
+```
+
+Four causes account for nearly all of it:
+
+- **An upstream moved or fell over.** `fetchCached` throws `responded 404` or
+  `responded 5xx` with the URL in the message. A 5xx is usually transient and the
+  three retries have already lost that argument, so try again by hand. A 404 is
+  structural — a feed moved. `oebbZips` already tries the neighbouring timetable
+  year, so a logged `missing GTFS_Fahrplan_….zip` followed by success is the
+  fallback working, not a fault.
+- **A poisoned cache.** Extraction errors — bad zip, unexpected end of file —
+  after a download was cut off. `ingest.sh` clears `.cache/ingest` between its
+  own attempts, so seeing this means all three failed; clear it and run again.
+- **Disk.** `ENOSPC`, or a truncated write near the end. `data/` is ~42 MB and
+  `.cache/` grows to a few hundred MB; `rm -rf .cache/ingest` is always safe.
+- **Node is missing.** `npm: command not found`, or a syntax error from the
+  TypeScript entry point, which means a Node older than 22.6. Only ever seen
+  after someone changes how Node is installed, since the unit's `PATH` is bare.
+
+Then rerun the whole thing, which restarts the app on success exactly as the
+timer would:
+
+```bash
+systemctl start bim-ingest.service
+```
+
+Confirm it took, rather than assuming — the date has to be today's:
+
+```bash
+node -e 'console.log(require("/srv/bim/data/ingest-report.json").schedule)'
+curl -s -o /dev/null -w '%{http_code}\n' localhost:3000/api/vehicles
+```
+
+A 200 with today's date is the end of it. A 503 that says the service day is over
+means the app is still holding the old parse, so the restart did not happen —
+check `ExecStartPost` in the journal.
+
+One thing not to do: restarting `bim.service` on its own does not help. It
+re-reads the same artifact and buys nothing, and if an ingest is running it can
+read a half-swapped `data/`. Fix the ingest, and let it do the restart.
+
+If the upstream is simply down and staying down, there is nothing to fail over
+to — the artifact is the only source of positions. The map will 503 from five in
+the morning until a rebuild succeeds.
+
+#### The same job on a development machine
+
+A laptop is asleep at four in the morning, and `cron` skips an entry whose time
+passed while it was — it does not catch up on wake, so the morning after is a
+stale artifact and a 503. On macOS, `launchd` defers a missed
+`StartCalendarInterval` and runs it once the machine wakes, which is the
+behaviour this job wants. In `~/Library/LaunchAgents/dev.bim.ingest.plist`:
+
+```xml
+<key>ProgramArguments</key>
+<array>
+  <string>/bin/zsh</string>
+  <string>-c</string>
+  <string>export PATH="$(ls -d "$HOME"/.nvm/versions/node/*/bin | sort -V | tail -1):/usr/bin:/bin"; npm run ingest</string>
+</array>
+<key>WorkingDirectory</key>
+<string>~/Development/bim</string>
+<key>StartCalendarInterval</key>
+<dict><key>Hour</key><integer>4</integer><key>Minute</key><integer>0</integer></dict>
+```
+
+`launchd` starts with a bare environment, so an nvm-managed `node` has to be put
+on `PATH` by the job itself. `zsh -lc` does not do it: a non-interactive login
+shell reads `.zprofile` but not `.zshrc`, which is where nvm initialises.
+Resolving the newest `~/.nvm/versions/node/*/bin` keeps working across nvm
+upgrades. Load it with `launchctl bootstrap gui/$(id -u) <plist>`, and fire it
+once with `launchctl kickstart -p gui/$(id -u)/dev.bim.ingest` — a `PATH`
+mistake otherwise stays invisible until it fails at four in the morning.
+
+Unlike the server job this one only ingests, leaving the restart out. A dev
+server is owned by the terminal it was started in, and a scheduled restart would
+kill it, orphan its logs and risk a port conflict with nobody watching. Nothing
+is silently wrong in the meantime: a process holding yesterday's parse fails
+loudly through `checkFreshness` in `lib/vehicles/feed.ts`, and any fresh
+`npm run dev` picks up the new artifact anyway.

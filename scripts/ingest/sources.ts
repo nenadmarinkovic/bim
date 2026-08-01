@@ -21,8 +21,18 @@ export const GTFS_ZIP =
 
 // The S-Bahn is ÖBB's, not Wiener Linien's, and it is a third of how the city
 // moves. Timetable only — there is no realtime feed behind this one. CC BY 4.0.
-export const OEBB_ZIP =
-  "https://static.web.oebb.at/open-data/soll-fahrplan-gtfs/GTFS_Fahrplan_2026.zip";
+const OEBB_GTFS = "https://static.web.oebb.at/open-data/soll-fahrplan-gtfs";
+
+// ÖBB names the file after the timetable year, which turns in mid-December.
+export function oebbZips(now = new Date()): string[] {
+  const year = now.getUTCFullYear();
+  const turned = now.getUTCMonth() === 11 && now.getUTCDate() >= 14;
+  const primary = turned ? year + 1 : year;
+  const fallback = turned ? year : year - 1;
+  return [primary, fallback].map(
+    (y) => `${OEBB_GTFS}/GTFS_Fahrplan_${y}.zip`,
+  );
+}
 
 const MAX_AGE_MS = 12 * 60 * 60 * 1000;
 
@@ -57,4 +67,20 @@ export async function fetchCached(url: string, name: string): Promise<string> {
   const { size } = await stat(target);
   console.log(`  fetched ${name} (${(size / 1e6).toFixed(1)} MB)`);
   return target;
+}
+
+export async function fetchCachedAny(
+  urls: string[],
+  name: string,
+): Promise<string> {
+  let last: unknown;
+  for (const url of urls) {
+    try {
+      return await fetchCached(url, name);
+    } catch (error) {
+      last = error;
+      console.log(`  missing ${url.split("/").pop()}`);
+    }
+  }
+  throw last;
 }

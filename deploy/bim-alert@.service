@@ -1,0 +1,9 @@
+[Unit]
+Description=Email a report about failed unit %i
+
+[Service]
+Type=oneshot
+# %i is the failed unit, passed by OnFailure=bim-alert@%n.service.
+ExecStart=/srv/bim/deploy/alert.sh %i
+Environment=BIM_ALERT_TO=you@example.com
+Environment=BIM_ALERT_FROM=bim@example.com

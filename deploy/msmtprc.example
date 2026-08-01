@@ -1,0 +1,17 @@
+# /etc/msmtprc — chmod 600, root-owned; msmtp refuses a world-readable config.
+# Port 587, not 25: Hetzner blocks outbound 25 on new accounts by default.
+
+defaults
+auth           on
+tls            on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        /var/log/msmtp.log
+
+account        bim
+host           smtp.example.com
+port           587
+from           bim@example.com
+user           bim@example.com
+passwordeval   cat /etc/msmtp-password
+
+account default : bim

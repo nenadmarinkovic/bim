@@ -1,13 +1,14 @@
-import { mkdir, writeFile, stat } from "node:fs/promises";
+import { mkdir, writeFile, rename, stat } from "node:fs/promises";
 import path from "node:path";
 import { readCsv } from "./csv.ts";
 import {
   CACHE_DIR,
   DATA_DIR,
   GTFS_ZIP,
-  OEBB_ZIP,
   WL_FILES,
   fetchCached,
+  fetchCachedAny,
+  oebbZips,
 } from "./sources.ts";
 import { extractEntries } from "./unzip.ts";
 import { buildTrips, previousServiceDate, serviceDate } from "./trips.ts";
@@ -82,7 +83,7 @@ async function download() {
     wl[name as keyof typeof WL_FILES] = await fetchCached(url, `${name}.csv`);
   }
   const zip = await fetchCached(GTFS_ZIP, "wl-gtfs.zip");
-  const oebb = await fetchCached(OEBB_ZIP, "oebb-gtfs.zip");
+  const oebb = await fetchCachedAny(oebbZips(), "oebb-gtfs.zip");
   return { wl, zip, oebb };
 }
 
@@ -206,14 +207,8 @@ type LineForModes = {
   patterns: Record<string, { stopIds: number[] }>;
 };
 
-// Wiener Linien calls it "Floridsdorf S U", ÖBB calls it "Wien Floridsdorf",
-// and neither id system knows the other — so the join is geographic, at a
-// radius that comfortably covers a station's own platforms and nothing else.
 const RAIL_JOIN_METRES = 250;
 
-// Proximity alone is not enough: plenty of bus stops sit beside a railway
-// without being at the station. The names have to agree too, allowing for the
-// city prefix ÖBB uses and the "S U" suffix Wiener Linien adds.
 function samePlace(station: string, rail: string): boolean {
   const a = normaliseName(station);
   const b = normaliseName(stripCity(rail));
@@ -454,7 +449,10 @@ async function buildShapes(file: string) {
 
 async function writeArtifact(name: string, value: unknown) {
   const target = path.join(DATA_DIR, name);
-  await writeFile(target, JSON.stringify(value));
+  // Renamed into place so a run that dies midway leaves the old artifact, not a truncated one.
+  const staging = `${target}.writing`;
+  await writeFile(staging, JSON.stringify(value));
+  await rename(staging, target);
   const { size } = await stat(target);
   console.log(`  ${name} (${(size / 1e6).toFixed(1)} MB)`);
 }

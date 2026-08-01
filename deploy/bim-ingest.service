@@ -1,0 +1,13 @@
+[Unit]
+Description=Rebuild the Bim timetable artifact
+Wants=network-online.target
+After=network-online.target
+OnFailure=bim-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/bim
+TimeoutStartSec=45min
+# Root, because ExecStartPost restarts the service; the ingest itself drops to the app user.
+ExecStart=/usr/bin/setpriv --reuid=bim --regid=bim --init-groups /srv/bim/deploy/ingest.sh
+ExecStartPost=/usr/bin/systemctl restart bim.service
