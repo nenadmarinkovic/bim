@@ -268,9 +268,29 @@ export function MapSettings({
         className,
       )}
     >
-      <p className={cn(group, bare ? "mt-1" : "mt-1.5")}>
-        {dict.settings.groupContext}
-      </p>
+      {/* Eight layers is enough that clearing them one at a time is a chore.
+          The button only appears once there is something to clear, so it is
+          never a control that does nothing. */}
+      <div
+        className={cn(
+          group,
+          "flex items-center justify-between gap-2",
+          bare ? "mt-1" : "mt-1.5",
+        )}
+      >
+        <span>{dict.settings.groupContext}</span>
+        {views.some((view) => view.on) && (
+          <button
+            type="button"
+            onClick={() => {
+              for (const view of views) if (view.on) view.onChange(false);
+            }}
+            className="cursor-pointer tracking-[0.09em] uppercase transition-colors hover:text-foreground/70"
+          >
+            {dict.settings.clearAll}
+          </button>
+        )}
+      </div>
 
       {views.map((view) => (
         <div key={view.key} className={row}>

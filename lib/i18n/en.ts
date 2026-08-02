@@ -35,6 +35,7 @@ export const en = {
 
   settings: {
     groupContext: "On the map",
+    clearAll: "Clear all",
     groupApp: "Settings",
     lines: "Line numbers",
     linesHint: "The line each vehicle is running, drawn beside it",

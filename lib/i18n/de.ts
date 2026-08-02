@@ -35,6 +35,7 @@ export const de: Dictionary = {
 
   settings: {
     groupContext: "Auf der Karte",
+    clearAll: "Alle aus",
     groupApp: "Einstellungen",
     lines: "Liniennummern",
     linesHint: "Die Linie, auf der ein Fahrzeug unterwegs ist, daneben notiert",
