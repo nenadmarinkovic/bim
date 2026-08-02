@@ -49,6 +49,15 @@ export const de: Dictionary = {
     bikes: "Radwege",
     bikesHint:
       "Radwege und Radfahrstreifen durchgezogen, gemischte und beruhigte Straßen gestrichelt",
+    zones: "Fußgängerzonen",
+    zonesHint:
+      "Straßen, die den Zufußgehenden gehören — die meisten davon stundenweise",
+    roadworks: "Baustellen",
+    roadworksHint:
+      "Offene Baustellen im Straßenraum, mit dem Tag, an dem sie geräumt sein sollen",
+    fountains: "Trinkbrunnen",
+    fountainsHint:
+      "Öffentliches Trinkwasser, die mit Tränke für Hunde gekennzeichnet",
     theme: "Design",
     language: "Sprache",
   },

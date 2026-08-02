@@ -17,6 +17,8 @@ import { buildExits } from "./exits.ts";
 import { buildSbahn, type RailStop } from "./sbahn.ts";
 import { fetchDistricts, tintDistricts } from "./districts.ts";
 import { fetchBikePaths } from "./bikes.ts";
+import { fetchPedestrianZones } from "./zones.ts";
+import { fetchFountains } from "./fountains.ts";
 import { normaliseName, stripCity } from "../../lib/vehicles/names.ts";
 import {
   classifyMatch,
@@ -557,6 +559,20 @@ async function main() {
     features: bikes.features,
   });
 
+  const zones = await fetchPedestrianZones();
+  await writeArtifact("pedestrian-zones.json", {
+    generatedAt: new Date().toISOString(),
+    type: "FeatureCollection",
+    features: zones,
+  });
+
+  const fountains = await fetchFountains();
+  await writeArtifact("fountains.json", {
+    generatedAt: new Date().toISOString(),
+    type: "FeatureCollection",
+    features: fountains.features,
+  });
+
   await writeArtifact("stations.json", {
     generatedAt: new Date().toISOString(),
     stations: result.stations,
@@ -679,6 +695,10 @@ async function main() {
   if (bikes.unknown.length) {
     console.log(`    bike kinds not classified: ${bikes.unknown.join(", ")}`);
   }
+  console.log(`    zones       ${zones.length} pedestrian`);
+  console.log(
+    `    fountains   ${fountains.features.length} drinkable (${fountains.dropped} ornamental dropped)`,
+  );
   console.log(`    no mode     ${unclassified}`);
   console.log(`    rejected    ${result.rejected.length}`);
   console.log("\ncoverage of stops actually served by a line");

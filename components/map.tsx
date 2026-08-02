@@ -22,6 +22,7 @@ import { enableStops, type Station, type StopSelection } from "./stops";
 import { StationSearch } from "./station-search";
 import { MapAttribution } from "./map-attribution";
 import { installStopIcons } from "./stop-icons";
+import { fountainImageId, installFountainIcons } from "./fountain-icons";
 import { buildStopPopup, rowColour, rowKey } from "./stop-popup";
 import type { BoardRow } from "@/lib/vehicles/board";
 import { PlaceChat, type ChatPlace } from "./place-chat";
@@ -41,6 +42,16 @@ import {
   BIKES_LAYER,
   BIKES_SOFT_LAYER,
   BIKES_SOURCE,
+  FOUNTAINS_LAYER,
+  FOUNTAINS_SOURCE,
+  ROADWORKS_LABEL_LAYER,
+  ROADWORKS_LINE_LAYER,
+  ROADWORKS_POINT_LAYER,
+  ROADWORKS_SOURCE,
+  ZONES_FILL_LAYER,
+  ZONES_LABEL_LAYER,
+  ZONES_LINE_LAYER,
+  ZONES_SOURCE,
   DISTRICTS_FILL_LAYER,
   DISTRICTS_LABEL_LAYER,
   DISTRICTS_LINE_LAYER,
@@ -204,6 +215,9 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
     map.setPaintProperty(DISTRICTS_LABEL_LAYER, "text-color", ink);
   }
 
+  // What a label is knocked out of, matching the exit markers.
+  const halo = dark ? "#12161b" : "#ffffff";
+
   const bikeInk = BIKE_INK[dark ? "dark" : "light"];
   for (const layer of [BIKES_LAYER, BIKES_SOFT_LAYER]) {
     if (map.getLayer(layer)) map.setPaintProperty(layer, "line-color", bikeInk);
@@ -214,6 +228,36 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
       "line-color",
       BIKE_CASING[dark ? "dark" : "light"],
     );
+  }
+
+  const zoneInk = ZONE_INK[dark ? "dark" : "light"];
+  if (map.getLayer(ZONES_FILL_LAYER)) {
+    map.setPaintProperty(ZONES_FILL_LAYER, "fill-color", zoneInk);
+    map.setPaintProperty(
+      ZONES_FILL_LAYER,
+      "fill-opacity",
+      ZONE_WASH[dark ? "dark" : "light"],
+    );
+  }
+  if (map.getLayer(ZONES_LINE_LAYER)) {
+    map.setPaintProperty(ZONES_LINE_LAYER, "line-color", zoneInk);
+  }
+  if (map.getLayer(ZONES_LABEL_LAYER)) {
+    map.setPaintProperty(ZONES_LABEL_LAYER, "text-color", zoneInk);
+    map.setPaintProperty(ZONES_LABEL_LAYER, "text-halo-color", halo);
+  }
+
+  const worksInk = ROADWORK_INK[dark ? "dark" : "light"];
+  if (map.getLayer(ROADWORKS_LINE_LAYER)) {
+    map.setPaintProperty(ROADWORKS_LINE_LAYER, "line-color", worksInk);
+  }
+  if (map.getLayer(ROADWORKS_POINT_LAYER)) {
+    map.setPaintProperty(ROADWORKS_POINT_LAYER, "circle-color", worksInk);
+    map.setPaintProperty(ROADWORKS_POINT_LAYER, "circle-stroke-color", halo);
+  }
+  if (map.getLayer(ROADWORKS_LABEL_LAYER)) {
+    map.setPaintProperty(ROADWORKS_LABEL_LAYER, "text-color", worksInk);
+    map.setPaintProperty(ROADWORKS_LABEL_LAYER, "text-halo-color", halo);
   }
 
   setExitTheme(map, dark);
@@ -422,6 +466,176 @@ function addBikeLayers(map: mapboxgl.Map) {
         18,
         ["match", ["get", "class"], "path", 5, 3.6],
       ] as never,
+    },
+  });
+}
+
+// Ochre, the colour a Viennese Fußgeherzone is signed and paved in. Kept warm
+// so it never reads as the bike green or the roadworks orange.
+const ZONE_INK = { light: "#8a5a12", dark: "#f0b869" } as const;
+
+const ZONE_WASH = { light: 0.17, dark: 0.2 } as const;
+
+function addZoneLayers(map: mapboxgl.Map) {
+  if (map.getSource(ZONES_SOURCE)) return;
+
+  map.addSource(ZONES_SOURCE, {
+    type: "geojson",
+    data: "/api/pedestrian-zones",
+  });
+
+  map.addLayer({
+    id: ZONES_FILL_LAYER,
+    type: "fill",
+    source: ZONES_SOURCE,
+    slot: "middle",
+    layout: { visibility: "none" },
+    paint: {
+      "fill-color": ZONE_INK.light,
+      "fill-opacity": ZONE_WASH.light,
+      "fill-emissive-strength": 1,
+    },
+  });
+
+  map.addLayer({
+    id: ZONES_LINE_LAYER,
+    type: "line",
+    source: ZONES_SOURCE,
+    slot: "middle",
+    layout: { visibility: "none", "line-join": "round" },
+    paint: {
+      "line-color": ZONE_INK.light,
+      "line-emissive-strength": 1,
+      "line-opacity": 0.7,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 13, 0.8, 17, 2],
+    },
+  });
+
+  map.addLayer({
+    id: ZONES_LABEL_LAYER,
+    type: "symbol",
+    source: ZONES_SOURCE,
+    slot: "top",
+    minzoom: 15,
+    layout: {
+      visibility: "none",
+      "text-field": ["get", "name"],
+      "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 13],
+      "text-max-width": 9,
+      "text-padding": 6,
+    },
+    paint: {
+      "text-color": ZONE_INK.light,
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 1.2,
+      "text-emissive-strength": 1,
+    },
+  });
+}
+
+// Hazard orange, and the only layer here allowed to shout: a closed street is
+// why the tram beside it is somewhere it does not normally go.
+const ROADWORK_INK = { light: "#c2410c", dark: "#ff9351" } as const;
+
+const isPoint = ["==", ["geometry-type"], "Point"];
+
+function addRoadworkLayers(map: mapboxgl.Map) {
+  if (map.getSource(ROADWORKS_SOURCE)) return;
+
+  map.addSource(ROADWORKS_SOURCE, {
+    type: "geojson",
+    data: "/api/roadworks",
+  });
+
+  map.addLayer({
+    id: ROADWORKS_LINE_LAYER,
+    type: "line",
+    source: ROADWORKS_SOURCE,
+    slot: "middle",
+    filter: ["!", isPoint] as never,
+    layout: { visibility: "none", "line-cap": "butt", "line-join": "round" },
+    paint: {
+      "line-color": ROADWORK_INK.light,
+      "line-emissive-strength": 1,
+      "line-opacity": 0.85,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 11, 2, 16, 7, 18, 11],
+      // Hatched, the way the barriers are.
+      "line-dasharray": [1.4, 0.8],
+    },
+  });
+
+  map.addLayer({
+    id: ROADWORKS_POINT_LAYER,
+    type: "circle",
+    source: ROADWORKS_SOURCE,
+    slot: "top",
+    filter: isPoint as never,
+    layout: { visibility: "none" },
+    paint: {
+      "circle-color": ROADWORK_INK.light,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 3.5, 16, 7],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 1.5,
+      "circle-emissive-strength": 1,
+    },
+  });
+
+  map.addLayer({
+    id: ROADWORKS_LABEL_LAYER,
+    type: "symbol",
+    source: ROADWORKS_SOURCE,
+    slot: "top",
+    minzoom: 13.5,
+    layout: {
+      visibility: "none",
+      "text-field": ["get", "label"],
+      "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+      "text-size": ["interpolate", ["linear"], ["zoom"], 14, 10.5, 18, 13],
+      "text-anchor": "top",
+      "text-offset": [0, 0.7],
+      "text-max-width": 10,
+      "text-padding": 6,
+      "text-optional": true,
+    },
+    paint: {
+      "text-color": ROADWORK_INK.light,
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 1.4,
+      "text-emissive-strength": 1,
+    },
+  });
+}
+
+function addFountainLayer(map: mapboxgl.Map) {
+  if (map.getSource(FOUNTAINS_SOURCE)) return;
+
+  map.addSource(FOUNTAINS_SOURCE, {
+    type: "geojson",
+    data: "/api/fountains",
+  });
+
+  map.addLayer({
+    id: FOUNTAINS_LAYER,
+    type: "symbol",
+    source: FOUNTAINS_SOURCE,
+    slot: "top",
+    // A fountain is a thing you walk to. Above the city view it is a blue rash
+    // over Vienna and below it is useless.
+    minzoom: 14,
+    layout: {
+      visibility: "none",
+      "icon-image": [
+        "case",
+        ["get", "trough"],
+        fountainImageId("trough"),
+        fountainImageId("plain"),
+      ],
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 18, 1],
+      "icon-allow-overlap": false,
+      "icon-padding": 2,
+      "icon-pitch-alignment": "viewport",
+      "icon-rotation-alignment": "viewport",
     },
   });
 }
@@ -636,6 +850,11 @@ export function MapView({
       void installStopIcons(instance).then(() => addStopsLayer(instance));
       addDistrictLayers(instance);
       addBikeLayers(instance);
+      addZoneLayers(instance);
+      addRoadworkLayers(instance);
+      void installFountainIcons(instance).then(() =>
+        addFountainLayer(instance),
+      );
       void addExitLayers(instance);
       // A popup built before this lands would be missing its exits, so the open
       // one is drawn again once they are known.

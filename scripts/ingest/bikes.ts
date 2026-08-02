@@ -1,12 +1,11 @@
+import { fetchWfs, round } from "./wfs.ts";
+
 // Vienna's cycling network, from Stadt Wien's WFS. The city publishes every
 // stretch it has signed or painted for bicycles — 15,000 segments, each carrying
 // its own legal category — and the categories are what matter: a kerb-separated
 // path and a permission to ride against a one-way are both "Radweg" on paper and
 // nothing alike on a bike.
-const WFS =
-  "https://data.wien.gv.at/daten/geo?service=WFS&request=GetFeature&version=1.1.0&typeName=ogdwien:RADWEGEOGD&srsName=EPSG:4326&outputFormat=json";
-
-const PRECISION = 5;
+const LAYER = "RADWEGEOGD";
 
 // About two metres. The published geometry follows the kerb to the centimetre,
 // which on a screen is a straight line drawn with fifty points.
@@ -42,20 +41,13 @@ const CLASS_BY_KIND: Record<string, BikeClass> = {
   "Radfahrerüberfahrt": "crossing",
 };
 
-type Source = {
-  features: {
-    properties: { MERKMAL: string; SUBMERKMAL: string };
-    geometry: { type: string; coordinates: unknown } | null;
-  }[];
-};
+type Source = { MERKMAL: string; SUBMERKMAL: string };
 
 export type BikeFeature = {
   type: "Feature";
   properties: { class: BikeClass };
   geometry: { type: "MultiLineString"; coordinates: Line[] };
 };
-
-const round = (value: number) => Number(value.toFixed(PRECISION));
 
 // Metres per degree at Vienna's latitude, near enough for a tolerance.
 const LAT_M = 111_320;
@@ -187,15 +179,12 @@ export async function fetchBikePaths(): Promise<{
   counts: Record<BikeClass, number>;
   unknown: string[];
 }> {
-  const response = await fetch(WFS);
-  if (!response.ok) throw new Error(`bike paths responded ${response.status}`);
-
-  const source = (await response.json()) as Source;
+  const source = await fetchWfs<Source>(LAYER);
 
   const byClass = new Map<BikeClass, Line[]>();
   const unknown = new Set<string>();
 
-  for (const feature of source.features) {
+  for (const feature of source) {
     const kind = feature.properties.SUBMERKMAL;
     const bikeClass = CLASS_BY_KIND[kind];
     if (!bikeClass) {

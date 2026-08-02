@@ -49,6 +49,14 @@ export const en = {
     bikes: "Bike paths",
     bikesHint:
       "Cycle paths and lanes solid, shared and calmed streets dashed",
+    zones: "Pedestrian zones",
+    zonesHint: "Streets given over to people on foot, most of them by the hour",
+    roadworks: "Roadworks",
+    roadworksHint:
+      "Open building sites on the street, with the day each one is due to clear",
+    fountains: "Drinking fountains",
+    fountainsHint:
+      "Public drinking water, the ones with a trough marked for dogs",
     theme: "Theme",
     language: "Language",
   },

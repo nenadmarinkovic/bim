@@ -17,8 +17,15 @@ import {
   DISTRICTS_FILL_LAYER,
   DISTRICTS_LABEL_LAYER,
   DISTRICTS_LINE_LAYER,
+  FOUNTAINS_LAYER,
+  ROADWORKS_LABEL_LAYER,
+  ROADWORKS_LINE_LAYER,
+  ROADWORKS_POINT_LAYER,
   STOPS_BADGE_LAYER,
   STOPS_LAYER,
+  ZONES_FILL_LAYER,
+  ZONES_LABEL_LAYER,
+  ZONES_LINE_LAYER,
 } from "@/lib/vehicles/layer-ids";
 import { useDict } from "./locale-provider";
 import { listenToParents, postToParents } from "./embed-channel";
@@ -71,6 +78,9 @@ export function useMapSettings({
   const [streets, setStreets] = useState(false);
   const [districts, setDistricts] = useState(false);
   const [bikes, setBikes] = useState(false);
+  const [zones, setZones] = useState(false);
+  const [roadworks, setRoadworks] = useState(false);
+  const [fountains, setFountains] = useState(false);
 
   const apply = useCallback(
     (layers: readonly string[], on: boolean) => {
@@ -153,6 +163,43 @@ export function useMapSettings({
       onChange: (on: boolean) => {
         setBikes(on);
         apply([BIKES_CASING_LAYER, BIKES_SOFT_LAYER, BIKES_LAYER], on);
+      },
+    },
+    {
+      key: "zones",
+      label: dict.settings.zones,
+      hint: dict.settings.zonesHint,
+      on: zones,
+      onChange: (on: boolean) => {
+        setZones(on);
+        apply([ZONES_FILL_LAYER, ZONES_LINE_LAYER, ZONES_LABEL_LAYER], on);
+      },
+    },
+    {
+      key: "roadworks",
+      label: dict.settings.roadworks,
+      hint: dict.settings.roadworksHint,
+      on: roadworks,
+      onChange: (on: boolean) => {
+        setRoadworks(on);
+        apply(
+          [
+            ROADWORKS_LINE_LAYER,
+            ROADWORKS_POINT_LAYER,
+            ROADWORKS_LABEL_LAYER,
+          ],
+          on,
+        );
+      },
+    },
+    {
+      key: "fountains",
+      label: dict.settings.fountains,
+      hint: dict.settings.fountainsHint,
+      on: fountains,
+      onChange: (on: boolean) => {
+        setFountains(on);
+        apply([FOUNTAINS_LAYER], on);
       },
     },
   ];
