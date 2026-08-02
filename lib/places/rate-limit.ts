@@ -9,23 +9,28 @@ export function clientKey(request: Request): string {
   return request.headers.get("x-real-ip")?.trim() || "unknown";
 }
 
-export function retryAfter(key: string, max = MAX_PER_WINDOW): number {
+export function retryAfter(
+  scope: string,
+  key: string,
+  max = MAX_PER_WINDOW,
+): number {
   const now = Date.now();
   const cutoff = now - WINDOW_MS;
+  const id = `${scope}|${key}`;
 
-  const recent = (hits.get(key) ?? []).filter((at) => at > cutoff);
+  const recent = (hits.get(id) ?? []).filter((at) => at > cutoff);
 
   if (recent.length >= max) {
-    hits.set(key, recent);
+    hits.set(id, recent);
     return Math.max(1, Math.ceil((recent[0]! + WINDOW_MS - now) / 1000));
   }
 
   recent.push(now);
-  hits.set(key, recent);
+  hits.set(id, recent);
 
   if (hits.size > 10_000) {
-    for (const [id, times] of hits) {
-      if (times[times.length - 1]! <= cutoff) hits.delete(id);
+    for (const [entry, times] of hits) {
+      if (times[times.length - 1]! <= cutoff) hits.delete(entry);
     }
   }
 

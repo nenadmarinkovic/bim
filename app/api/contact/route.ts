@@ -36,7 +36,7 @@ export type ContactMessage = {
 };
 
 export async function POST(request: Request) {
-  const wait = retryAfter(clientKey(request), MAX_PER_WINDOW);
+  const wait = retryAfter("contact", clientKey(request), MAX_PER_WINDOW);
   if (wait) {
     return Response.json(
       { error: "rate", retryAfter: wait },

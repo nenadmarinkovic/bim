@@ -368,6 +368,56 @@ unset and the map still draws, but it neither follows the host's theme nor
 offers it anything to draw. The host has to list this app in its own
 `EMBED_APPS` for the reverse direction.
 
+### What the open endpoints can spend
+
+Three routes reach a paid API on behalf of anyone who calls them, with no account
+and no key: `/api/place` writes through to Mistral, `/api/place/audio` to
+ElevenLabs, `/api/place/chat` to Mistral again. A public map cannot ask visitors
+to sign in, so the limits are the only thing standing between a curious stranger
+and the bill.
+
+**The rate limiter keys on the client IP, per route.** It used to be one bucket
+per address for the whole app, which had it backwards twice over: browsing places
+ate the contact form's allowance, and the cheapest call and the most expensive
+one shared a budget. Now each route names its own scope — 20 place descriptions a
+minute, 8 chat turns, 5 syntheses, 5 contact messages, and the departure board
+keeps its own. Spoofing `X-Forwarded-For` does not buy a fresh bucket: the
+reverse proxy replaces the header before Next sees it, so the first entry is the
+real client either way.
+
+**A per-IP limit cannot protect a monthly quota, though**, and the ElevenLabs
+free tier is 10,000 credits a month against one credit per character on
+`eleven_multilingual_v2`. A description runs about 300 characters with the name
+in front of it, so **the whole month is roughly thirty clips** — one enthusiastic
+visitor, never mind an unfriendly one. So `data/speech-budget.json` counts
+characters against the calendar month and `speak()` refuses before it opens the
+connection. The default ceiling is 9,000, under the free tier with room for the
+count to drift; `ELEVENLABS_MONTHLY_CHARS` raises it on a paid plan. The month is
+the calendar one, not the billing one, so a plan that renews mid-month resets
+late rather than early. The ingest only clears `.cache/ingest`, so the ledger and
+the clips beside it survive the nightly rebuild.
+
+**`data/audio` is capped at 128 MB, and refuses rather than evicts.** Eviction is
+the usual answer and it is the wrong one here: a cached clip is free to serve
+forever, and throwing one away to make room spends credits re-reading a
+description that was already paid for. On the free tier the monthly ceiling binds
+first regardless — thirty clips is a couple of megabytes — so the cap is a
+backstop for the day the plan changes.
+
+**The chat no longer takes the summary from the request.** It used to accept 400
+characters from the client and interpolate them into the system prompt, which is
+a system prompt the caller can write. The server has that text already, keyed by
+the same name, kind and language, so it reads its own cache instead. `kind` has
+to look like a category — letters, spaces and `&'.-` — and anything else falls
+back to `place` rather than travelling into the prompt.
+
+**What is left is the place name.** It comes from Mapbox vector tiles, not from
+any list this app holds, so there is nothing to check it against — 120 characters
+still reach the prompt, minus the quote marks that made escaping the surrounding
+sentence easy. That is a foothold rather than an open door, and the honest
+mitigation is not in the code: Mistral carries a monthly spend cap set in its
+console, which is what actually bounds the worst case.
+
 ### Keeping the timetable fresh
 
 `npm run ingest` builds a static snapshot of **one service day**, so this is a

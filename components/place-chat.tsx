@@ -56,7 +56,6 @@ export function PlaceChat({
         body: JSON.stringify({
           name: place.title,
           kind: place.kind,
-          summary: place.summary,
           lang: locale,
           messages: next,
         }),

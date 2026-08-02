@@ -1,24 +1,17 @@
 import {
+  cachedDescription,
   chatAboutPlace,
   isSupportedLanguage,
   type ChatTurn,
 } from "@/lib/places/mistral";
 import { clientKey, retryAfter } from "@/lib/places/rate-limit";
+import { clean, cleanKind, cleanName } from "@/lib/places/text";
 
 const MAX_NAME = 120;
 const MAX_KIND = 60;
-const MAX_SUMMARY = 400;
 const MAX_MESSAGE = 500;
 const MAX_TURNS = 12;
-
-const clean = (value: unknown, max: number) =>
-  typeof value === "string"
-    ? value
-        .replace(/[\u0000-\u001f\u007f]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, max)
-    : "";
+const MAX_PER_WINDOW = 8;
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -29,9 +22,8 @@ export async function POST(request: Request) {
   }
 
   const body = payload as Record<string, unknown>;
-  const name = clean(body.name, MAX_NAME);
-  const kind = clean(body.kind, MAX_KIND) || "place";
-  const summary = clean(body.summary, MAX_SUMMARY);
+  const name = cleanName(body.name, MAX_NAME);
+  const kind = cleanKind(body.kind, MAX_KIND) || "place";
   const lang = clean(body.lang, 8).toLowerCase() || "en";
 
   if (!name) {
@@ -56,13 +48,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "a question is required" }, { status: 400 });
   }
 
-  const wait = retryAfter(clientKey(request));
+  const wait = retryAfter("chat", clientKey(request), MAX_PER_WINDOW);
   if (wait) {
     return Response.json(
       { error: "Too many questions just now — try again in a moment." },
       { status: 429, headers: { "retry-after": String(wait) } },
     );
   }
+
+  const summary = (await cachedDescription(name, kind, lang)) ?? "";
 
   const answer = await chatAboutPlace(name, kind, lang, summary, turns);
   if (!answer) {

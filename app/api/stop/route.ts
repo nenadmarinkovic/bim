@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const known = cachedBoard(id);
   if (known) return send(await known);
 
-  const wait = retryAfter(`stop:${clientKey(request)}`, BOARDS_PER_MINUTE);
+  const wait = retryAfter("stop", clientKey(request), BOARDS_PER_MINUTE);
   if (wait) {
     return Response.json(
       { error: "too many requests" },

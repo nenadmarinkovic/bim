@@ -1,16 +1,11 @@
 import { cachedDescription, isSupportedLanguage } from "@/lib/places/mistral";
 import { clientKey, retryAfter } from "@/lib/places/rate-limit";
 import { cachedSpeech, speak } from "@/lib/places/speech";
+import { cleanKind, cleanName } from "@/lib/places/text";
 
 const MAX_NAME = 120;
 const MAX_KIND = 60;
-
-const clean = (value: string, max: number) =>
-  value
-    .replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, max);
+const MAX_PER_WINDOW = 5;
 
 const send = (audio: Buffer) =>
   new Response(new Uint8Array(audio), {
@@ -24,8 +19,8 @@ const send = (audio: Buffer) =>
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
 
-  const name = clean(params.get("name") ?? "", MAX_NAME);
-  const kind = clean(params.get("kind") ?? "", MAX_KIND) || "place";
+  const name = cleanName(params.get("name") ?? "", MAX_NAME);
+  const kind = cleanKind(params.get("kind") ?? "", MAX_KIND) || "place";
   const lang = params.get("lang")?.toLowerCase() ?? "en";
 
   if (!name) {
@@ -45,7 +40,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "nothing to read" }, { status: 404 });
   }
 
-  const wait = retryAfter(clientKey(request));
+  const wait = retryAfter("audio", clientKey(request), MAX_PER_WINDOW);
   if (wait) {
     return Response.json(
       { error: "too many requests" },
