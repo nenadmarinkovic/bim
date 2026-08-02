@@ -8,6 +8,9 @@ OnFailure=bim-alert@%n.service
 Type=oneshot
 WorkingDirectory=/srv/bim
 TimeoutStartSec=45min
-# Root, because ExecStartPost restarts the service; the ingest itself drops to the app user.
+# Root, because ExecStartPost talks to the Docker socket; the ingest itself drops to the app user.
 ExecStart=/usr/bin/setpriv --reuid=bim --regid=bim --init-groups /srv/bim/deploy/ingest.sh
-ExecStartPost=/usr/bin/systemctl restart bim.service
+# The artifacts are read once and memoised for the life of the process, so fresh
+# data is invisible until the tasks are replaced. Dokploy runs the app as a Swarm
+# service; `docker service ls` gives the name if the deployment is ever recreated.
+ExecStartPost=/usr/bin/docker service update --force bim-nextjs-gmdjgp
