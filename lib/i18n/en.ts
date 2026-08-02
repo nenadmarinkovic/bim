@@ -48,8 +48,7 @@ export const en = {
     districts: "Districts",
     districtsHint: "The 23 districts, outlined and tinted",
     bikes: "Bike paths",
-    bikesHint:
-      "Cycle paths and lanes solid, shared and calmed streets dashed",
+    bikesHint: "Cycle paths and lanes solid, shared and calmed streets dashed",
     zones: "Pedestrian zones",
     zonesHint: "Streets given over to people on foot, most of them by the hour",
     roadworks: "Roadworks",
@@ -58,6 +57,9 @@ export const en = {
     fountains: "Drinking fountains",
     fountainsHint:
       "Public drinking water, the ones with a trough marked for dogs",
+    toilets: "Public toilets",
+    toiletsHint:
+      "Council toilets, the step-free ones and the men-only pissoirs among them",
     theme: "Theme",
     language: "Language",
   },
@@ -209,8 +211,15 @@ export const en = {
     trustTitle: "How much to trust a vehicle",
     trustBody:
       "Wiener Linien measures departures at only part of the network. Click any vehicle to see whether its position was measured at a stop, interpolated between reporting stops, or is running on the timetable alone.",
+    trustSbahn:
+      "The S-Bahn is run by ÖBB, which publishes no live data for it, so those trains always follow the timetable.",
+    exploreTitle: "What else you can do",
+    exploreBody:
+      "Click a station to read its next departures, its entrances, and which of them are step-free. Tap a line on the board to trace where it goes. Click a vehicle to draw its whole route and follow it across the city.",
+    exploreLayers:
+      "The settings panel adds more of the city: districts, bike paths, pedestrian zones, roadworks, drinking fountains and public toilets. Landmarks come with a short written description, which you can listen to or ask about.",
     dataNote:
-      "Wiener Linien and Stadt Wien open data. Track geometry from a community GTFS conversion (CC BY 4.0), station entrances from OpenStreetMap (ODbL).",
+      "Departures and lines from Wiener Linien open data, the S-Bahn from ÖBB. Track geometry from a community GTFS conversion (CC BY 4.0). Districts, bike paths, pedestrian zones, roadworks, fountains and public toilets from Stadt Wien. Station entrances from OpenStreetMap (ODbL).",
     purpose:
       "Bim shows the network rather than planning journeys, and is not affiliated with Wiener Linien.",
     openSource: "Open-source",

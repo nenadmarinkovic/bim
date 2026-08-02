@@ -29,23 +29,29 @@ from `public/fonts` and sharing the token scale used in nomos.
 
 ## What the map draws
 
-| Layer               | Source                              | Default |
-| ------------------- | ----------------------------------- | ------- |
-| Vehicles and labels | `/api/vehicles`, polled every 6 s   | on      |
-| Stations            | `/api/stops` — 1,726 GeoJSON points | on      |
-| Districts           | `/api/districts` — the 23 Bezirke   | off     |
-| Places              | Mapbox POI and landmark featuresets | off     |
+| Layer               | Source                                    | Default |
+| ------------------- | ----------------------------------------- | ------- |
+| Vehicles and labels | `/api/vehicles`, polled every 6 s         | on      |
+| Stations            | `/api/stops` — 1,726 GeoJSON points       | on      |
+| Places              | Mapbox POI and landmark featuresets       | off     |
+| Streets             | the basemap's own road labels             | off     |
+| Districts           | `/api/districts` — the 23 Bezirke         | off     |
+| Bike paths          | `/api/bike-paths` — the cycling network   | off     |
+| Pedestrian zones    | `/api/pedestrian-zones` — 298 zones       | off     |
+| Roadworks           | `/api/roadworks` — open sites, live       | off     |
+| Drinking fountains  | `/api/fountains` — 1,520 public fountains | off     |
 
-The settings panel toggles stations, districts, places, the line numbers beside
-the vehicles, and the basemap's own road labels, which are off so the network
-reads as the only thing written on the city.
+Everything but the vehicles and the stations is off to begin with, so the map
+opens on the network and nothing else. Street names are the basemap's own, and
+they stay off so the network reads as the only thing written on the city.
 
 A station is drawn twice: a mode badge you read, and an invisible circle you
 click. Clicking one reads its departure board from `/api/stop`, which proxies
 the Wiener Linien monitor for every platform under that DIVA and refreshes
-while the popup is open. Clicking a vehicle draws its trip — the shape it is
-running, its two termini, and arrows stepping along it in the direction of
-travel — and follows it with the camera.
+while the popup is open. Where the station has entrances they are listed with
+it, and can be drawn on the map. Clicking a vehicle draws its trip — the shape
+it is running, its two termini, and arrows stepping along it in the direction
+of travel — and follows it with the camera.
 
 Searching (⌘K, ⌘F, or the search button) is a client-side pass over the same
 station index the map draws, matched on the normalised name, with the last five
@@ -57,6 +63,33 @@ is and something the map cannot show — cached in `data/place-descriptions.json
 so a place is paid for once. The popup then takes follow-up questions, and with
 `ELEVENLABS_API_KEY` set it reads the description aloud from `data/audio`,
 which is cached on the same terms.
+
+### The city around the network
+
+Four layers come from Stadt Wien's open data rather than from any transit feed,
+because a network is only half of how a city is crossed:
+
+- **Bike paths.** Around 15,000 published segments, kept apart by what they
+  actually give a rider: a path of its own, paint on a shared road, a calmed or
+  shared street, or a crossing. Paths and lanes are drawn solid, the softer two
+  dashed, and the whole set is merged into four lines so it costs four features
+  rather than fifteen thousand.
+- **Pedestrian zones.** 298 of them, most in force only at certain hours. The
+  hours are kept exactly as the city words them, since the exceptions are the
+  point.
+- **Roadworks.** The one layer that cannot be baked into a file — a site that
+  closed last week must stop being drawn — so it is fetched on demand and held
+  for half an hour. Sites Wiener Linien applied for are marked, since they are
+  usually why a tram is running somewhere it normally does not.
+- **Drinking fountains.** 1,520 of them, filtered down to the ones that are
+  actually drinkable; the city files ornamental basins and mist sprayers in the
+  same layer. The ones with a trough at ground level are marked for dogs.
+
+Station entrances are separate again: 416 of them from OpenStreetMap, covering
+99 of the 121 U-Bahn stations, each carrying whether you can get in without
+stairs. They are listed in the station popup and drawn on the map on request.
+Plenty are still missing, and adding one in OpenStreetMap puts it here at the
+next ingest.
 
 ## Data
 
@@ -70,8 +103,9 @@ which is cached on the same terms.
 | `wienerlinien-ogd-fahrwegverlaeufe.csv` | LineID + PatternID → ordered StopID sequence         |
 | GTFS zip (zuugle-services, CC BY 4.0)   | `stops.txt`, `routes.txt`, `trips.txt`, `shapes.txt` |
 | ÖBB GTFS (`data.oebb.at`, CC BY 4.0)    | the S-Bahn, which Wiener Linien does not run         |
-| Stadt Wien WFS                          | the 23 district outlines                             |
-| OpenStreetMap, via Overpass             | which stretches of the U-Bahn are in tunnel          |
+| Stadt Wien WFS                          | districts, bike paths, pedestrian zones, fountains   |
+| Stadt Wien WFS, live                    | open roadworks, refetched every half hour            |
+| OpenStreetMap, via Overpass             | U-Bahn tunnels, and station entrances                |
 
 `haltepunkte.csv` is not listed in the OGD documentation, and the documented
 `steige.csv` is a 449-row stub mapping StopID to a platform letter. Without
@@ -172,7 +206,7 @@ Level comes from OpenStreetMap instead: a `railway=subway` way counts as
 underground if it is tagged `tunnel` or sits below `layer` 0, and never if it
 is on a bridge. Those ways are matched onto the GTFS shapes within 30 m and
 stored as distance ranges, in the same `shape_dist_traveled` units that placed
-the vehicle. Of 331.8 km of metro shape, 175.3 km resolves as underground, and
+the vehicle. Of 303.4 km of metro shape, 161.4 km resolves as underground, and
 a vehicle inside one of those ranges says so in its popup.
 
 ### How much to trust a dot
@@ -228,7 +262,7 @@ So there is substantial headroom over the feed. The obstacle is the quota.
 **The endpoint rate-limits aggressively and the limit is not published.** Four
 concurrent requests return four 403s — it throttles on concurrency, not just
 volume — and sustained polling earns 403s even at 1.5 s spacing, after which
-access stays blocked for a while. Sweeping all 4,432 stops on a short cycle is
+access stays blocked for a while. Sweeping all 4,434 stops on a short cycle is
 not a responsible use of it.
 
 The poller is therefore **targeted rather than exhaustive**: it asks only about
@@ -255,14 +289,18 @@ the warning once instead.
 
 ### Current state
 
+The last ingest, on a Sunday — the trip count is the lowest day of the week, and
+a Wednesday is around a third higher:
+
 ```
-stops     4432/4496 matched (98.6%)   3694 by name, 738 by distance
+stops     4434/4507 matched (98.4%)   3693 by name, 741 by distance
 stations  1726 (platforms merged by DIVA)
-coverage  4225/4257 locatable stops served by a line (99.2%)
-lines     204 lines, 6542 patterns
-shapes    5773 shapes, 979980 points
-tunnels   28 metro shapes, 175.3 of 331.8 km underground
-schedule  34111 trips + 1006 of yesterday's running past midnight, 0 without geometry
+coverage  4224/4256 locatable stops served by a line (99.2%)
+lines     204 lines (174 with real-time), 6550 patterns
+shapes    5755 shapes, 979980 points
+tunnels   25 metro shapes, 161.4 of 303.4 km underground
+exits     416 entrances at 99 of 121 U-Bahn stations, 273 step-free
+schedule  25450 trips, 0 without geometry
 ```
 
 A Wednesday 21:30 sample places 551 vehicles — 272 bus, 186 tram, 47 S-Bahn,
@@ -272,7 +310,7 @@ runs at 85–90 km/h, which is what they actually do. `npm run vehicles:check`
 re-runs those plausibility checks against the live feed; `npm run
 vehicles:lines` breaks the current placement down by line.
 
-The 565 StopIDs with no DIVA and zeroed coordinates are operational points —
+The 554 StopIDs with no DIVA and zeroed coordinates are operational points —
 depot runs, short workings, terminus markers. They appear in route patterns but
 carry no location by construction, so they are excluded from coverage rather
 than counted as failures.

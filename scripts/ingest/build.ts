@@ -19,6 +19,7 @@ import { fetchDistricts, tintDistricts } from "./districts.ts";
 import { fetchBikePaths } from "./bikes.ts";
 import { fetchPedestrianZones } from "./zones.ts";
 import { fetchFountains } from "./fountains.ts";
+import { fetchToilets } from "./toilets.ts";
 import { normaliseName, stripCity } from "../../lib/vehicles/names.ts";
 import {
   classifyMatch,
@@ -573,6 +574,13 @@ async function main() {
     features: fountains.features,
   });
 
+  const toilets = await fetchToilets();
+  await writeArtifact("toilets.json", {
+    generatedAt: new Date().toISOString(),
+    type: "FeatureCollection",
+    features: toilets.features,
+  });
+
   await writeArtifact("stations.json", {
     generatedAt: new Date().toISOString(),
     stations: result.stations,
@@ -698,6 +706,9 @@ async function main() {
   console.log(`    zones       ${zones.length} pedestrian`);
   console.log(
     `    fountains   ${fountains.features.length} drinkable (${fountains.dropped} ornamental dropped)`,
+  );
+  console.log(
+    `    toilets     ${toilets.features.length} open (${toilets.winter} closed for winter, ${toilets.dropped} dropped)`,
   );
   console.log(`    no mode     ${unclassified}`);
   console.log(`    rejected    ${result.rejected.length}`);

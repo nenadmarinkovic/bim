@@ -23,6 +23,7 @@ import {
   ROADWORKS_POINT_LAYER,
   STOPS_BADGE_LAYER,
   STOPS_LAYER,
+  TOILETS_LAYER,
   ZONES_FILL_LAYER,
   ZONES_LABEL_LAYER,
   ZONES_LINE_LAYER,
@@ -81,6 +82,7 @@ export function useMapSettings({
   const [zones, setZones] = useState(false);
   const [roadworks, setRoadworks] = useState(false);
   const [fountains, setFountains] = useState(false);
+  const [toilets, setToilets] = useState(false);
 
   const apply = useCallback(
     (layers: readonly string[], on: boolean) => {
@@ -183,11 +185,7 @@ export function useMapSettings({
       onChange: (on: boolean) => {
         setRoadworks(on);
         apply(
-          [
-            ROADWORKS_LINE_LAYER,
-            ROADWORKS_POINT_LAYER,
-            ROADWORKS_LABEL_LAYER,
-          ],
+          [ROADWORKS_LINE_LAYER, ROADWORKS_POINT_LAYER, ROADWORKS_LABEL_LAYER],
           on,
         );
       },
@@ -200,6 +198,16 @@ export function useMapSettings({
       onChange: (on: boolean) => {
         setFountains(on);
         apply([FOUNTAINS_LAYER], on);
+      },
+    },
+    {
+      key: "toilets",
+      label: dict.settings.toilets,
+      hint: dict.settings.toiletsHint,
+      on: toilets,
+      onChange: (on: boolean) => {
+        setToilets(on);
+        apply([TOILETS_LAYER], on);
       },
     },
   ];
@@ -268,7 +276,7 @@ export function MapSettings({
         className,
       )}
     >
-      {/* Eight layers is enough that clearing them one at a time is a chore.
+      {/* Nine layers is enough that clearing them one at a time is a chore.
           The button only appears once there is something to clear, so it is
           never a control that does nothing. */}
       <div

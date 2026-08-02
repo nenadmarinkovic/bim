@@ -3,6 +3,7 @@
 import type React from "react";
 import {
   ArrowUpRightIcon,
+  CursorClickIcon,
   DatabaseIcon,
   GaugeIcon,
   GithubLogoIcon,
@@ -31,8 +32,6 @@ const NAV_LINK =
 const LINK =
   "cursor-pointer text-brand font-medium underline-offset-4 transition-opacity hover:opacity-70";
 
-// The dialog itself never scrolls — its body does, so the title and the close
-// button stay put while a phone reads through the long half.
 const SHEET =
   "glass-sheet flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden p-4 sm:gap-5 sm:p-6";
 
@@ -105,12 +104,11 @@ export function SiteNav({
         <DialogTrigger className={cn(NAV_LINK, itemClassName)}>
           {dict.nav.about}
         </DialogTrigger>
-        <DialogContent className={cn(SHEET, "sm:max-w-3xl")}>
+        <DialogContent className={cn(SHEET, "sm:max-w-2xl")}>
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">
               {dict.about.title}
             </DialogTitle>
-
             <DialogDescription className="text-sm font-medium text-foreground">
               {dict.about.subtitle}
             </DialogDescription>
@@ -120,57 +118,62 @@ export function SiteNav({
           </DialogHeader>
 
           <ScrollArea className={SHEET_BODY} viewportClassName={SHEET_VIEWPORT}>
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div className="flex flex-col gap-5">
-                <Panel
-                  icon={<PathIcon size={16} weight="bold" />}
-                  title={dict.about.howTitle}
-                >
-                  <p className={BODY}>{dict.about.lead}</p>
-                  <p className={BODY}>{dict.about.accuracy}</p>
-                </Panel>
+            <div className="flex flex-col gap-5">
+              <Panel
+                icon={<PathIcon size={16} weight="bold" />}
+                title={dict.about.howTitle}
+              >
+                <p className={BODY}>{dict.about.lead}</p>
+                <p className={BODY}>{dict.about.accuracy}</p>
+              </Panel>
 
-                <Panel
-                  icon={<GaugeIcon size={16} weight="bold" />}
-                  title={dict.about.trustTitle}
-                >
-                  <p className={BODY}>{dict.about.trustBody}</p>
-                </Panel>
-              </div>
+              <Panel
+                icon={<GaugeIcon size={16} weight="bold" />}
+                title={dict.about.trustTitle}
+              >
+                <p className={BODY}>{dict.about.trustBody}</p>
+                <p className={BODY}>{dict.about.trustSbahn}</p>
+              </Panel>
 
-              <div className="flex flex-col gap-5 border-t border-foreground/10 pt-5 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
-                <Panel
-                  icon={<DatabaseIcon size={16} weight="bold" />}
-                  title={dict.about.dataTitle}
-                >
-                  <p className={BODY}>{dict.about.dataNote}</p>
-                  <p className={BODY}>{dict.about.purpose}</p>
-                </Panel>
+              <Panel
+                icon={<CursorClickIcon size={16} weight="bold" />}
+                title={dict.about.exploreTitle}
+              >
+                <p className={BODY}>{dict.about.exploreBody}</p>
+                <p className={BODY}>{dict.about.exploreLayers}</p>
+              </Panel>
 
-                <div className={cn(BODY, "mt-auto grid gap-0.5 pt-1")}>
-                  <p>
-                    <a
-                      href={REPO}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className={LINK}
-                    >
-                      {dict.about.openSource}
-                    </a>{" "}
-                    {dict.about.projectBy} Nenad Marinković.
-                  </p>
-                  <p>
-                    {dict.about.moreInfo}{" "}
-                    <a
-                      href={SITE}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className={LINK}
-                    >
-                      {SITE.replace("https://", "")}
-                    </a>
-                  </p>
-                </div>
+              <Panel
+                icon={<DatabaseIcon size={16} weight="bold" />}
+                title={dict.about.dataTitle}
+              >
+                <p className={BODY}>{dict.about.dataNote}</p>
+                <p className={BODY}>{dict.about.purpose}</p>
+              </Panel>
+
+              <div className={cn(BODY, "grid gap-0.5 pt-1")}>
+                <p>
+                  <a
+                    href={REPO}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className={LINK}
+                  >
+                    {dict.about.openSource}
+                  </a>{" "}
+                  {dict.about.projectBy} Nenad Marinković.
+                </p>
+                <p>
+                  {dict.about.moreInfo}{" "}
+                  <a
+                    href={SITE}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className={LINK}
+                  >
+                    {SITE.replace("https://", "")}
+                  </a>
+                </p>
               </div>
             </div>
           </ScrollArea>

@@ -25,5 +25,8 @@ export const ROADWORKS_LABEL_LAYER = "roadworks-labels";
 export const FOUNTAINS_SOURCE = "fountains";
 export const FOUNTAINS_LAYER = "fountains-markers";
 
+export const TOILETS_SOURCE = "toilets";
+export const TOILETS_LAYER = "toilets-markers";
+
 export const EXITS_SOURCE = "exits";
 export const EXITS_LAYER = "exits-markers";

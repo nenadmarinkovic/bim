@@ -23,6 +23,7 @@ import { StationSearch } from "./station-search";
 import { MapAttribution } from "./map-attribution";
 import { installStopIcons } from "./stop-icons";
 import { fountainImageId, installFountainIcons } from "./fountain-icons";
+import { TOILET_IMAGE, installToiletIcon } from "./toilet-icons";
 import { buildStopPopup, rowColour, rowKey } from "./stop-popup";
 import type { BoardRow } from "@/lib/vehicles/board";
 import { PlaceChat, type ChatPlace } from "./place-chat";
@@ -48,6 +49,8 @@ import {
   ROADWORKS_LINE_LAYER,
   ROADWORKS_POINT_LAYER,
   ROADWORKS_SOURCE,
+  TOILETS_LAYER,
+  TOILETS_SOURCE,
   ZONES_FILL_LAYER,
   ZONES_LABEL_LAYER,
   ZONES_LINE_LAYER,
@@ -149,33 +152,6 @@ function saveCamera(map: mapboxgl.Map) {
       }),
     );
   } catch {}
-}
-
-// Development only. Prints the two lines of lib/map-camera.ts after every move,
-// so an opening shot can be composed by dragging the map rather than guessing
-// numbers — and clicking anywhere reports that point, for finding a landmark.
-// The frame size goes in the comment because the same camera reads differently
-// in a different shape.
-function attachCameraLog(map: mapboxgl.Map) {
-  const report = () => {
-    const { lng, lat } = map.getCenter();
-    const canvas = map.getCanvas();
-    const dpr = window.devicePixelRatio || 1;
-    console.log(
-      `// ${Math.round(canvas.width / dpr)}x${Math.round(canvas.height / dpr)} frame\n` +
-        `export const EMBED_CENTRE = { lng: ${lng.toFixed(5)}, lat: ${lat.toFixed(5)} } as const;\n` +
-        `export const EMBED_CAMERA = { zoom: ${map.getZoom().toFixed(2)}, ` +
-        `pitch: ${map.getPitch().toFixed(1)}, ` +
-        `bearing: ${map.getBearing().toFixed(1)} } as const;`,
-    );
-  };
-
-  map.on("moveend", report);
-  map.once("load", report);
-  map.on("click", (event) => {
-    const { lng, lat } = event.lngLat;
-    console.log(`point { lng: ${lng.toFixed(5)}, lat: ${lat.toFixed(5)} }`);
-  });
 }
 
 function lightPresetFor(resolvedTheme: string | undefined) {
@@ -347,7 +323,13 @@ const BIKES_SOLID = ["match", ["get", "class"], ["path", "lane"], true, false];
 
 // A traffic-calmed street, a signposted route, the stub across a junction: you
 // may ride there, but nothing was built for you. Dashed, and quieter.
-const BIKES_SHARED = ["match", ["get", "class"], ["calm", "crossing"], true, false];
+const BIKES_SHARED = [
+  "match",
+  ["get", "class"],
+  ["calm", "crossing"],
+  true,
+  false,
+];
 
 const BIKE_INK = { light: "#00753a", dark: "#3ce084" } as const;
 
@@ -640,6 +622,44 @@ function addFountainLayer(map: mapboxgl.Map) {
   });
 }
 
+// MA 45 shuts its park toilets over the winter and publishes which ones, but
+// not the day each closes. From November to March those are drawn faint rather
+// than promised as open.
+const WINTER_SHUT = [10, 11, 0, 1, 2].includes(new Date().getMonth());
+
+function addToiletLayer(map: mapboxgl.Map) {
+  if (map.getSource(TOILETS_SOURCE)) return;
+
+  map.addSource(TOILETS_SOURCE, {
+    type: "geojson",
+    data: "/api/toilets",
+  });
+
+  map.addLayer({
+    id: TOILETS_LAYER,
+    type: "symbol",
+    source: TOILETS_SOURCE,
+    slot: "top",
+    // Like the fountains: something you walk the last few hundred metres to,
+    // and above the city view a green rash over Vienna.
+    minzoom: 14,
+    layout: {
+      visibility: "none",
+      "icon-image": TOILET_IMAGE,
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 14, 0.6, 18, 1],
+      "icon-allow-overlap": false,
+      "icon-padding": 2,
+      "icon-pitch-alignment": "viewport",
+      "icon-rotation-alignment": "viewport",
+    },
+    paint: {
+      "icon-opacity": WINTER_SHUT
+        ? (["case", ["get", "winter"], 0.45, 1] as never)
+        : 1,
+    },
+  });
+}
+
 function addStopsLayer(map: mapboxgl.Map) {
   if (map.getSource(STOPS_SOURCE)) return;
 
@@ -843,8 +863,6 @@ export function MapView({
 
     instance.on("moveend", () => saveCamera(instance));
 
-    if (process.env.NODE_ENV !== "production") attachCameraLog(instance);
-
     const addLayers = () => {
       // Images first: a symbol layer whose icon is missing logs on every tile.
       void installStopIcons(instance).then(() => addStopsLayer(instance));
@@ -855,6 +873,7 @@ export function MapView({
       void installFountainIcons(instance).then(() =>
         addFountainLayer(instance),
       );
+      void installToiletIcon(instance).then(() => addToiletLayer(instance));
       void addExitLayers(instance);
       // A popup built before this lands would be missing its exits, so the open
       // one is drawn again once they are known.
@@ -1187,8 +1206,7 @@ export function MapView({
 
       if (instance.getZoom() >= SPRITE_TO_3D_ZOOM) {
         const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
-          | mapboxgl.GeoJSONSource
-          | undefined;
+          mapboxgl.GeoJSONSource | undefined;
         extrusions?.setData(
           toExtrusionCollection(
             tweens.current,

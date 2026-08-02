@@ -42,7 +42,8 @@ export const de: Dictionary = {
     stops: "Haltestellen",
     stopsHint: "Alle Haltestellen und Stationen im Netz",
     places: "Orte",
-    placesHint: "Sehenswürdigkeiten und markante Orte, jeweils mit Beschreibung",
+    placesHint:
+      "Sehenswürdigkeiten und markante Orte, jeweils mit Beschreibung",
     streets: "Straßen",
     streetsHint: "Straßennamen auf der Grundkarte",
     districts: "Bezirke",
@@ -59,6 +60,9 @@ export const de: Dictionary = {
     fountains: "Trinkbrunnen",
     fountainsHint:
       "Öffentliches Trinkwasser, die mit Tränke für Hunde gekennzeichnet",
+    toilets: "Öffentliche WC-Anlagen",
+    toiletsHint:
+      "WC-Anlagen der Stadt, darunter die barrierefreien und die Pissoirs",
     theme: "Design",
     language: "Sprache",
   },
@@ -217,8 +221,15 @@ export const de: Dictionary = {
     trustTitle: "Wie verlässlich ist ein Fahrzeug",
     trustBody:
       "Wiener Linien misst Abfahrten nur an einem Teil des Netzes. Klicken Sie ein Fahrzeug an, um zu sehen, ob seine Position an einer Haltestelle gemessen, zwischen meldenden Haltestellen interpoliert oder allein aus dem Fahrplan abgeleitet wurde.",
+    trustSbahn:
+      "Die S-Bahn fährt die ÖBB, die dafür keine Live-Daten veröffentlicht. Diese Züge folgen daher immer dem Fahrplan.",
+    exploreTitle: "Was Sie sonst tun können",
+    exploreBody:
+      "Klicken Sie eine Station an, um die nächsten Abfahrten zu lesen, dazu ihre Zugänge und welche davon stufenlos sind. Tippen Sie eine Linie in der Anzeige an, um ihren Weg zu verfolgen. Klicken Sie ein Fahrzeug an, um seine ganze Route zu zeichnen und ihm durch die Stadt zu folgen.",
+    exploreLayers:
+      "Über die Einstellungen kommt mehr von der Stadt dazu: Bezirke, Radwege, Fußgängerzonen, Baustellen, Trinkbrunnen und öffentliche WC-Anlagen. Zu Sehenswürdigkeiten gibt es eine kurze Beschreibung, die Sie anhören oder zu der Sie nachfragen können.",
     dataNote:
-      "Offene Daten von Wiener Linien und Stadt Wien. Gleisgeometrie aus einer GTFS-Konvertierung der Community (CC BY 4.0), Stationszugänge aus OpenStreetMap (ODbL).",
+      "Abfahrten und Linien aus den offenen Daten der Wiener Linien, die S-Bahn von den ÖBB. Gleisgeometrie aus einer GTFS-Konvertierung der Community (CC BY 4.0). Bezirke, Radwege, Fußgängerzonen, Baustellen, Trinkbrunnen und öffentliche WC-Anlagen von der Stadt Wien. Stationszugänge aus OpenStreetMap (ODbL).",
     purpose:
       "Bim zeigt das Netz, plant aber keine Fahrten, und steht in keiner Verbindung zu Wiener Linien.",
     openSource: "Open-Source-Projekt",
