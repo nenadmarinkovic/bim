@@ -77,7 +77,7 @@ export function PlaceChat({
 
   return (
     <Dialog open={Boolean(place)} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="glass-sheet flex max-h-[80vh] flex-col gap-4 p-6 sm:max-w-lg">
+      <DialogContent className="glass-sheet flex max-h-[85dvh] flex-col gap-4 p-4 sm:max-w-lg sm:p-6">
         <DialogHeader className="gap-1">
           <DialogTitle className="text-xl font-semibold">
             {place?.title}

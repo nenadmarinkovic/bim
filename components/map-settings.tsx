@@ -11,6 +11,9 @@ import { SWITCH_TRACK } from "@/components/ui/switch-classes";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { VEHICLES_LABEL_LAYER } from "@/components/vehicle-layer";
 import {
+  BIKES_CASING_LAYER,
+  BIKES_LAYER,
+  BIKES_SOFT_LAYER,
   DISTRICTS_FILL_LAYER,
   DISTRICTS_LABEL_LAYER,
   DISTRICTS_LINE_LAYER,
@@ -22,7 +25,9 @@ import { listenToParents, postToParents } from "./embed-channel";
 import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
 
-const ROW = "flex min-h-10 items-center justify-between gap-4";
+// A row is a thumb-sized target on a phone and tightens to the pointer-sized
+// one once there is a pointer to aim with.
+const ROW = "flex min-h-11 items-center justify-between gap-4 md:min-h-10";
 
 const LABEL = "text-sm leading-none font-medium text-foreground select-none";
 
@@ -36,20 +41,27 @@ const LAYER_OPTIONS = [
 
 const EMPTY: string[] = [];
 
-export function MapSettings({
+export type SettingsView = {
+  key: string;
+  label: string;
+  hint: string;
+  on: boolean;
+  onChange: (on: boolean) => void;
+};
+
+// The panel is drawn twice — as the desktop card and inside the phone's menu
+// sheet — so the state lives here, above both, and the map calls happen once.
+export function useMapSettings({
   getMap,
   onPlacesChange,
   embed = false,
   parents = EMPTY,
-  className,
 }: {
   getMap: () => mapboxgl.Map | null;
   onPlacesChange: (on: boolean) => void;
   embed?: boolean;
   parents?: string[];
-  className?: string;
-}) {
-  const id = useId();
+}): SettingsView[] {
   const dict = useDict();
   const [visible, setVisible] = useState<Record<string, boolean>>({
     lines: true,
@@ -58,6 +70,7 @@ export function MapSettings({
   const [places, setPlaces] = useState(embed);
   const [streets, setStreets] = useState(false);
   const [districts, setDistricts] = useState(false);
+  const [bikes, setBikes] = useState(false);
 
   const apply = useCallback(
     (layers: readonly string[], on: boolean) => {
@@ -88,7 +101,7 @@ export function MapSettings({
     [getMap],
   );
 
-  const views = [
+  const views: SettingsView[] = [
     ...LAYER_OPTIONS.map((option) => ({
       key: option.key as string,
       label: dict.settings[option.key],
@@ -132,6 +145,16 @@ export function MapSettings({
         );
       },
     },
+    {
+      key: "bikes",
+      label: dict.settings.bikes,
+      hint: dict.settings.bikesHint,
+      on: bikes,
+      onChange: (on: boolean) => {
+        setBikes(on);
+        apply([BIKES_CASING_LAYER, BIKES_SOFT_LAYER, BIKES_LAYER], on);
+      },
+    },
   ];
 
   // Embedded, the panel is the host page's to draw: it publishes what it has —
@@ -168,50 +191,88 @@ export function MapSettings({
     });
   }, [embed, parents, published]);
 
-  if (embed) return null;
+  return views;
+}
+
+export function MapSettings({
+  views,
+  bare = false,
+  className,
+}: {
+  views: SettingsView[];
+  bare?: boolean;
+  className?: string;
+}) {
+  const id = useId();
+  const dict = useDict();
+
+  // In the sheet a row carries its hint as a second line, so it needs the room
+  // to breathe and the switch pinned to the label rather than to the pair.
+  const row = cn(ROW, bare && "min-h-12 items-start gap-5 py-2");
+  const group = cn(GROUP, bare && "mt-5 mb-2");
 
   return (
     <div
       className={cn(
-        "glass pointer-events-auto flex w-56 flex-col rounded-2xl px-4 pt-1.5 pb-3",
+        "flex flex-col",
+        bare
+          ? "w-full"
+          : "glass scrollbar-thin pointer-events-auto max-h-[calc(100dvh-9.5rem)] w-56 overflow-y-auto rounded-2xl px-4 pt-1.5 pb-3",
         className,
       )}
     >
-      <p className={cn(GROUP, "mt-1.5")}>{dict.settings.groupContext}</p>
+      <p className={cn(group, bare ? "mt-1" : "mt-1.5")}>
+        {dict.settings.groupContext}
+      </p>
 
       {views.map((view) => (
-        <div key={view.key} className={ROW}>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <label
-                  htmlFor={`${id}-${view.key}`}
-                  className={cn(LABEL, "cursor-pointer")}
-                />
-              }
+        <div key={view.key} className={row}>
+          {/* A tooltip wants a pointer to hover with. In the phone's menu there
+              is none, so the hint sits under the label rather than waiting for
+              one that never arrives. */}
+          {bare ? (
+            <label
+              htmlFor={`${id}-${view.key}`}
+              className={cn(LABEL, "grid min-w-0 gap-1.5 pt-1 leading-snug")}
             >
               {view.label}
-            </TooltipTrigger>
-            <TooltipContent side="right">{view.hint}</TooltipContent>
-          </Tooltip>
+              <span className="text-xs font-normal text-muted-foreground">
+                {view.hint}
+              </span>
+            </label>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <label
+                    htmlFor={`${id}-${view.key}`}
+                    className={cn(LABEL, "cursor-pointer")}
+                  />
+                }
+              >
+                {view.label}
+              </TooltipTrigger>
+              <TooltipContent side="right">{view.hint}</TooltipContent>
+            </Tooltip>
+          )}
           <Switch
             id={`${id}-${view.key}`}
             size="sm"
-            className={SWITCH_TRACK}
+            className={cn(SWITCH_TRACK, bare && "mt-1.5 shrink-0")}
             checked={view.on}
             onCheckedChange={view.onChange}
           />
         </div>
       ))}
 
-      <p className={GROUP}>{dict.settings.groupApp}</p>
+      <p className={group}>{dict.settings.groupApp}</p>
 
-      <div className={ROW}>
+      <div className={cn(ROW, bare && "min-h-12")}>
         <span className={LABEL}>{dict.settings.theme}</span>
         <ThemeToggle />
       </div>
 
-      <div className={ROW}>
+      <div className={cn(ROW, bare && "min-h-12")}>
         <span className={LABEL}>{dict.settings.language}</span>
         <LocaleSwitch />
       </div>

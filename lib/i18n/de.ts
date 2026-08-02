@@ -46,6 +46,9 @@ export const de: Dictionary = {
     streetsHint: "Straßennamen auf der Grundkarte",
     districts: "Bezirke",
     districtsHint: "Die 23 Bezirke, umrandet und eingefärbt",
+    bikes: "Radwege",
+    bikesHint:
+      "Radwege und Radfahrstreifen durchgezogen, gemischte und beruhigte Straßen gestrichelt",
     theme: "Design",
     language: "Sprache",
   },
@@ -148,6 +151,9 @@ export const de: Dictionary = {
   nav: {
     about: "Über",
     contribute: "Mitmachen",
+    menu: "Menü",
+    menuHint: "Ebenen und Einstellungen",
+    showMap: "Zur Karte",
   },
 
   contact: {

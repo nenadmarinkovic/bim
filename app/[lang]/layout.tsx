@@ -80,7 +80,9 @@ export default async function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body className="h-screen overflow-hidden">
+      {/* dvh, not vh: on phones the URL bar counts against the viewport, and a
+          vh-tall map leaves its bottom row of controls under the chrome. */}
+      <body className="h-dvh overflow-hidden overscroll-none">
         <LocaleProvider locale={lang} dictionary={getDictionary(lang)}>
           <Providers>
             <ThemeColorSync />

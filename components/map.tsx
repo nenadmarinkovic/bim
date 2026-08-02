@@ -6,7 +6,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { MapControls } from "./map-controls";
-import { MapSettings } from "./map-settings";
+import { MapMenu } from "./map-menu";
+import { MapSettings, useMapSettings } from "./map-settings";
 import { enablePlaces, setPlaceVisibility } from "./places";
 import {
   addExitLayers,
@@ -36,6 +37,10 @@ import {
 import { vehicleColour } from "@/lib/vehicles/colors";
 import type { Vehicle } from "@/lib/vehicles/types";
 import {
+  BIKES_CASING_LAYER,
+  BIKES_LAYER,
+  BIKES_SOFT_LAYER,
+  BIKES_SOURCE,
   DISTRICTS_FILL_LAYER,
   DISTRICTS_LABEL_LAYER,
   DISTRICTS_LINE_LAYER,
@@ -199,6 +204,18 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
     map.setPaintProperty(DISTRICTS_LABEL_LAYER, "text-color", ink);
   }
 
+  const bikeInk = BIKE_INK[dark ? "dark" : "light"];
+  for (const layer of [BIKES_LAYER, BIKES_SOFT_LAYER]) {
+    if (map.getLayer(layer)) map.setPaintProperty(layer, "line-color", bikeInk);
+  }
+  if (map.getLayer(BIKES_CASING_LAYER)) {
+    map.setPaintProperty(
+      BIKES_CASING_LAYER,
+      "line-color",
+      BIKE_CASING[dark ? "dark" : "light"],
+    );
+  }
+
   setExitTheme(map, dark);
   setVehicleTheme(map, dark);
   return true;
@@ -274,6 +291,137 @@ function addDistrictLayers(map: mapboxgl.Map) {
       "text-emissive-strength": 1,
       "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.75, 15, 0.4],
       "text-halo-width": 0,
+    },
+  });
+}
+
+// Stadt Wien files fifteen categories of cycling infrastructure; the ingest
+// collapses them to four, and these are the two that are real, ridable
+// infrastructure — drawn solid, over a casing, so they read against a park or a
+// river as clearly as against asphalt.
+const BIKES_SOLID = ["match", ["get", "class"], ["path", "lane"], true, false];
+
+// A traffic-calmed street, a signposted route, the stub across a junction: you
+// may ride there, but nothing was built for you. Dashed, and quieter.
+const BIKES_SHARED = ["match", ["get", "class"], ["calm", "crossing"], true, false];
+
+const BIKE_INK = { light: "#00753a", dark: "#3ce084" } as const;
+
+const BIKE_CASING = { light: "#ffffff", dark: "#04150c" } as const;
+
+// City-wide, every one of these lines at once is a green haze over Vienna. They
+// fade in as the view comes down to where a route is a thing you could follow.
+// The zoom curve has to stay outermost — Mapbox rejects a zoom expression used
+// anywhere but the top — so the per-class opacity rides in as its far end.
+const bikeFade = (near: number | unknown[]) => [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  10.5,
+  0,
+  13,
+  near,
+];
+
+function addBikeLayers(map: mapboxgl.Map) {
+  if (map.getSource(BIKES_SOURCE)) return;
+
+  map.addSource(BIKES_SOURCE, {
+    type: "geojson",
+    data: "/api/bike-paths",
+  });
+
+  map.addLayer({
+    id: BIKES_CASING_LAYER,
+    type: "line",
+    source: BIKES_SOURCE,
+    slot: "middle",
+    filter: BIKES_SOLID as never,
+    layout: {
+      visibility: "none",
+      "line-cap": "round",
+      "line-join": "round",
+    },
+    paint: {
+      "line-color": BIKE_CASING.light,
+      "line-emissive-strength": 1,
+      "line-opacity": bikeFade(0.7) as never,
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12,
+        2.5,
+        16,
+        6,
+        18,
+        9,
+      ],
+    },
+  });
+
+  map.addLayer({
+    id: BIKES_SOFT_LAYER,
+    type: "line",
+    source: BIKES_SOURCE,
+    slot: "middle",
+    filter: BIKES_SHARED as never,
+    layout: {
+      visibility: "none",
+      "line-cap": "butt",
+      "line-join": "round",
+    },
+    paint: {
+      "line-color": BIKE_INK.light,
+      "line-emissive-strength": 1,
+      "line-opacity": bikeFade(0.55) as never,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 2, 18, 3],
+      "line-dasharray": [
+        "match",
+        ["get", "class"],
+        // A crossing is a handful of metres, so its dashes have to be short
+        // enough to show up twice within one.
+        "crossing",
+        ["literal", [1, 1.5]],
+        ["literal", [2.5, 2]],
+      ] as never,
+    },
+  });
+
+  map.addLayer({
+    id: BIKES_LAYER,
+    type: "line",
+    source: BIKES_SOURCE,
+    slot: "middle",
+    filter: BIKES_SOLID as never,
+    layout: {
+      visibility: "none",
+      "line-cap": "round",
+      "line-join": "round",
+    },
+    paint: {
+      "line-color": BIKE_INK.light,
+      "line-emissive-strength": 1,
+      // A painted lane is a stripe beside moving cars and a path is its own
+      // way; the weight says which one you are looking at without a legend.
+      "line-opacity": bikeFade([
+        "match",
+        ["get", "class"],
+        "path",
+        1,
+        0.8,
+      ]) as never,
+      "line-width": [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12,
+        ["match", ["get", "class"], "path", 1.2, 0.9],
+        16,
+        ["match", ["get", "class"], "path", 3, 2.2],
+        18,
+        ["match", ["get", "class"], "path", 5, 3.6],
+      ] as never,
     },
   });
 }
@@ -487,6 +635,7 @@ export function MapView({
       // Images first: a symbol layer whose icon is missing logs on every tile.
       void installStopIcons(instance).then(() => addStopsLayer(instance));
       addDistrictLayers(instance);
+      addBikeLayers(instance);
       void addExitLayers(instance);
       // A popup built before this lands would be missing its exits, so the open
       // one is drawn again once they are known.
@@ -716,6 +865,15 @@ export function MapView({
     else instance.once("load", enable);
   }, [embed, setPlacesEnabled]);
 
+  // One set of toggles, drawn either in the desktop panel or in the phone's
+  // menu sheet — so the two can never disagree about what the map is showing.
+  const settings = useMapSettings({
+    getMap: () => map.current,
+    onPlacesChange: setPlacesEnabled,
+    embed,
+    parents,
+  });
+
   useEffect(() => {
     const instance = map.current;
     if (!instance || !resolvedTheme) return;
@@ -891,7 +1049,10 @@ export function MapView({
   return (
     <div className="relative h-full w-full">
       <div ref={container} className="bim-map h-full w-full" />
-      <div className="pointer-events-none absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+      {/* Everything anchored to an edge keeps clear of a notch or a home
+          indicator on a phone, and falls back to a plain inset once there is
+          room to spare. */}
+      <div className="pointer-events-none absolute top-[max(0.75rem,env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] z-20 flex items-center gap-2 sm:top-4 sm:right-4">
         <StationSearch
           onPick={(station) => {
             const instance = map.current;
@@ -904,19 +1065,23 @@ export function MapView({
             pickStation.current?.(station);
           }}
         />
+        {!embed && (
+          <MapMenu className="md:hidden">
+            <MapSettings views={settings} bare />
+          </MapMenu>
+        )}
       </div>
       <MapControls
         getMap={() => map.current}
-        className="absolute right-4 bottom-16 z-10"
+        className="absolute right-[max(0.75rem,env(safe-area-inset-right))] bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+2.75rem)] z-10 sm:right-4 sm:bottom-16"
       />
-      <MapAttribution className="absolute right-4 bottom-4 z-10" />
-      <MapSettings
-        getMap={() => map.current}
-        onPlacesChange={setPlacesEnabled}
-        embed={embed}
-        parents={parents}
-        className="absolute bottom-16 left-4 z-10"
-      />
+      <MapAttribution className="absolute right-[max(0.75rem,env(safe-area-inset-right))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 sm:right-4 sm:bottom-4" />
+      {!embed && (
+        <MapSettings
+          views={settings}
+          className="absolute bottom-16 left-4 z-10 hidden md:flex"
+        />
+      )}
       {(error || vehicleError) && (
         // Centred: at the bottom left it sat under the Mapbox logo and read as
         // part of the furniture rather than as something having gone wrong.

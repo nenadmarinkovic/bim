@@ -32,12 +32,14 @@ export function MapAttribution({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "pointer-events-auto flex items-center justify-end gap-2",
+        // Beside the button where there is width for it; stacked above it on a
+        // phone, where a row of six sources would push the button off-screen.
+        "pointer-events-auto flex flex-col items-end justify-end gap-2 sm:flex-row sm:items-center",
         className,
       )}
     >
       {open && (
-        <div className="glass flex max-w-[min(34rem,66vw)] flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5 rounded-full px-3.5 py-1.5 text-[0.6875rem] text-foreground duration-200 animate-in fade-in-0 slide-in-from-right-3">
+        <div className="glass flex max-w-[min(34rem,calc(100vw-5.5rem))] flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5 rounded-2xl px-3.5 py-1.5 text-[0.6875rem] text-foreground duration-200 animate-in fade-in-0 slide-in-from-bottom-2 sm:rounded-full sm:slide-in-from-bottom-0 sm:slide-in-from-right-3">
           {SOURCES.map((source) => (
             <a
               key={source.href}

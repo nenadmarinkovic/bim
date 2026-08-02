@@ -46,6 +46,9 @@ export const en = {
     streetsHint: "Street names on the base map",
     districts: "Districts",
     districtsHint: "The 23 districts, outlined and tinted",
+    bikes: "Bike paths",
+    bikesHint:
+      "Cycle paths and lanes solid, shared and calmed streets dashed",
     theme: "Theme",
     language: "Language",
   },
@@ -143,6 +146,9 @@ export const en = {
   nav: {
     about: "About",
     contribute: "Contribute",
+    menu: "Menu",
+    menuHint: "Layers and settings",
+    showMap: "Show the map",
   },
 
   contact: {

@@ -28,19 +28,19 @@ export default async function Embed({ params }: PageProps<"/[lang]/embed">) {
           transparent one — lets the browser stop painting it, which stalls the
           frame loop mapbox loads on. The name arriving a beat late is the
           cheaper trade than a map that never finishes. */}
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-center gap-2 px-4 pt-4">
-        <div className="glass animate-in fade-in fill-mode-both pointer-events-auto flex max-w-full items-center gap-3 rounded-full px-4 py-2 duration-700 [animation-delay:700ms]">
-          <h1 className="flex shrink-0 items-center gap-2.5 text-lg font-bold tracking-tight text-foreground">
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-start gap-2 px-[max(0.75rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:pt-4 md:items-center">
+        <div className="glass animate-in fade-in fill-mode-both pointer-events-auto flex max-w-[calc(100%-3.25rem)] items-center gap-2 rounded-full px-3 py-1.5 duration-700 [animation-delay:700ms] sm:gap-2.5 md:max-w-full lg:gap-3 lg:px-4 lg:py-2">
+          <h1 className="flex shrink-0 items-center gap-2.5 text-base font-bold tracking-tight text-foreground lg:text-lg">
             <Logo className="h-3 w-auto shrink-0" />
             Bim
           </h1>
-          <span className="h-5 w-px shrink-0 bg-foreground/20" />
-          <span className="shrink-0 text-sm font-medium text-foreground">
+          <span className="h-4 w-px shrink-0 bg-foreground/20 sm:h-5" />
+          <span className="min-w-0 truncate text-xs font-medium text-foreground sm:text-sm">
             {dict.header.tagline}
           </span>
         </div>
 
-        <VehicleCount className="glass pointer-events-auto rounded-full px-3 py-1 text-xs font-medium text-foreground" />
+        <VehicleCount className="glass pointer-events-auto max-w-full truncate rounded-full px-3 py-1 text-xs font-medium text-foreground" />
       </header>
 
       <EmbedTheme parents={parents} />
