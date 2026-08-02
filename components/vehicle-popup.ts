@@ -39,6 +39,7 @@ export function buildVehiclePopup(
   towards.textContent = ` → ${vehicle.towards}`;
 
   const heading = document.createElement("div");
+  heading.className = "bim-popup-title";
   heading.append(line, towards);
 
   const meta = document.createElement("div");

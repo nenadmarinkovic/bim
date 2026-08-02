@@ -874,6 +874,7 @@ export function MapView({
       offset: 12,
       className: "bim-popup",
       focusAfterOpen: false,
+      maxWidth: "268px",
     });
     popup.current.on("close", () => {
       selected.current = null;

@@ -310,7 +310,7 @@ span.text-brand.italic {
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.45;
-  padding: 0.5rem 1.6rem 0.5rem 0.7rem;
+  padding: 1rem;
 }
 
 .dark .bim-popup .mapboxgl-popup-content {
@@ -358,20 +358,22 @@ span.text-brand.italic {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
-  padding: 0.6rem 1.7rem 0.65rem 0.8rem;
 }
 .bim-place-popup {
   display: flex;
   flex-direction: column;
   max-width: 16.5rem;
 }
+/* The close button sits over the top-right corner, so the title carries the
+   gutter that keeps it clear rather than the card. */
 .bim-popup-title {
+  display: block;
+  padding-right: 1.75rem;
+  font-size: var(--text-lg);
   font-weight: 600;
   line-height: 1.25;
-}
-.bim-stop-popup .bim-popup-title {
-  font-size: 0.9375rem;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.012em;
+  text-wrap: balance;
 }
 .bim-popup-kind {
   margin-top: 0.15rem;
@@ -624,13 +626,27 @@ span.text-brand.italic {
 }
 
 .bim-popup .mapboxgl-popup-close-button {
+  z-index: 30;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: min(var(--radius-md), 12px);
+  transition:
+    background 150ms ease,
+    color 150ms ease;
   color: color-mix(in oklch, var(--foreground) 60%, transparent);
   font-size: 1rem;
   line-height: 1;
-  padding: 0.25rem 0.4rem;
-  border-radius: var(--radius-sm);
 }
 .bim-popup .mapboxgl-popup-close-button:hover {
-  background: transparent;
+  background: color-mix(in oklch, var(--foreground) 10%, transparent);
   color: var(--foreground);
+}
+.bim-popup .mapboxgl-popup-close-button:active {
+  background: color-mix(in oklch, var(--foreground) 15%, transparent);
 }
