@@ -70,9 +70,12 @@ import {
   CAMERA,
   EMBED_CAMERA,
   MAX_PITCH,
+  MAX_ZOOM,
+  MIN_ZOOM,
   NETWORK_BOUNDS,
   STEPHANSDOM,
   EMBED_CENTRE,
+  pitchCeiling,
 } from "@/lib/map-camera";
 import { POLL_MS } from "./use-vehicles";
 import { useVehiclesContext, useViewportReporter } from "./vehicles-provider";
@@ -811,6 +814,9 @@ export function MapView({
   const disableStops = useRef<(() => void) | null>(null);
   const pickStation = useRef<((station: Station) => void) | null>(null);
   const following = useRef<string | null>(null);
+  // Which vehicle the camera has already been framed for, so the framing is
+  // applied on pickup rather than on every frame.
+  const framed = useRef<string | null>(null);
   const routeTrip = useRef<string | null>(null);
   // Which station has asked for its doors; they stay until asked again.
   const exitsOpen = useRef<string | null>(null);
@@ -855,8 +861,8 @@ export function MapView({
       zoom: resumed?.zoom ?? opening.zoom,
       pitch: resumed?.pitch ?? opening.pitch,
       bearing: resumed?.bearing ?? opening.bearing,
-      minZoom: 9,
-      maxZoom: 18,
+      minZoom: MIN_ZOOM,
+      maxZoom: MAX_ZOOM,
       maxPitch: MAX_PITCH,
       maxBounds: NETWORK_BOUNDS,
       attributionControl: false,
@@ -885,6 +891,32 @@ export function MapView({
     if (initial) reportViewport(bboxParam(initial));
 
     instance.on("moveend", () => saveCamera(instance));
+
+    // Pulling out flattens the camera on the way, so the whole city arrives
+    // level rather than folded into a band with sky above it.
+    //
+    // It has to go through maxPitch rather than setPitch: a zoom animation
+    // rewrites the pitch every frame from the value it began with, so a direct
+    // write inside the same tick is simply overwritten, while the ceiling is
+    // applied by the transform on every one of those frames. Lifting it again
+    // once the zoom settles leaves the camera where it was pushed to — so the
+    // map arrives flat, and can still be tipped by hand at any zoom.
+    let lastZoom = instance.getZoom();
+    let cap = MAX_PITCH;
+    const capPitch = (next: number) => {
+      if (Math.abs(next - cap) < 1) return;
+      cap = next;
+      instance.setMaxPitch(next);
+    };
+
+    instance.on("zoom", () => {
+      const zoom = instance.getZoom();
+      const outward = zoom < lastZoom;
+      lastZoom = zoom;
+      if (outward) capPitch(pitchCeiling(zoom));
+    });
+
+    instance.on("zoomend", () => capPitch(MAX_PITCH));
 
     // The vehicle source is rewritten every animation frame, so this map is
     // never idle and "dataloading" never stops firing. Both are useless as
@@ -1262,13 +1294,25 @@ export function MapView({
         const followed = tweens.current.get(followId);
         if (followed) {
           const at = sample(followed, now);
-          instance.jumpTo({
-            center: [at.lon, at.lat],
-            bearing: at.bearing,
-            pitch: FOLLOW_PITCH,
-            zoom: Math.max(instance.getZoom(), FOLLOW_MIN_ZOOM),
-          });
+          // Frame the vehicle once, when it is first picked up. Only the centre
+          // and the heading track it after that: writing the zoom and the pitch
+          // on every frame pinned the camera at 17.2 and 72°, so following a
+          // tram meant being unable to pull back far enough to see where it was
+          // going, or to flatten the view to read the street.
+          if (framed.current !== followId) {
+            framed.current = followId;
+            instance.jumpTo({
+              center: [at.lon, at.lat],
+              bearing: at.bearing,
+              pitch: FOLLOW_PITCH,
+              zoom: Math.max(instance.getZoom(), FOLLOW_MIN_ZOOM),
+            });
+          } else {
+            instance.jumpTo({ center: [at.lon, at.lat], bearing: at.bearing });
+          }
         }
+      } else if (framed.current) {
+        framed.current = null;
       }
 
       const id = selected.current;

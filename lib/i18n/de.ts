@@ -64,10 +64,9 @@ export const de: Dictionary = {
     fountains: "Trinkbrunnen",
     fountainsHint:
       "Öffentliches Trinkwasser, die mit Tränke für Hunde gekennzeichnet.",
-    toilets: "Öffentliche WC-Anlagen",
-    toiletsHint:
-      "WC-Anlagen der Stadt, darunter die barrierefreien und die Pissoirs.",
-    theme: "Design",
+    toilets: "Öffentliche WCs",
+    toiletsHint: "WCs der Stadt, darunter die barrierefreien und die Pissoirs.",
+    theme: "Theme",
     language: "Sprache",
   },
 
@@ -79,7 +78,7 @@ export const de: Dictionary = {
   },
 
   theme: {
-    label: "Design",
+    label: "Theme",
     system: "System",
     light: "Hell",
     dark: "Dunkel",

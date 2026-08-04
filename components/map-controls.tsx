@@ -105,9 +105,14 @@ export function MapControls({
         <TooltipTrigger
           aria-label={dict.map.centre}
           onClick={() =>
+            // The whole opening camera, not just where it pointed: pulling out
+            // far enough flattens the map and nothing puts the tilt back, so
+            // this is the way home to the view the app opens on.
             getMap()?.flyTo({
               center: [STEPHANSDOM.lng, STEPHANSDOM.lat],
               zoom: CAMERA.zoom,
+              pitch: CAMERA.pitch,
+              bearing: CAMERA.bearing,
               duration: 1200,
             })
           }
