@@ -57,12 +57,14 @@ export function MapMenu({
       >
         {/* The close lands on the exact pixel the trigger occupied, so the
             hamburger appears to turn into an X rather than to be replaced by
-            one somewhere else. The insets are what is left of the control
-            cluster's own offset once the panel's padding has already covered
-            part of it — nothing, once the safe area is the larger of the two. */}
+            one somewhere else — which means the same offsets the control
+            cluster uses, not offsets reduced by the panel's padding. An
+            absolutely positioned child is laid against the padding box, and
+            the padding sits inside that box, so pt on the panel does not move
+            it down by even a pixel. */}
         <SheetClose
           aria-label={dict.nav.close}
-          className="absolute top-[max(0px,calc(0.75rem-env(safe-area-inset-top)))] right-[max(0px,calc(0.75rem-env(safe-area-inset-right)))] z-10 flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:bg-foreground/15 sm:top-[max(0px,calc(1rem-env(safe-area-inset-top)))] sm:right-[max(0px,calc(1rem-env(safe-area-inset-right)))]"
+          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] z-10 flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:bg-foreground/15 sm:top-4 sm:right-4"
         >
           <XIcon size={16} weight="bold" />
         </SheetClose>

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 
 import { Logo } from "@/components/logo";
 import { MapView } from "@/components/map";
+// TEMPORARY — see components/safe-area-debug.tsx
+import { SafeAreaDebug } from "@/components/safe-area-debug";
 import { SiteNav } from "@/components/site-nav";
 import { VehicleCount } from "@/components/vehicle-count";
 import { getDictionary, isLocale } from "@/lib/i18n";
@@ -21,6 +23,9 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
     // measured from the real edge rather than from 34pt above it.
     <div className="fixed inset-0">
       <MapView />
+
+      {/* TEMPORARY — remove with components/safe-area-debug.tsx */}
+      <SafeAreaDebug />
 
       {/* On a phone the header hugs the left edge, clear of the search and menu
           buttons in the opposite corner, and centres itself once the row has

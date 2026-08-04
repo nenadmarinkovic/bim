@@ -3,9 +3,11 @@
 import { useTheme } from "next-themes";
 import { useEffect, useLayoutEffect } from "react";
 
+// TEMPORARY — matches the loud theme-color in app/[lang]/layout.tsx, which this
+// component would otherwise overwrite at hydration. Put back to #fafafa/#242c45.
 const COLORS: Record<"light" | "dark", string> = {
-  light: "#fafafa",
-  dark: "#242c45",
+  light: "#ff0000",
+  dark: "#ff0000",
 };
 
 const useIsomorphicLayoutEffect =
