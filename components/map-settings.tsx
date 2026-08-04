@@ -28,6 +28,7 @@ import {
   ZONES_LABEL_LAYER,
   ZONES_LINE_LAYER,
 } from "@/lib/vehicles/layer-ids";
+import { pushConfig } from "./basemap-config";
 import { useDict } from "./locale-provider";
 import { listenToParents, postToParents } from "./embed-channel";
 import { LocaleSwitch } from "./locale-switch";
@@ -71,8 +72,10 @@ export function useMapSettings({
     lines: true,
     stops: true,
   });
-  const [places, setPlaces] = useState(embed);
-  const [streets, setStreets] = useState(false);
+  // Both start on, so these have to match what the map is built with —
+  // showRoadLabels and the opening enablePlaces call over in the map.
+  const [places, setPlaces] = useState(true);
+  const [streets, setStreets] = useState(true);
   const [districts, setDistricts] = useState(false);
   const [bikes, setBikes] = useState(false);
   const [zones, setZones] = useState(false);
@@ -98,11 +101,11 @@ export function useMapSettings({
       if (!map) return;
       let attempts = 0;
       const push = () => {
-        if (!map.isStyleLoaded()) {
-          if (attempts++ < 120) requestAnimationFrame(push);
-          return;
-        }
-        map.setConfigProperty("basemap", property, value);
+        // Same reasoning as the theme: isStyleLoaded() tracks source loading,
+        // which the vehicle feed keeps busy for good, and says nothing about
+        // whether this write can land. Ask the fragment instead.
+        if (pushConfig(map, property, value)) return;
+        if (attempts++ < 600) requestAnimationFrame(push);
       };
       push();
     },

@@ -1,5 +1,6 @@
 import type mapboxgl from "mapbox-gl";
 
+import { pushConfig } from "./basemap-config";
 import type { Dictionary, Locale } from "@/lib/i18n";
 
 function resolveTargets(map: mapboxgl.Map) {
@@ -261,16 +262,17 @@ export function setPlaceVisibility(map: mapboxgl.Map, on: boolean): () => void {
   let frame = 0;
   let attempts = 0;
 
+  // Not isStyleLoaded(): the vehicle source keeps that false almost always, and
+  // it does not answer the question these writes need answered anyway — whether
+  // the basemap fragment is there to take them.
   const apply = () => {
-    if (!map.isStyleLoaded()) {
-      if (attempts++ > 600) return;
-      frame = requestAnimationFrame(apply);
-      return;
-    }
-    map.setConfigProperty("basemap", "showPointOfInterestLabels", on);
-    map.setConfigProperty("basemap", "showPlaceLabels", true);
-    map.setConfigProperty("basemap", "showLandmarkIcons", false);
-    map.setConfigProperty("basemap", "showLandmarkIconLabels", false);
+    const done =
+      pushConfig(map, "showPointOfInterestLabels", on) &&
+      pushConfig(map, "showPlaceLabels", true) &&
+      pushConfig(map, "showLandmarkIcons", false) &&
+      pushConfig(map, "showLandmarkIconLabels", false);
+    if (done || attempts++ > 600) return;
+    frame = requestAnimationFrame(apply);
   };
 
   apply();

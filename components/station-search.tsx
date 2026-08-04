@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownIcon,
   ArrowElbowDownLeftIcon,
   ArrowUpIcon,
   MagnifyingGlassIcon,
   SpinnerGapIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 
 import {
@@ -18,7 +19,9 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { InputGroupAddon } from "@/components/ui/input-group";
 import { normaliseName } from "@/lib/vehicles/names";
+import { endJob, startJob } from "./busy";
 import { useDict } from "./locale-provider";
 import { fill } from "@/lib/i18n/locales";
 import { badgeMarkup, type StationMode } from "./stop-icons";
@@ -128,6 +131,7 @@ export function StationSearch({
   const [recent, setRecent] = useState<Station[]>([]);
   const [query, setQuery] = useState("");
   const [touched, setTouched] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
 
   const show = useCallback((next: boolean) => {
     if (next) setRecent(readRecent());
@@ -153,7 +157,20 @@ export function StationSearch({
 
   useEffect(() => {
     if (!open || stations.length) return;
-    void loadStations().then(setStations);
+
+    let live = true;
+    startJob("stations");
+
+    loadStations()
+      .then((entries) => {
+        if (live) setStations(entries);
+      })
+      .finally(() => endJob("stations"));
+
+    return () => {
+      live = false;
+      endJob("stations");
+    };
   }, [open, stations.length]);
 
   const matches = useMemo(() => {
@@ -218,15 +235,43 @@ export function StationSearch({
           onPointerMove={() => setTouched(true)}
         >
           <CommandInput
+            ref={input}
             placeholder={
               loading ? dict.search.loadingStations : dict.search.searchStations
             }
             value={query}
             onValueChange={setQuery}
-            className="text-[0.9375rem]!"
-          />
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            enterKeyHint="search"
+            className="text-base! sm:text-[0.9375rem]!"
+          >
+            {query && (
+              <InputGroupAddon align="inline-end">
+                <button
+                  type="button"
+                  // Keeping focus in the field means the keyboard never
+                  // collapses and reopens, which on iOS costs a full scroll
+                  // jump each way.
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    setQuery("");
+                    input.current?.focus();
+                  }}
+                  aria-label={dict.search.clearQuery}
+                  className="-mr-1 flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground active:bg-foreground/10 sm:size-6"
+                >
+                  <XIcon size={14} weight="bold" />
+                </button>
+              </InputGroupAddon>
+            )}
+          </CommandInput>
 
-          <CommandList className="scrollbar-thin max-h-[min(24rem,58vh)] px-1">
+          {/* Shorter on a phone so the last row still clears the keyboard;
+              the desktop cap is unchanged. */}
+          <CommandList className="scrollbar-thin max-h-[min(24rem,42dvh)] overscroll-contain px-1 sm:max-h-[min(24rem,58vh)]">
             {searching && !matches.length && !loading && (
               <CommandEmpty>
                 {dict.search.nothingMatching}{" "}
@@ -254,7 +299,7 @@ export function StationSearch({
                     key={station.diva}
                     value={`recent-${station.diva}`}
                     onSelect={() => pick(station)}
-                    className="cursor-pointer gap-2.5 py-2 group-data-[touched=false]/cmd:data-selected:bg-transparent [&>svg]:hidden"
+                    className="cursor-pointer gap-2.5 py-3 group-data-[touched=false]/cmd:data-selected:bg-transparent active:bg-muted [&>svg]:hidden sm:py-2"
                   >
                     <Name name={station.name} query="" />
                     <Badges modes={station.modes} />
@@ -295,7 +340,7 @@ export function StationSearch({
                     key={station.diva}
                     value={String(station.diva)}
                     onSelect={() => pick(station)}
-                    className="cursor-pointer gap-2.5 py-2 group-data-[touched=false]/cmd:data-selected:bg-transparent [&>svg]:hidden"
+                    className="cursor-pointer gap-2.5 py-3 group-data-[touched=false]/cmd:data-selected:bg-transparent active:bg-muted [&>svg]:hidden sm:py-2"
                   >
                     <Name name={station.name} query={query.trim()} />
                     <Badges modes={station.modes} />
@@ -305,7 +350,7 @@ export function StationSearch({
             )}
           </CommandList>
 
-          <div className="flex items-center gap-2 border-t border-foreground/10 px-3 py-2 text-[0.6875rem] font-medium text-muted-foreground">
+          <div className="hidden items-center gap-2 border-t border-foreground/10 px-3 py-2 sm:flex text-[0.6875rem] font-medium text-muted-foreground">
             <Key>
               <ArrowUpIcon size={11} weight="bold" />
               <ArrowDownIcon size={11} weight="bold" />

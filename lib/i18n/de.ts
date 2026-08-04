@@ -12,6 +12,9 @@ export const de: Dictionary = {
   },
 
   count: {
+    drawing: "Das Netz wird gezeichnet…",
+    redrawing: "Wird neu gezeichnet…",
+    stations: "Das Netz wird geladen…",
     loading: "Live-Positionen werden geladen…",
     moving: { one: "{n} Fahrzeug unterwegs", other: "{n} Fahrzeuge unterwegs" },
     estimated: "{n} geschätzt",
@@ -156,6 +159,7 @@ export const de: Dictionary = {
     nothingMatching: "Nichts gefunden für",
     recent: "Zuletzt",
     clear: "Löschen",
+    clearQuery: "Suche löschen",
     readingNetwork: "Netz wird gelesen…",
     typeName: "Stationsnamen eingeben.",
     results: { one: "{n} Station", other: "{n} Stationen" },

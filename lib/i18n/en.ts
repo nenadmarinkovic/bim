@@ -13,6 +13,9 @@ export const en = {
   },
 
   count: {
+    drawing: "Drawing the network…",
+    redrawing: "Redrawing…",
+    stations: "Reading the network…",
     loading: "Loading live positions…",
     moving: { one: "{n} vehicle moving", other: "{n} vehicles moving" },
     estimated: "{n} estimated",
@@ -148,6 +151,7 @@ export const en = {
     nothingMatching: "Nothing matching",
     recent: "Recent",
     clear: "Clear",
+    clearQuery: "Clear search",
     readingNetwork: "Reading the network…",
     typeName: "Type a station name.",
     results: { one: "{n} station", other: "{n} stations" },

@@ -5,6 +5,9 @@ import { useTheme } from "next-themes";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
+import { pushConfig } from "./basemap-config";
+import { endJob, startJob } from "./busy";
+import { markMapReady } from "./map-ready";
 import { MapControls } from "./map-controls";
 import { MapMenu } from "./map-menu";
 import { MapSettings, useMapSettings } from "./map-settings";
@@ -158,6 +161,14 @@ function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
 }
 
+// next-themes only resolves a theme after mount, so the render that builds the
+// map always reads undefined and would open every dark session on the day
+// basemap. The class next-themes writes before hydration is already correct.
+function themeFromDocument(): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
 const KIND_ORDER = [
   "match",
   ["get", "kind"],
@@ -171,9 +182,13 @@ const KIND_ORDER = [
 ] as never;
 
 function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
-  if (!map.isStyleLoaded()) return false;
-
-  map.setConfigProperty("basemap", "lightPreset", dark ? "night" : "day");
+  // Deliberately not gated on isStyleLoaded(). That answers false while any
+  // source is mid-load, and the vehicle source is handed new data every frame —
+  // so it is false nearly always here, and a retry waiting on it waits for a
+  // lull that never comes. It is the wrong question anyway: restyling needs the
+  // basemap fragment, not tiles. pushConfig asks that, and every write below is
+  // guarded on its own layer, so nothing here depends on a quiet map.
+  if (!pushConfig(map, "lightPreset", dark ? "night" : "day")) return false;
 
   if (map.getLayer(DISTRICTS_FILL_LAYER)) {
     map.setPaintProperty(
@@ -801,18 +816,26 @@ export function MapView({
   const exitsOpen = useRef<string | null>(null);
   const disablePlaces = useRef<(() => void) | null>(null);
   const stopPlaceVisibility = useRef<(() => void) | null>(null);
-  const theme = useRef(resolvedTheme);
+  const theme = useRef(resolvedTheme ?? themeFromDocument());
   const dict = useRef(dictionary);
   const lang = useRef<Locale>(locale);
 
   useEffect(() => {
-    theme.current = resolvedTheme;
+    // Guarded: the first pass here runs before next-themes has resolved, and
+    // must not put the ref back to the undefined it was seeded against.
+    if (resolvedTheme) theme.current = resolvedTheme;
   }, [resolvedTheme]);
 
   useEffect(() => {
     dict.current = dictionary;
     lang.current = locale;
   }, [dictionary, locale]);
+
+  // Without a token no map is ever drawn, so nothing else would ever release
+  // the counter from its opening spinner.
+  useEffect(() => {
+    if (!TOKEN) markMapReady();
+  }, []);
 
   useEffect(() => {
     if (!TOKEN || !container.current || map.current) return;
@@ -851,7 +874,7 @@ export function MapView({
           showLandmarkIcons: false,
           showLandmarkIconLabels: false,
           showTransitLabels: false,
-          showRoadLabels: false,
+          showRoadLabels: true,
           showPlaceLabels: true,
           roadsBrightness: 0.22,
         },
@@ -862,6 +885,21 @@ export function MapView({
     if (initial) reportViewport(bboxParam(initial));
 
     instance.on("moveend", () => saveCamera(instance));
+
+    // The vehicle source is rewritten every animation frame, so this map is
+    // never idle and "dataloading" never stops firing. Both are useless as
+    // signals here — the camera settling is what the counter can trust.
+    const working = () => startJob("map");
+    const settled = () => endJob("map");
+    instance.on("movestart", working);
+    instance.on("zoomstart", working);
+    instance.on("moveend", settled);
+    instance.on("zoomend", settled);
+
+    // "load" is style plus every tile the opening view needs; "idle" only ever
+    // lands before the first vehicles arrive, and marking twice is harmless.
+    instance.on("load", markMapReady);
+    instance.on("idle", markMapReady);
 
     const addLayers = () => {
       // Images first: a symbol layer whose icon is missing logs on every tile.
@@ -1032,12 +1070,14 @@ export function MapView({
       }
     });
     instance.on("error", (event) => {
+      markMapReady();
       setError(event.error?.message ?? "Mapbox failed to load.");
     });
 
     map.current = instance;
 
     return () => {
+      endJob("map");
       disableStops.current?.();
       disableStops.current = null;
       disablePlaces.current?.();
@@ -1094,15 +1134,15 @@ export function MapView({
     stopPlaceVisibility.current = setPlaceVisibility(instance, true);
   }, []);
 
-  // Places are what makes the frame worth looking at in an article, so they
-  // start on there — the standalone app still opens without them.
+  // Places are what makes the map worth looking at before a tram has moved, so
+  // they start on wherever it is drawn. The panel still takes them away.
   useEffect(() => {
     const instance = map.current;
-    if (!embed || !instance) return;
+    if (!instance) return;
     const enable = () => setPlacesEnabled(true);
     if (instance.isStyleLoaded()) enable();
     else instance.once("load", enable);
-  }, [embed, setPlacesEnabled]);
+  }, [setPlacesEnabled]);
 
   // One set of toggles, drawn either in the desktop panel or in the phone's
   // menu sheet — so the two can never disagree about what the map is showing.

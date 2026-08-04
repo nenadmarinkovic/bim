@@ -2,6 +2,8 @@
 
 import { CircleNotchIcon } from "@phosphor-icons/react";
 
+import { useBusy } from "./busy";
+import { useMapReady } from "./map-ready";
 import { useVehiclesContext } from "./vehicles-provider";
 import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
@@ -30,7 +32,21 @@ function Spinner() {
 
 export function VehicleCount({ className }: { className?: string }) {
   const { data, error } = useVehiclesContext();
+  const ready = useMapReady();
+  const busy = useBusy();
   const dict = useDict();
+
+  // A count over a map still drawing itself is a number with nothing under it,
+  // so the map comes first. The feed's own state is only worth reporting once
+  // there is a map to report it against — including a failure to reach it.
+  if (!ready) {
+    return (
+      <p className={cn(className, "inline-flex items-center")} role="status">
+        <Spinner />
+        {dict.count.drawing}
+      </p>
+    );
+  }
 
   if (error) {
     return (
@@ -40,11 +56,15 @@ export function VehicleCount({ className }: { className?: string }) {
     );
   }
 
-  if (!data) {
+  if (busy || !data) {
     return (
       <p className={cn(className, "inline-flex items-center")} role="status">
         <Spinner />
-        {dict.count.loading}
+        {busy === "stations"
+          ? dict.count.stations
+          : busy
+            ? dict.count.redrawing
+            : dict.count.loading}
       </p>
     );
   }

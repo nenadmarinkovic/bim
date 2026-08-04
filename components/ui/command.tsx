@@ -55,7 +55,10 @@ function CommandDialog({
       </DialogHeader>
       <DialogContent
         className={cn(
-          "top-1/3 translate-y-0 overflow-hidden rounded-xl! p-0",
+          // Near the top on a phone: the keyboard claims the bottom half the
+          // moment the field is tapped, and a third of the way down leaves the
+          // results list opening straight into it.
+          "top-[calc(env(safe-area-inset-top)+0.75rem)] translate-y-0 overflow-hidden rounded-xl! p-0 sm:top-1/3",
           className
         )}
         showCloseButton={showCloseButton}
@@ -68,19 +71,26 @@ function CommandDialog({
 
 function CommandInput({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="h-8! rounded-lg! bg-field shadow-none! *:data-[slot=input-group-addon]:pl-2! dark:bg-field">
+      {/* The stock InputGroup ring keys off data-slot=input-group-control,
+          which cmdk's input never carries, so the field lit up not at all when
+          focused. focus-within sidesteps the slot entirely. */}
+      <InputGroup className="h-11! rounded-lg! bg-field shadow-none! transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/40 *:data-[slot=input-group-addon]:pl-2! sm:h-8! dark:bg-field">
         <CommandPrimitive.Input
           data-slot="command-input"
           className={cn(
-            "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+            // 16px or larger, or Safari zooms the whole page on focus and
+            // leaves the map panned off-centre behind the dialog.
+            "w-full text-base outline-hidden disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm",
             className
           )}
           {...props}
         />
+        {children}
         <InputGroupAddon>
           <MagnifyingGlassIcon className="size-4 shrink-0 opacity-50" />
         </InputGroupAddon>

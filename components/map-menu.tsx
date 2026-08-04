@@ -44,9 +44,15 @@ export function MapMenu({
         <ListIcon size={16} weight="bold" />
       </SheetTrigger>
 
+      {/* Installed, the sheet runs the full height of the screen, so its own
+          top edge is behind the Dynamic Island. The inset goes on the panel
+          rather than on the header because an absolute child is placed against
+          the padding edge — the close button clears the island for free. The
+          width grows by the same amount it is padded, so the panel is the same
+          size in the hand whichever way the phone is turned. */}
       <SheetContent
         side="right"
-        className="glass-sheet w-[min(21rem,calc(100vw-2.5rem))] gap-0 p-0 sm:max-w-none"
+        className="glass-sheet w-[calc(min(21rem,100vw-2.5rem)+env(safe-area-inset-right))] gap-0 p-0 pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] sm:max-w-none"
       >
         <SheetHeader className="gap-1 border-b border-foreground/10 px-5 pt-5 pr-14 pb-4">
           <SheetTitle className="text-base font-semibold">
