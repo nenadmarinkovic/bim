@@ -1,11 +1,13 @@
 import { cachedDescription, isSupportedLanguage } from "@/lib/places/mistral";
-import { clientKey, retryAfter } from "@/lib/places/rate-limit";
+import { DAY_MS, GLOBAL, clientKey, retryAfter } from "@/lib/places/rate-limit";
 import { cachedSpeech, speak } from "@/lib/places/speech";
 import { cleanKind, cleanName } from "@/lib/places/text";
 
 const MAX_NAME = 120;
 const MAX_KIND = 60;
 const MAX_PER_WINDOW = 5;
+const GLOBAL_PER_MINUTE = 20;
+const GLOBAL_PER_DAY = 200;
 
 const send = (audio: Buffer) =>
   new Response(new Uint8Array(audio), {
@@ -40,7 +42,10 @@ export async function GET(request: Request) {
     return Response.json({ error: "nothing to read" }, { status: 404 });
   }
 
-  const wait = retryAfter("audio", clientKey(request), MAX_PER_WINDOW);
+  const wait =
+    retryAfter("audio", clientKey(request), MAX_PER_WINDOW) ||
+    retryAfter("audio:all", GLOBAL, GLOBAL_PER_MINUTE) ||
+    retryAfter("audio:day", GLOBAL, GLOBAL_PER_DAY, DAY_MS);
   if (wait) {
     return Response.json(
       { error: "too many requests" },

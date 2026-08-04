@@ -3,7 +3,10 @@ import {
   MissingArtifactError,
   StaleArtifactError,
 } from "@/lib/vehicles/schedule";
+import { clientKey, retryAfter } from "@/lib/places/rate-limit";
 import type { VehiclesResponse } from "@/lib/vehicles/types";
+
+const MAX_PER_WINDOW = 240;
 
 function parseViewport(url: URL) {
   const raw = url.searchParams.get("bbox");
@@ -17,6 +20,14 @@ function parseViewport(url: URL) {
 }
 
 export async function GET(request: Request) {
+  const wait = retryAfter("vehicles", clientKey(request), MAX_PER_WINDOW);
+  if (wait) {
+    return Response.json(
+      { error: "too many requests" },
+      { status: 429, headers: { "retry-after": String(wait) } },
+    );
+  }
+
   const at = Date.now();
 
   try {

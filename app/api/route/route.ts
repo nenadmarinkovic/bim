@@ -6,6 +6,9 @@ import {
   type TripRecord,
 } from "@/lib/vehicles/schedule";
 import { normaliseName, stripCity } from "@/lib/vehicles/names";
+import { clientKey, retryAfter } from "@/lib/places/rate-limit";
+
+const MAX_PER_WINDOW = 60;
 
 let places: Promise<Map<string, string>> | null = null;
 
@@ -38,6 +41,27 @@ const loose = (a: string, b: string) =>
   b.length >= MIN_LOOSE &&
   (a.includes(b) || b.includes(a));
 
+const byLine = new WeakMap<Schedule, Map<string, [string, TripRecord][]>>();
+
+function tripsOnLine(
+  schedule: Schedule,
+  wantedLine: string,
+): [string, TripRecord][] {
+  let index = byLine.get(schedule);
+  if (!index) {
+    index = new Map();
+    for (const [tripId, trip] of Object.entries(schedule.trips)) {
+      const name = normaliseName(schedule.routes[trip.r]?.name ?? "");
+      if (!name) continue;
+      const bucket = index.get(name);
+      if (bucket) bucket.push([tripId, trip]);
+      else index.set(name, [[tripId, trip]]);
+    }
+    byLine.set(schedule, index);
+  }
+  return index.get(wantedLine) ?? [];
+}
+
 function pickTrip(
   schedule: Schedule,
   line: string,
@@ -51,10 +75,7 @@ function pickTrip(
   let exact: [string, TripRecord] | null = null;
   let near: [string, TripRecord] | null = null;
 
-  for (const [tripId, trip] of Object.entries(schedule.trips)) {
-    if (normaliseName(schedule.routes[trip.r]?.name ?? "") !== wantedLine) {
-      continue;
-    }
+  for (const [tripId, trip] of tripsOnLine(schedule, wantedLine)) {
     if (serving.size && !trip.p.some((stop) => serving.has(stop))) continue;
 
     const ends = destinations(trip, named);
@@ -99,6 +120,14 @@ export async function GET(request: Request) {
     );
   }
 
+  const wait = retryAfter("route", clientKey(request), MAX_PER_WINDOW);
+  if (wait) {
+    return Response.json(
+      { error: "too many requests" },
+      { status: 429, headers: { "retry-after": String(wait) } },
+    );
+  }
+
   try {
     const { schedule, shapes } = await loadSchedule();
 
@@ -107,7 +136,9 @@ export async function GET(request: Request) {
     let found: [string, TripRecord] | null = null;
 
     if (tripId) {
-      const trip = schedule.trips[tripId];
+      const trip = Object.hasOwn(schedule.trips, tripId)
+        ? schedule.trips[tripId]
+        : undefined;
       if (trip) found = [tripId, trip];
     } else {
       const from = Number(params.get("from"));

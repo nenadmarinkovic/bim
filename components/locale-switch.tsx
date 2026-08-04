@@ -29,7 +29,8 @@ export function LocaleSwitch({
         const next = value[0];
         if (!next || !isLocale(next) || next === locale) return;
 
-        document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${YEAR}; samesite=lax`;
+        const secure = window.location.protocol === "https:" ? "; secure" : "";
+        document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${YEAR}; samesite=lax${secure}`;
 
         const rest = pathname.split("/").slice(2).join("/");
         window.location.assign(`/${next}${rest ? `/${rest}` : ""}`);
