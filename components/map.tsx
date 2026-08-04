@@ -801,6 +801,12 @@ export function MapView({
   const { data, error: vehicleError } = useVehiclesContext();
   const reportViewport = useViewportReporter();
   const tweens = useRef<Map<string, Tween>>(new Map());
+  // When the current batch of tweens finishes moving, and the viewport the
+  // frame that parked them there was drawn for — null while they are still
+  // moving. Holding the viewport rather than a flag means a pan still redraws:
+  // the cull admits vehicles that were off screen when the batch settled.
+  const animateUntil = useRef(0);
+  const drewSettled = useRef<string | null>(null);
   const popup = useRef<mapboxgl.Popup | null>(null);
   const selected = useRef<string | null>(null);
   const seenData = useRef(false);
@@ -1208,12 +1214,12 @@ export function MapView({
     if (!data) return;
     seenData.current = true;
     if (map.current) revealVehicles(map.current);
-    tweens.current = reconcile(
-      tweens.current,
-      data.vehicles,
-      performance.now(),
-      POLL_MS,
-    );
+    const now = performance.now();
+    tweens.current = reconcile(tweens.current, data.vehicles, now, POLL_MS);
+    // reconcile stamps every tween with this instant and one poll of travel, so
+    // one deadline covers the whole batch.
+    animateUntil.current = now + POLL_MS;
+    drewSettled.current = null;
 
     const id = selected.current;
     if (!id) return;
@@ -1248,7 +1254,15 @@ export function MapView({
     if (!TOKEN) return;
     let frame = 0;
     let lastDraw = 0;
-    const MIN_FRAME_MS = 50;
+    // A tram crossing the screen at street zoom moves a couple of pixels per
+    // tenth of a second, so ten frames a second is already below what anyone
+    // can see stepping. The frames above that were costing a phone a full
+    // re-tile and a style repaint each, which is what the rider feels in their
+    // hand. A pointer that is not a finger belongs to a machine that is plugged
+    // in and can afford the smoother rate.
+    const MIN_FRAME_MS = window.matchMedia("(pointer: coarse)").matches
+      ? 100
+      : 50;
 
     const draw = (now: number) => {
       frame = requestAnimationFrame(draw);
@@ -1259,8 +1273,21 @@ export function MapView({
       if (!instance) return;
 
       const cull = viewportBounds(instance);
+      const bbox = cull ? bboxParam(cull) : "";
 
-      if (cull) reportViewport(bboxParam(cull));
+      // Reported before the settle check below, so a pan during a stalled feed
+      // still moves the window the next poll asks for.
+      if (cull) reportViewport(bbox);
+
+      // Every push below re-tiles the source and repaints the whole style. Once
+      // the last tween has run out — a stalled feed, or a hidden tab that has
+      // just come back — those frames would each carry the geometry the GPU is
+      // already holding, so the loop parks the batch in one frame and then
+      // idles until the view moves or the next response lands. A camera locked
+      // to a vehicle is exempt: it is steering, not just redrawing.
+      const settled = now > animateUntil.current && !following.current;
+      if (settled && drewSettled.current === bbox) return;
+      drewSettled.current = settled ? bbox : null;
 
       if (!tweens.current.size || !instance.getSource(VEHICLES_SOURCE)) return;
 
@@ -1343,8 +1370,31 @@ export function MapView({
       popup.current?.setLngLat([at.lon, at.lat]);
     };
 
-    frame = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
+    const start = () => {
+      if (frame) return;
+      // A resumed loop must not inherit a timestamp from before the pause, or
+      // the throttle would read the gap as a due frame and draw twice over.
+      lastDraw = 0;
+      drewSettled.current = null;
+      frame = requestAnimationFrame(draw);
+    };
+
+    const stopLoop = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+    };
+
+    // Backgrounding a PWA on iOS does not reliably stop its frames, and a map
+    // nobody is looking at is the most expensive thing this app can draw.
+    const onVisibility = () => (document.hidden ? stopLoop() : start());
+
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      stopLoop();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [reportViewport]);
 
   if (!TOKEN) {
