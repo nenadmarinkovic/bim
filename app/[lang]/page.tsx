@@ -13,7 +13,13 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   const dict = getDictionary(lang);
 
   return (
-    <div className="relative h-full w-full">
+    // Fixed rather than sized off the body: installed on iOS, 100dvh comes back
+    // a home indicator short of the screen, and the map stopped above it with a
+    // band of page background underneath. inset-0 resolves against the layout
+    // viewport, which viewport-fit=cover guarantees covers the whole display,
+    // so the map reaches the bottom edge and every control anchored to it is
+    // measured from the real edge rather than from 34pt above it.
+    <div className="fixed inset-0">
       <MapView />
 
       {/* On a phone the header hugs the left edge, clear of the search and menu

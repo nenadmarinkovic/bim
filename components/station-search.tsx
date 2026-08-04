@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   ArrowDownIcon,
   ArrowElbowDownLeftIcon,
@@ -139,6 +140,18 @@ export function StationSearch({
     setOpen(next);
   }, []);
 
+  // iOS raises the keyboard only for a focus() made inside the tap that asked
+  // for it. Base UI focuses on a later animation frame — enqueueFocus wraps it
+  // in requestAnimationFrame — which is long past the gesture, so on a phone
+  // the field opened blurred and wanted a second tap before anyone could type.
+  // Committing the open synchronously puts the field in the DOM while the tap
+  // is still live, so the focus below is the one Safari honours. Base UI's own
+  // focus still lands afterwards, on the same element, and changes nothing.
+  const openByTap = useCallback(() => {
+    flushSync(() => show(true));
+    input.current?.focus();
+  }, [show]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const combo = event.ctrlKey || event.metaKey;
@@ -210,7 +223,7 @@ export function StationSearch({
     <>
       <button
         type="button"
-        onClick={() => show(true)}
+        onClick={openByTap}
         aria-label={dict.search.open}
         title={dict.search.openWithKey}
         className="glass pointer-events-auto flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:bg-foreground/15"
