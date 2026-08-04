@@ -1,8 +1,9 @@
 import { cachedBoard, loadBoard, station } from "@/lib/vehicles/board";
 import { MissingArtifactError } from "@/lib/vehicles/schedule";
-import { clientKey, retryAfter } from "@/lib/places/rate-limit";
+import { GLOBAL, clientKey, retryAfter } from "@/lib/places/rate-limit";
 
 const BOARDS_PER_MINUTE = 90;
+const UPSTREAM_PER_MINUTE = 300;
 
 const send = (board: unknown) =>
   Response.json(board, { headers: { "cache-control": "no-store" } });
@@ -31,7 +32,9 @@ export async function GET(request: Request) {
   const known = cachedBoard(id);
   if (known) return send(await known);
 
-  const wait = retryAfter("stop", clientKey(request), BOARDS_PER_MINUTE);
+  const wait =
+    retryAfter("stop", clientKey(request), BOARDS_PER_MINUTE) ||
+    retryAfter("stop:all", GLOBAL, UPSTREAM_PER_MINUTE);
   if (wait) {
     return Response.json(
       { error: "too many requests" },

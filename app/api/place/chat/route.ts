@@ -4,7 +4,7 @@ import {
   isSupportedLanguage,
   type ChatTurn,
 } from "@/lib/places/mistral";
-import { clientKey, retryAfter } from "@/lib/places/rate-limit";
+import { DAY_MS, GLOBAL, clientKey, retryAfter } from "@/lib/places/rate-limit";
 import { clean, cleanKind, cleanName } from "@/lib/places/text";
 
 const MAX_NAME = 120;
@@ -12,6 +12,8 @@ const MAX_KIND = 60;
 const MAX_MESSAGE = 500;
 const MAX_TURNS = 12;
 const MAX_PER_WINDOW = 8;
+const GLOBAL_PER_MINUTE = 40;
+const GLOBAL_PER_DAY = 1000;
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -48,7 +50,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "a question is required" }, { status: 400 });
   }
 
-  const wait = retryAfter("chat", clientKey(request), MAX_PER_WINDOW);
+  const wait =
+    retryAfter("chat", clientKey(request), MAX_PER_WINDOW) ||
+    retryAfter("chat:all", GLOBAL, GLOBAL_PER_MINUTE) ||
+    retryAfter("chat:day", GLOBAL, GLOBAL_PER_DAY, DAY_MS);
   if (wait) {
     return Response.json(
       { error: "Too many questions just now — try again in a moment." },

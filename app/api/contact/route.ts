@@ -74,10 +74,9 @@ export async function POST(request: Request) {
   const key = process.env.BREVO_API_KEY;
 
   if (!key) {
-    console.info("[contact] no BREVO_API_KEY — message not sent", {
-      ...contact,
-      message: `${contact.message.slice(0, 120)}${contact.message.length > 120 ? "…" : ""}`,
-    });
+    console.info(
+      `[contact] no BREVO_API_KEY — message not sent (${contact.locale}, ${contact.message.length} chars)`,
+    );
     return Response.json({ error: "unconfigured" }, { status: 503 });
   }
 

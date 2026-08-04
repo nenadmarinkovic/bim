@@ -3,11 +3,14 @@ import {
   describePlace,
   isSupportedLanguage,
 } from "@/lib/places/mistral";
-import { clientKey, retryAfter } from "@/lib/places/rate-limit";
+import { DAY_MS, GLOBAL, clientKey, retryAfter } from "@/lib/places/rate-limit";
 import { cleanKind, cleanName } from "@/lib/places/text";
 
 const MAX_NAME = 120;
 const MAX_KIND = 60;
+
+const GLOBAL_PER_MINUTE = 60;
+const GLOBAL_PER_DAY = 2000;
 
 const ok = (extract: string, name: string, lang: string) =>
   Response.json(
@@ -32,7 +35,10 @@ export async function GET(request: Request) {
   const known = await cachedDescription(name, kind, lang);
   if (known) return ok(known, name, lang);
 
-  const wait = retryAfter("place", clientKey(request));
+  const wait =
+    retryAfter("place", clientKey(request)) ||
+    retryAfter("place:all", GLOBAL, GLOBAL_PER_MINUTE) ||
+    retryAfter("place:day", GLOBAL, GLOBAL_PER_DAY, DAY_MS);
   if (wait) {
     return Response.json(
       { error: "too many requests" },
