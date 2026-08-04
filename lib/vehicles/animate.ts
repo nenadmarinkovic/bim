@@ -20,12 +20,10 @@ function angleDelta(from: number, to: number): number {
 
 const SNAP_METRES = 300;
 
-// Short, not the whole interval: rotating over the full window makes it crab through corners.
 const TURN_MS = 1400;
 
 const MOVING_METRES = 1.5;
 
-// Nothing on the network reverses, so a small backward correction is waited out.
 const BACKWARD_HOLD_M = 180;
 
 function headingBetween(

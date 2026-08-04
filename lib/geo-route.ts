@@ -1,8 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-// Several layers are the same route: read a built artifact once, hand back its
-// features as GeoJSON, and say plainly when the ingest has not been run.
 export function geoJsonRoute(file: string, what: string) {
   let cached: string | null = null;
 

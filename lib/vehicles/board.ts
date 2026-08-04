@@ -8,15 +8,10 @@ import { stripCity } from "./names.ts";
 
 const MONITOR = "https://www.wienerlinien.at/ogd_realtime/monitor";
 
-// Roughly one call in ten stalls for seconds while the next one for the same
-// stop answers immediately, so the stall belongs to the connection rather than
-// the stop. Giving up early and asking again beats waiting it out.
 const TIMEOUT_MS = 2_500;
 const ATTEMPTS = 2;
 const TTL_MS = 20_000;
 
-// A station merges every platform, so an interchange needs more room than a
-// single kerbside stop did.
 const MAX_ROWS = 12;
 const MAX_DEPARTURES = 4;
 const MAX_CACHED = 400;
@@ -85,9 +80,6 @@ export async function station(
   return (await stations()).get(diva);
 }
 
-// Wiener Linien's monitor knows nothing about the S-Bahn — ÖBB runs it — so
-// those departures come from the timetable instead. No realtime behind them,
-// which is why they carry no delay and the board shows them as scheduled.
 const RAIL_HORIZON_MS = 90 * 60_000;
 
 type RailDeparture = { line: string; towards: string; at: number };
@@ -106,7 +98,6 @@ function railIndex(): Promise<Map<string, RailDeparture[]>> {
         const route = trip && schedule.routes[trip.r];
         if (!trip || route?.type !== 2) continue;
 
-        // Every call but the last: you cannot board a train that terminates.
         for (let i = 0; i < trip.p.length - 1; i++) {
           const stop = trip.p[i]!;
           const found = out.get(stop);
@@ -140,7 +131,6 @@ async function railRows(station: StationRecord): Promise<BoardRow[]> {
       if (departure.at < now) continue;
       if (departure.at - now > RAIL_HORIZON_MS) break;
 
-      // The same train is listed once per platform it is scheduled against.
       const identity = `${departure.line}|${departure.towards}|${departure.at}`;
       if (seen.has(identity)) continue;
       seen.add(identity);
@@ -239,8 +229,7 @@ async function callMonitor(query: string): Promise<Monitor[]> {
         cache: "no-store",
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
-      // A 403 is Wiener Linien throttling us. Asking again straight away is
-      // exactly the wrong answer; only a stalled connection is worth a retry.
+
       if (!response.ok) {
         throw new MonitorRefused(`monitor responded ${response.status}`);
       }
@@ -257,7 +246,6 @@ async function callMonitor(query: string): Promise<Monitor[]> {
   throw failure;
 }
 
-// The monitor takes many stopIds at once, so a station of any size is one call.
 async function fetchBoard(station: StationRecord): Promise<StopBoard> {
   const query = station.stopIds.map((id) => `stopId=${id}`).join("&");
 
@@ -292,8 +280,6 @@ function fresh(diva: number): Promise<StopBoard> | undefined {
   return entry.board;
 }
 
-// Served before the rate limit so a board still ticking in someone's popup
-// costs them nothing to keep open.
 export function cachedBoard(diva: number): Promise<StopBoard> | undefined {
   return fresh(diva);
 }
@@ -305,7 +291,6 @@ export function loadBoard(target: StationRecord): Promise<StopBoard> {
   const board = fetchBoard(target);
   cache.set(target.diva, { at: Date.now(), board });
 
-  // A failed lookup must not sit in the cache for the full window.
   board.catch(() => cache.delete(target.diva));
 
   if (cache.size > MAX_CACHED) {
