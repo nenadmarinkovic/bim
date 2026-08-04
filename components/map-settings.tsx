@@ -33,8 +33,6 @@ import { listenToParents, postToParents } from "./embed-channel";
 import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
 
-// A row is a thumb-sized target on a phone and tightens to the pointer-sized
-// one once there is a pointer to aim with.
 const ROW = "flex min-h-11 items-center justify-between gap-4 md:min-h-10";
 
 const LABEL = "text-sm leading-none font-medium text-foreground select-none";
@@ -57,8 +55,6 @@ export type SettingsView = {
   onChange: (on: boolean) => void;
 };
 
-// The panel is drawn twice — as the desktop card and inside the phone's menu
-// sheet — so the state lives here, above both, and the map calls happen once.
 export function useMapSettings({
   getMap,
   onPlacesChange,
@@ -212,10 +208,6 @@ export function useMapSettings({
     },
   ];
 
-  // Embedded, the panel is the host page's to draw: it publishes what it has —
-  // keys, labels, hints and current state, already in the frame's language —
-  // and takes the toggles back over the same channel. The state and the map
-  // calls stay here, so a layer added below turns up in the host for free.
   const latest = useRef(views);
   useEffect(() => {
     latest.current = views;
@@ -261,8 +253,6 @@ export function MapSettings({
   const id = useId();
   const dict = useDict();
 
-  // In the sheet a row carries its hint as a second line, so it needs the room
-  // to breathe and the switch pinned to the label rather than to the pair.
   const row = cn(ROW, bare && "min-h-12 items-start gap-5 py-2");
   const group = cn(GROUP, bare && "mt-5 mb-2");
 
@@ -276,9 +266,6 @@ export function MapSettings({
         className,
       )}
     >
-      {/* Nine layers is enough that clearing them one at a time is a chore.
-          The button only appears once there is something to clear, so it is
-          never a control that does nothing. */}
       <div
         className={cn(
           group,
@@ -302,9 +289,6 @@ export function MapSettings({
 
       {views.map((view) => (
         <div key={view.key} className={row}>
-          {/* A tooltip wants a pointer to hover with. In the phone's menu there
-              is none, so the hint sits under the label rather than waiting for
-              one that never arrives. */}
           {bare ? (
             <label
               htmlFor={`${id}-${view.key}`}

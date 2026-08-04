@@ -278,6 +278,32 @@ span.text-brand.italic {
   background: var(--glass-fill);
 }
 
+/* Installed on iOS the map paints under the status bar, and the clock and
+   battery are drawn in white whatever we do. Over the dark basemap they read
+   fine; over the light one they vanish, so the light theme gets a gradient in
+   the safe-area strip. Above everything and inert, so a sheet or dialog opening
+   underneath cannot take the glyphs back down to unreadable. */
+@media (display-mode: standalone) {
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: calc(env(safe-area-inset-top) + 0.5rem);
+    z-index: 60;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0.3) 0%,
+      rgb(0 0 0 / 0.16) 60%,
+      transparent 100%
+    );
+  }
+
+  .dark body::before {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-transparency: reduce) {
   .glass,
   .glass-sheet,

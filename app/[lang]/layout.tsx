@@ -20,6 +20,15 @@ export async function generateMetadata({
     title: dict.meta.title,
     description: dict.meta.description,
     manifest: "/site.webmanifest",
+    // black-translucent is what lets the map run under the Dynamic Island once
+    // the app is installed; without it iOS reserves an opaque status-bar strip
+    // and safe-area-inset-top reports 0. It costs us the status bar glyph
+    // colour — always light — which globals.css compensates for.
+    appleWebApp: {
+      capable: true,
+      title: "Bim",
+      statusBarStyle: "black-translucent",
+    },
     icons: {
       icon: [
         {
