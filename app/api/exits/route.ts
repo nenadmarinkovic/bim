@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     headers: {
       "content-type": "application/geo+json",
       etag,
-      "cache-control": "public, max-age=0, must-revalidate",
+      "cache-control": "public, max-age=3600, stale-while-revalidate=86400",
     },
   });
 }
