@@ -2,8 +2,6 @@ import { notFound } from "next/navigation";
 
 import { Logo } from "@/components/logo";
 import { MapView } from "@/components/map";
-// TEMPORARY — see components/safe-area-debug.tsx
-import { SafeAreaDebug } from "@/components/safe-area-debug";
 import { SiteNav } from "@/components/site-nav";
 import { VehicleCount } from "@/components/vehicle-count";
 import { getDictionary, isLocale } from "@/lib/i18n";
@@ -15,17 +13,12 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   const dict = getDictionary(lang);
 
   return (
-    // Fixed rather than sized off the body: installed on iOS, 100dvh comes back
-    // a home indicator short of the screen, and the map stopped above it with a
-    // band of page background underneath. inset-0 resolves against the layout
-    // viewport, which viewport-fit=cover guarantees covers the whole display,
-    // so the map reaches the bottom edge and every control anchored to it is
-    // measured from the real edge rather than from 34pt above it.
-    <div className="fixed inset-0">
+    // Fixed rather than sized off the body, so the map and everything anchored
+    // to it are measured from the viewport rather than from a chain of
+    // percentage heights. app-shell is what makes that viewport the whole
+    // screen on an installed iPhone — see the rule in globals.css.
+    <div className="app-shell fixed inset-0">
       <MapView />
-
-      {/* TEMPORARY — remove with components/safe-area-debug.tsx */}
-      <SafeAreaDebug />
 
       {/* On a phone the header hugs the left edge, clear of the search and menu
           buttons in the opposite corner, and centres itself once the row has

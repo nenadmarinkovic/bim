@@ -58,12 +58,9 @@ export async function generateMetadata({
 // disagrees with the system preference.
 export const viewport: Viewport = {
   viewportFit: "cover",
-  // TEMPORARY — loud on purpose. If the band along the bottom of the installed
-  // app turns red, iOS is painting it with theme-color and the fix belongs in
-  // this file rather than in the layout. Put these back to #fafafa / #242c45.
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ff0000" },
-    { media: "(prefers-color-scheme: dark)", color: "#ff0000" },
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#242c45" },
   ],
 };
 
