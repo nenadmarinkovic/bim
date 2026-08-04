@@ -39,7 +39,7 @@ export function MapAttribution({ className }: { className?: string }) {
       )}
     >
       {open && (
-        <div className="glass flex max-w-[min(34rem,calc(100vw-5.5rem))] flex-wrap items-center justify-end gap-x-2.5 gap-y-0.5 rounded-2xl px-3.5 py-1.5 text-[0.6875rem] text-foreground duration-200 animate-in fade-in-0 slide-in-from-bottom-2 sm:rounded-full sm:slide-in-from-bottom-0 sm:slide-in-from-right-3">
+        <div className="glass flex max-w-[min(34rem,calc(100vw-5.5rem))] flex-wrap items-center justify-start gap-x-2.5 gap-y-0.5 sm:justify-end rounded-2xl px-3.5 py-1.5 text-[0.6875rem] text-foreground duration-200 animate-in fade-in-0 slide-in-from-bottom-2 sm:rounded-full sm:slide-in-from-bottom-0 sm:slide-in-from-right-3">
           {SOURCES.map((source) => (
             <a
               key={source.href}
