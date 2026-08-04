@@ -15,9 +15,8 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   return (
     // Fixed rather than sized off the body, so the map and everything anchored
     // to it are measured from the viewport rather than from a chain of
-    // percentage heights. app-shell is what makes that viewport the whole
-    // screen on an installed iPhone — see the rule in globals.css.
-    <div className="app-shell fixed inset-0">
+    // percentage heights.
+    <div className="fixed inset-0">
       <MapView />
 
       {/* On a phone the header hugs the left edge, clear of the search and menu

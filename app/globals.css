@@ -299,26 +299,6 @@ span.text-brand.italic {
   background: var(--glass-fill);
 }
 
-/* black-translucent starts the viewport at the top of the screen — which is
-   what puts the map under the notch — but it does not make the viewport any
-   taller. iOS still reports the height as screen minus status bar, so the page
-   ends short of the bottom by exactly the top inset and iOS fills what is left
-   with the page background: a band of --background under the map, right where
-   the home indicator sits. Measured on an iPhone X: screen 812, innerHeight
-   762, safe-area-inset-top 50.
-
-   Growing the shell by that inset puts map under the glass instead, and moves
-   the bottom controls down onto the real edge with it. Gated to iOS standalone
-   on purpose — nothing else hands back a viewport short in this particular
-   way, and adding the inset anywhere else would push those controls off the
-   bottom of the screen. */
-@media (display-mode: standalone) {
-  @supports (-webkit-touch-callout: none) {
-    .app-shell {
-      height: calc(100% + env(safe-area-inset-top));
-    }
-  }
-}
 
 /* Installed on iOS the map paints under the status bar, and the clock and
    battery are drawn in white whatever we do. Over the dark basemap they read
