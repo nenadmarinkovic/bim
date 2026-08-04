@@ -224,6 +224,11 @@ export function StationSearch({
         title={dict.search.open}
         description={dict.search.description}
         className="glass-sheet"
+        // Opened by touch, Base UI focuses the panel rather than the first
+        // tabbable child, on the assumption that nobody wants a keyboard
+        // thrown at them. Here the keyboard is the entire point: the dialog
+        // holds one field and exists to be typed into.
+        initialFocus={input}
       >
         <Command
           shouldFilter={false}

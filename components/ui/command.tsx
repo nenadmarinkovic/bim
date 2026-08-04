@@ -39,12 +39,14 @@ function CommandDialog({
   children,
   className,
   showCloseButton = false,
+  initialFocus,
   ...props
 }: Omit<React.ComponentProps<typeof Dialog>, "children"> & {
   title?: string
   description?: string
   className?: string
   showCloseButton?: boolean
+  initialFocus?: React.ComponentProps<typeof DialogContent>["initialFocus"]
   children: React.ReactNode
 }) {
   return (
@@ -54,6 +56,7 @@ function CommandDialog({
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
       <DialogContent
+        initialFocus={initialFocus}
         className={cn(
           // Near the top on a phone: the keyboard claims the bottom half the
           // moment the field is tapped, and a third of the way down leaves the

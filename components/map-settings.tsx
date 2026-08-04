@@ -34,7 +34,11 @@ import { listenToParents, postToParents } from "./embed-channel";
 import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
 
-const ROW = "flex min-h-11 items-center justify-between gap-4 md:min-h-10";
+// 44px under a thumb. The docked card only exists from md up, and md is where
+// it is tightest, so the rows tighten to 36px exactly where they appear and
+// relax to 40px once the screen can afford it. Same ladder as hof.
+const ROW =
+  "flex min-h-11 items-center justify-between gap-4 md:min-h-9 xl:min-h-10";
 
 const LABEL = "text-sm leading-none font-medium text-foreground select-none";
 

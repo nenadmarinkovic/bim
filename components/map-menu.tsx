@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { ListIcon, MapTrifoldIcon } from "@phosphor-icons/react";
+import { ListIcon, MapTrifoldIcon, XIcon } from "@phosphor-icons/react";
 
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,8 +52,21 @@ export function MapMenu({
           size in the hand whichever way the phone is turned. */}
       <SheetContent
         side="right"
+        showCloseButton={false}
         className="glass-sheet w-[calc(min(21rem,100vw-2.5rem)+env(safe-area-inset-right))] gap-0 p-0 pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] sm:max-w-none"
       >
+        {/* The close lands on the exact pixel the trigger occupied, so the
+            hamburger appears to turn into an X rather than to be replaced by
+            one somewhere else. The insets are what is left of the control
+            cluster's own offset once the panel's padding has already covered
+            part of it — nothing, once the safe area is the larger of the two. */}
+        <SheetClose
+          aria-label={dict.nav.close}
+          className="absolute top-[max(0px,calc(0.75rem-env(safe-area-inset-top)))] right-[max(0px,calc(0.75rem-env(safe-area-inset-right)))] z-10 flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-foreground/10 active:bg-foreground/15 sm:top-[max(0px,calc(1rem-env(safe-area-inset-top)))] sm:right-[max(0px,calc(1rem-env(safe-area-inset-right)))]"
+        >
+          <XIcon size={16} weight="bold" />
+        </SheetClose>
+
         <SheetHeader className="gap-1 border-b border-foreground/10 px-5 pt-5 pr-14 pb-4">
           <SheetTitle className="text-base font-semibold">
             {dict.nav.menu}
