@@ -21,7 +21,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ContactForm } from "./contact-form";
 import { useDict } from "./locale-provider";
 import { cn } from "@/lib/utils";
@@ -32,14 +31,25 @@ const NAV_LINK =
 const LINK =
   "cursor-pointer text-brand font-medium underline-offset-4 transition-opacity hover:opacity-70";
 
-const SHEET =
-  "glass-sheet flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden p-4 sm:gap-5 sm:p-6";
+const SHEET = cn(
+  "glass-sheet flex flex-col gap-4 overflow-hidden p-4 sm:gap-5 sm:p-6",
+  "max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))]",
+  "max-w-[calc(100%-2rem-env(safe-area-inset-left)-env(safe-area-inset-right))]",
+);
 
-const SHEET_BODY = "-mx-4 min-h-0 flex-1 sm:-mx-6";
+const SHEET_BODY = cn(
+  "scrollbar-thin -mx-4 min-h-0 flex-1 overflow-y-auto overscroll-contain",
+  "px-4 sm:-mx-6 sm:px-6",
+);
 
-const SHEET_VIEWPORT = "px-4 sm:px-6";
+const SHEET_HEAD = "shrink-0 pr-8";
 
-const FOOTER = "-mx-4 -mb-4 bg-transparent p-4 sm:-mx-6 sm:-mb-6 sm:p-6";
+const FOOTER =
+  "-mx-4 -mb-4 shrink-0 bg-transparent p-4 sm:-mx-6 sm:-mb-6 sm:p-6";
+
+const ABOUT_WIDTH = "sm:max-w-[min(42rem,calc(100%-3rem))]";
+
+const CONTRIBUTE_WIDTH = "sm:max-w-[min(45rem,calc(100%-3rem))]";
 
 const CHIP =
   "flex size-6 shrink-0 items-center justify-center rounded-md bg-foreground/8 text-foreground";
@@ -104,8 +114,8 @@ export function SiteNav({
         <DialogTrigger className={cn(NAV_LINK, itemClassName)}>
           {dict.nav.about}
         </DialogTrigger>
-        <DialogContent className={cn(SHEET, "sm:max-w-2xl")}>
-          <DialogHeader>
+        <DialogContent className={cn(SHEET, ABOUT_WIDTH)}>
+          <DialogHeader className={SHEET_HEAD}>
             <DialogTitle className="text-xl font-semibold">
               {dict.about.title}
             </DialogTitle>
@@ -117,7 +127,7 @@ export function SiteNav({
             </p>
           </DialogHeader>
 
-          <ScrollArea className={SHEET_BODY} viewportClassName={SHEET_VIEWPORT}>
+          <div className={SHEET_BODY}>
             <div className="flex flex-col gap-5">
               <Panel
                 icon={<PathIcon size={16} weight="bold" />}
@@ -176,7 +186,7 @@ export function SiteNav({
                 </p>
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter showCloseButton className={FOOTER} />
         </DialogContent>
@@ -186,8 +196,8 @@ export function SiteNav({
         <DialogTrigger className={cn(NAV_LINK, itemClassName)}>
           {dict.nav.contribute}
         </DialogTrigger>
-        <DialogContent className={cn(SHEET, "sm:max-w-3xl")}>
-          <DialogHeader>
+        <DialogContent className={cn(SHEET, CONTRIBUTE_WIDTH)}>
+          <DialogHeader className={SHEET_HEAD}>
             <div className="grid gap-1">
               <DialogTitle className="text-xl font-semibold">
                 {dict.contribute.title}
@@ -201,7 +211,7 @@ export function SiteNav({
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className={SHEET_BODY} viewportClassName={SHEET_VIEWPORT}>
+          <div className={SHEET_BODY}>
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="flex flex-col gap-5">
                 <Panel
@@ -239,7 +249,7 @@ export function SiteNav({
                 <ContactForm className="mt-1" />
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter showCloseButton className={FOOTER} />
         </DialogContent>

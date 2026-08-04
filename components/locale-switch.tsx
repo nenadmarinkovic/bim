@@ -9,13 +9,19 @@ import { cn } from "@/lib/utils";
 
 const YEAR = 60 * 60 * 24 * 365;
 
-export function LocaleSwitch({ className }: { className?: string }) {
+export function LocaleSwitch({
+  className,
+  size = "sm",
+}: {
+  className?: string;
+  size?: "sm" | "default";
+}) {
   const { locale } = useLocale();
   const pathname = usePathname();
 
   return (
     <ToggleGroup
-      size="sm"
+      size={size}
       variant="outline"
       spacing={0}
       value={[locale]}
@@ -36,7 +42,10 @@ export function LocaleSwitch({ className }: { className?: string }) {
           key={option}
           value={option}
           aria-label={LOCALE_LABEL[option]}
-          className="px-2 text-[0.6875rem] font-medium"
+          className={cn(
+            "font-medium",
+            size === "default" ? "px-2.5 text-[0.75rem]" : "px-2 text-[0.6875rem]",
+          )}
         >
           {LOCALE_LABEL[option]}
         </ToggleGroupItem>

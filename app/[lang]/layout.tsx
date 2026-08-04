@@ -58,14 +58,6 @@ export async function generateMetadata({
 // disagrees with the system preference.
 export const viewport: Viewport = {
   viewportFit: "cover",
-  // Installed on iOS, black-translucent moves the viewport to the top of the
-  // screen without making it any taller: innerHeight comes back as screen minus
-  // status bar, so the page ends short at the bottom and iOS paints the
-  // remainder with the page background. Nothing can be drawn into that strip —
-  // it is outside the web view — so the viewport itself has to be told the
-  // device height. Measured on an iPhone X: screen 812, innerHeight 762,
-  // safe-area-inset-top 50, and 812 - 762 is exactly that inset.
-  height: "device-height",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#fafafa" },
     { media: "(prefers-color-scheme: dark)", color: "#242c45" },

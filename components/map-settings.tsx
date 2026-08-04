@@ -34,9 +34,6 @@ import { listenToParents, postToParents } from "./embed-channel";
 import { LocaleSwitch } from "./locale-switch";
 import { cn } from "@/lib/utils";
 
-// 44px under a thumb. The docked card only exists from md up, and md is where
-// it is tightest, so the rows tighten to 36px exactly where they appear and
-// relax to 40px once the screen can afford it. Same ladder as hof.
 const ROW =
   "flex min-h-11 items-center justify-between gap-4 md:min-h-9 xl:min-h-10";
 
@@ -76,8 +73,7 @@ export function useMapSettings({
     lines: true,
     stops: true,
   });
-  // Both start on, so these have to match what the map is built with —
-  // showRoadLabels and the opening enablePlaces call over in the map.
+
   const [places, setPlaces] = useState(true);
   const [streets, setStreets] = useState(true);
   const [districts, setDistricts] = useState(false);
@@ -105,9 +101,6 @@ export function useMapSettings({
       if (!map) return;
       let attempts = 0;
       const push = () => {
-        // Same reasoning as the theme: isStyleLoaded() tracks source loading,
-        // which the vehicle feed keeps busy for good, and says nothing about
-        // whether this write can land. Ask the fragment instead.
         if (pushConfig(map, property, value)) return;
         if (attempts++ < 600) requestAnimationFrame(push);
       };
@@ -274,11 +267,7 @@ export function MapSettings({
       )}
     >
       <div
-        className={cn(
-          group,
-          "flex items-center justify-between gap-2",
-          bare ? "mt-1" : "mt-1.5",
-        )}
+        className={cn(group, "flex items-center justify-between gap-2", "mt-2")}
       >
         <span>{dict.settings.groupContext}</span>
         {views.some((view) => view.on) && (
@@ -323,7 +312,7 @@ export function MapSettings({
           )}
           <Switch
             id={`${id}-${view.key}`}
-            size="sm"
+            size={bare ? "default" : "sm"}
             className={cn(SWITCH_TRACK, bare && "mt-1.5 shrink-0")}
             checked={view.on}
             onCheckedChange={view.onChange}
@@ -335,12 +324,12 @@ export function MapSettings({
 
       <div className={cn(ROW, bare && "min-h-12")}>
         <span className={LABEL}>{dict.settings.theme}</span>
-        <ThemeToggle />
+        <ThemeToggle size={bare ? "default" : "sm"} />
       </div>
 
       <div className={cn(ROW, bare && "min-h-12")}>
         <span className={LABEL}>{dict.settings.language}</span>
-        <LocaleSwitch />
+        <LocaleSwitch size={bare ? "default" : "sm"} />
       </div>
     </div>
   );

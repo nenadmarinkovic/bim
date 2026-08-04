@@ -19,7 +19,20 @@ const OPTIONS = [
   { value: "dark", icon: MoonIcon, key: "dark" },
 ] as const;
 
-export function ThemeToggle({ className }: { className?: string }) {
+type Size = "sm" | "default";
+
+const PLACEHOLDER: Record<Size, string> = {
+  sm: "h-7 w-18.5",
+  default: "h-8 w-24",
+};
+
+export function ThemeToggle({
+  className,
+  size = "sm",
+}: {
+  className?: string;
+  size?: Size;
+}) {
   const { theme, setTheme } = useTheme();
   const dict = useDict();
   const mounted = useSyncExternalStore(
@@ -29,12 +42,12 @@ export function ThemeToggle({ className }: { className?: string }) {
   );
 
   if (!mounted) {
-    return <div className={cn("h-7 w-18.5", className)} />;
+    return <div className={cn(PLACEHOLDER[size], className)} />;
   }
 
   return (
     <ToggleGroup
-      size="sm"
+      size={size}
       variant="outline"
       spacing={0}
       value={[theme ?? "system"]}
@@ -50,7 +63,10 @@ export function ThemeToggle({ className }: { className?: string }) {
           <TooltipTrigger
             render={
               <ToggleGroupItem value={value} aria-label={dict.theme[key]}>
-                <Icon weight="regular" className="size-3" />
+                <Icon
+                  weight="regular"
+                  className={size === "default" ? "size-3.5" : "size-3"}
+                />
               </ToggleGroupItem>
             }
           />
