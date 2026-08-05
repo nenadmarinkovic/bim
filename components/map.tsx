@@ -125,8 +125,6 @@ function viewportBounds(instance: mapboxgl.Map): Cull | undefined {
 const bboxParam = (c: Cull) =>
   [c.west, c.south, c.east, c.north].map((n) => n.toFixed(4)).join(",");
 
-// Switching language is a route change, which remounts the map. Without this
-// the switch would throw the rider back to Stephansdom mid-look.
 const CAMERA_KEY = "bim:camera";
 
 type SavedCamera = {
@@ -164,9 +162,6 @@ function lightPresetFor(resolvedTheme: string | undefined) {
   return resolvedTheme === "dark" ? "night" : "day";
 }
 
-// next-themes only resolves a theme after mount, so the render that builds the
-// map always reads undefined and would open every dark session on the day
-// basemap. The class next-themes writes before hydration is already correct.
 function themeFromDocument(): string | undefined {
   if (typeof document === "undefined") return undefined;
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
@@ -185,12 +180,6 @@ const KIND_ORDER = [
 ] as never;
 
 function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
-  // Deliberately not gated on isStyleLoaded(). That answers false while any
-  // source is mid-load, and the vehicle source is handed new data every frame —
-  // so it is false nearly always here, and a retry waiting on it waits for a
-  // lull that never comes. It is the wrong question anyway: restyling needs the
-  // basemap fragment, not tiles. pushConfig asks that, and every write below is
-  // guarded on its own layer, so nothing here depends on a quiet map.
   if (!pushConfig(map, "lightPreset", dark ? "night" : "day")) return false;
 
   if (map.getLayer(DISTRICTS_FILL_LAYER)) {
@@ -209,7 +198,6 @@ function applyMapTheme(map: mapboxgl.Map, dark: boolean): boolean {
     map.setPaintProperty(DISTRICTS_LABEL_LAYER, "text-color", ink);
   }
 
-  // What a label is knocked out of, matching the exit markers.
   const halo = dark ? "#12161b" : "#ffffff";
 
   const bikeInk = BIKE_INK[dark ? "dark" : "light"];
@@ -333,14 +321,8 @@ function addDistrictLayers(map: mapboxgl.Map) {
   });
 }
 
-// Stadt Wien files fifteen categories of cycling infrastructure; the ingest
-// collapses them to four, and these are the two that are real, ridable
-// infrastructure — drawn solid, over a casing, so they read against a park or a
-// river as clearly as against asphalt.
 const BIKES_SOLID = ["match", ["get", "class"], ["path", "lane"], true, false];
 
-// A traffic-calmed street, a signposted route, the stub across a junction: you
-// may ride there, but nothing was built for you. Dashed, and quieter.
 const BIKES_SHARED = [
   "match",
   ["get", "class"],
@@ -353,10 +335,6 @@ const BIKE_INK = { light: "#00753a", dark: "#3ce084" } as const;
 
 const BIKE_CASING = { light: "#ffffff", dark: "#04150c" } as const;
 
-// City-wide, every one of these lines at once is a green haze over Vienna. They
-// fade in as the view comes down to where a route is a thing you could follow.
-// The zoom curve has to stay outermost — Mapbox rejects a zoom expression used
-// anywhere but the top — so the per-class opacity rides in as its far end.
 const bikeFade = (near: number | unknown[]) => [
   "interpolate",
   ["linear"],
@@ -423,8 +401,7 @@ function addBikeLayers(map: mapboxgl.Map) {
       "line-dasharray": [
         "match",
         ["get", "class"],
-        // A crossing is a handful of metres, so its dashes have to be short
-        // enough to show up twice within one.
+
         "crossing",
         ["literal", [1, 1.5]],
         ["literal", [2.5, 2]],
@@ -446,8 +423,7 @@ function addBikeLayers(map: mapboxgl.Map) {
     paint: {
       "line-color": BIKE_INK.light,
       "line-emissive-strength": 1,
-      // A painted lane is a stripe beside moving cars and a path is its own
-      // way; the weight says which one you are looking at without a legend.
+
       "line-opacity": bikeFade([
         "match",
         ["get", "class"],
@@ -470,8 +446,6 @@ function addBikeLayers(map: mapboxgl.Map) {
   });
 }
 
-// Ochre, the colour a Viennese Fußgeherzone is signed and paved in. Kept warm
-// so it never reads as the bike green or the roadworks orange.
 const ZONE_INK = { light: "#8a5a12", dark: "#f0b869" } as const;
 
 const ZONE_WASH = { light: 0.17, dark: 0.2 } as const;
@@ -534,8 +508,6 @@ function addZoneLayers(map: mapboxgl.Map) {
   });
 }
 
-// Hazard orange, and the only layer here allowed to shout: a closed street is
-// why the tram beside it is somewhere it does not normally go.
 const ROADWORK_INK = { light: "#c2410c", dark: "#ff9351" } as const;
 
 const isPoint = ["==", ["geometry-type"], "Point"];
@@ -560,7 +532,6 @@ function addRoadworkLayers(map: mapboxgl.Map) {
       "line-emissive-strength": 1,
       "line-opacity": 0.85,
       "line-width": ["interpolate", ["linear"], ["zoom"], 11, 2, 16, 7, 18, 11],
-      // Hatched, the way the barriers are.
       "line-dasharray": [1.4, 0.8],
     },
   });
@@ -620,8 +591,6 @@ function addFountainLayer(map: mapboxgl.Map) {
     type: "symbol",
     source: FOUNTAINS_SOURCE,
     slot: "top",
-    // A fountain is a thing you walk to. Above the city view it is a blue rash
-    // over Vienna and below it is useless.
     minzoom: 14,
     layout: {
       visibility: "none",
@@ -640,9 +609,6 @@ function addFountainLayer(map: mapboxgl.Map) {
   });
 }
 
-// MA 45 shuts its park toilets over the winter and publishes which ones, but
-// not the day each closes. From November to March those are drawn faint rather
-// than promised as open.
 const WINTER_SHUT = [10, 11, 0, 1, 2].includes(new Date().getMonth());
 
 function addToiletLayer(map: mapboxgl.Map) {
@@ -658,8 +624,6 @@ function addToiletLayer(map: mapboxgl.Map) {
     type: "symbol",
     source: TOILETS_SOURCE,
     slot: "top",
-    // Like the fountains: something you walk the last few hundred metres to,
-    // and above the city view a green rash over Vienna.
     minzoom: 14,
     layout: {
       visibility: "none",
@@ -801,10 +765,6 @@ export function MapView({
   const { data, error: vehicleError } = useVehiclesContext();
   const reportViewport = useViewportReporter();
   const tweens = useRef<Map<string, Tween>>(new Map());
-  // When the current batch of tweens finishes moving, and the viewport the
-  // frame that parked them there was drawn for — null while they are still
-  // moving. Holding the viewport rather than a flag means a pan still redraws:
-  // the cull admits vehicles that were off screen when the batch settled.
   const animateUntil = useRef(0);
   const drewSettled = useRef<string | null>(null);
   const popup = useRef<mapboxgl.Popup | null>(null);
@@ -816,15 +776,11 @@ export function MapView({
   const tracing = useRef<string | null>(null);
   const redrawStop = useRef<(() => void) | null>(null);
   const untraceable = useRef<Set<string>>(new Set());
-
   const disableStops = useRef<(() => void) | null>(null);
   const pickStation = useRef<((station: Station) => void) | null>(null);
   const following = useRef<string | null>(null);
-  // Which vehicle the camera has already been framed for, so the framing is
-  // applied on pickup rather than on every frame.
   const framed = useRef<string | null>(null);
   const routeTrip = useRef<string | null>(null);
-  // Which station has asked for its doors; they stay until asked again.
   const exitsOpen = useRef<string | null>(null);
   const disablePlaces = useRef<(() => void) | null>(null);
   const stopPlaceVisibility = useRef<(() => void) | null>(null);
@@ -833,8 +789,6 @@ export function MapView({
   const lang = useRef<Locale>(locale);
 
   useEffect(() => {
-    // Guarded: the first pass here runs before next-themes has resolved, and
-    // must not put the ref back to the undefined it was seeded against.
     if (resolvedTheme) theme.current = resolvedTheme;
   }, [resolvedTheme]);
 
@@ -843,8 +797,6 @@ export function MapView({
     lang.current = locale;
   }, [dictionary, locale]);
 
-  // Without a token no map is ever drawn, so nothing else would ever release
-  // the counter from its opening spinner.
   useEffect(() => {
     if (!TOKEN) markMapReady();
   }, []);
@@ -854,8 +806,6 @@ export function MapView({
 
     mapboxgl.accessToken = TOKEN;
 
-    // An embed always opens on its own shot. Resuming wherever the reader last
-    // left the standalone app would make it a different figure each visit.
     const resumed = embed ? null : readCamera();
     const opening = embed ? EMBED_CAMERA : CAMERA;
     const centre = embed ? EMBED_CENTRE : STEPHANSDOM;
@@ -872,9 +822,6 @@ export function MapView({
       maxPitch: MAX_PITCH,
       maxBounds: NETWORK_BOUNDS,
       attributionControl: false,
-      // Framed in an article on a touch screen, a one-finger drag has to scroll
-      // the page rather than pan the map, or the figure traps the reader.
-      // Two fingers still move it.
       cooperativeGestures:
         embed && window.matchMedia("(pointer: coarse)").matches,
       config: {
@@ -898,15 +845,6 @@ export function MapView({
 
     instance.on("moveend", () => saveCamera(instance));
 
-    // Pulling out flattens the camera on the way, so the whole city arrives
-    // level rather than folded into a band with sky above it.
-    //
-    // It has to go through maxPitch rather than setPitch: a zoom animation
-    // rewrites the pitch every frame from the value it began with, so a direct
-    // write inside the same tick is simply overwritten, while the ceiling is
-    // applied by the transform on every one of those frames. Lifting it again
-    // once the zoom settles leaves the camera where it was pushed to — so the
-    // map arrives flat, and can still be tipped by hand at any zoom.
     let lastZoom = instance.getZoom();
     let cap = MAX_PITCH;
     const capPitch = (next: number) => {
@@ -924,9 +862,6 @@ export function MapView({
 
     instance.on("zoomend", () => capPitch(MAX_PITCH));
 
-    // The vehicle source is rewritten every animation frame, so this map is
-    // never idle and "dataloading" never stops firing. Both are useless as
-    // signals here — the camera settling is what the counter can trust.
     const working = () => startJob("map");
     const settled = () => endJob("map");
     instance.on("movestart", working);
@@ -934,13 +869,10 @@ export function MapView({
     instance.on("moveend", settled);
     instance.on("zoomend", settled);
 
-    // "load" is style plus every tile the opening view needs; "idle" only ever
-    // lands before the first vehicles arrive, and marking twice is harmless.
     instance.on("load", markMapReady);
     instance.on("idle", markMapReady);
 
     const addLayers = () => {
-      // Images first: a symbol layer whose icon is missing logs on every tile.
       void installStopIcons(instance).then(() => addStopsLayer(instance));
       addDistrictLayers(instance);
       addBikeLayers(instance);
@@ -951,8 +883,7 @@ export function MapView({
       );
       void installToiletIcon(instance).then(() => addToiletLayer(instance));
       void addExitLayers(instance);
-      // A popup built before this lands would be missing its exits, so the open
-      // one is drawn again once they are known.
+
       void loadExits().then(() => redrawStop.current?.());
       addRouteLayers(instance);
       addVehicleLayers(instance, theme.current === "dark");
@@ -1172,8 +1103,6 @@ export function MapView({
     stopPlaceVisibility.current = setPlaceVisibility(instance, true);
   }, []);
 
-  // Places are what makes the map worth looking at before a tram has moved, so
-  // they start on wherever it is drawn. The panel still takes them away.
   useEffect(() => {
     const instance = map.current;
     if (!instance) return;
@@ -1182,8 +1111,6 @@ export function MapView({
     else instance.once("load", enable);
   }, [setPlacesEnabled]);
 
-  // One set of toggles, drawn either in the desktop panel or in the phone's
-  // menu sheet — so the two can never disagree about what the map is showing.
   const settings = useMapSettings({
     getMap: () => map.current,
     onPlacesChange: setPlacesEnabled,
@@ -1196,7 +1123,6 @@ export function MapView({
     if (!instance || !resolvedTheme) return;
     const dark = resolvedTheme === "dark";
 
-    // Line badges are drawn from the same palette as the vehicles.
     redrawStop.current?.();
 
     let frame = 0;
@@ -1216,8 +1142,6 @@ export function MapView({
     if (map.current) revealVehicles(map.current);
     const now = performance.now();
     tweens.current = reconcile(tweens.current, data.vehicles, now, POLL_MS);
-    // reconcile stamps every tween with this instant and one poll of travel, so
-    // one deadline covers the whole batch.
     animateUntil.current = now + POLL_MS;
     drewSettled.current = null;
 
@@ -1254,12 +1178,6 @@ export function MapView({
     if (!TOKEN) return;
     let frame = 0;
     let lastDraw = 0;
-    // A tram crossing the screen at street zoom moves a couple of pixels per
-    // tenth of a second, so ten frames a second is already below what anyone
-    // can see stepping. The frames above that were costing a phone a full
-    // re-tile and a style repaint each, which is what the rider feels in their
-    // hand. A pointer that is not a finger belongs to a machine that is plugged
-    // in and can afford the smoother rate.
     const MIN_FRAME_MS = window.matchMedia("(pointer: coarse)").matches
       ? 100
       : 50;
@@ -1275,16 +1193,8 @@ export function MapView({
       const cull = viewportBounds(instance);
       const bbox = cull ? bboxParam(cull) : "";
 
-      // Reported before the settle check below, so a pan during a stalled feed
-      // still moves the window the next poll asks for.
       if (cull) reportViewport(bbox);
 
-      // Every push below re-tiles the source and repaints the whole style. Once
-      // the last tween has run out — a stalled feed, or a hidden tab that has
-      // just come back — those frames would each carry the geometry the GPU is
-      // already holding, so the loop parks the batch in one frame and then
-      // idles until the view moves or the next response lands. A camera locked
-      // to a vehicle is exempt: it is steering, not just redrawing.
       const settled = now > animateUntil.current && !following.current;
       if (settled && drewSettled.current === bbox) return;
       drewSettled.current = settled ? bbox : null;
@@ -1305,7 +1215,8 @@ export function MapView({
 
       if (instance.getZoom() >= SPRITE_TO_3D_ZOOM) {
         const extrusions = instance.getSource(VEHICLES_3D_SOURCE) as
-          mapboxgl.GeoJSONSource | undefined;
+          | mapboxgl.GeoJSONSource
+          | undefined;
         extrusions?.setData(
           toExtrusionCollection(
             tweens.current,
@@ -1321,11 +1232,7 @@ export function MapView({
         const followed = tweens.current.get(followId);
         if (followed) {
           const at = sample(followed, now);
-          // Frame the vehicle once, when it is first picked up. Only the centre
-          // and the heading track it after that: writing the zoom and the pitch
-          // on every frame pinned the camera at 17.2 and 72°, so following a
-          // tram meant being unable to pull back far enough to see where it was
-          // going, or to flatten the view to read the street.
+
           if (framed.current !== followId) {
             framed.current = followId;
             instance.jumpTo({
@@ -1357,7 +1264,6 @@ export function MapView({
             dark: theme.current === "dark",
             dict: dict.current,
             takeRoute: () => {
-              // Reads refs only, so it stays out of effect dependencies.
               if (!tracing.current) return;
               tracing.current = null;
               redrawStop.current?.();
@@ -1372,8 +1278,7 @@ export function MapView({
 
     const start = () => {
       if (frame) return;
-      // A resumed loop must not inherit a timestamp from before the pause, or
-      // the throttle would read the gap as a due frame and draw twice over.
+
       lastDraw = 0;
       drewSettled.current = null;
       frame = requestAnimationFrame(draw);
@@ -1384,8 +1289,6 @@ export function MapView({
       frame = 0;
     };
 
-    // Backgrounding a PWA on iOS does not reliably stop its frames, and a map
-    // nobody is looking at is the most expensive thing this app can draw.
     const onVisibility = () => (document.hidden ? stopLoop() : start());
 
     start();
@@ -1421,9 +1324,7 @@ export function MapView({
   return (
     <div className="relative h-full w-full">
       <div ref={container} className="bim-map h-full w-full" />
-      {/* Everything anchored to an edge keeps clear of a notch or a home
-          indicator on a phone, and falls back to a plain inset once there is
-          room to spare. */}
+
       <div className="pointer-events-none absolute top-[max(0.75rem,env(safe-area-inset-top))] right-[max(0.75rem,env(safe-area-inset-right))] z-20 flex items-center gap-2 sm:top-4 sm:right-4">
         <StationSearch
           onPick={(station) => {
@@ -1455,8 +1356,6 @@ export function MapView({
         />
       )}
       {(error || vehicleError) && (
-        // Centred: at the bottom left it sat under the Mapbox logo and read as
-        // part of the furniture rather than as something having gone wrong.
         <p
           role="status"
           className="glass pointer-events-none absolute top-1/2 left-1/2 z-20 max-w-[min(26rem,80vw)] -translate-x-1/2 -translate-y-1/2 rounded-xl px-4 py-3 text-center text-sm text-destructive"

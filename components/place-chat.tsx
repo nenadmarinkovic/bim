@@ -154,8 +154,6 @@ export function PlaceChat({
             rows={2}
             placeholder={dict.chat.placeholder}
             aria-label={dict.chat.ariaAsk}
-            // The placeholder carries the same size as what gets typed over it;
-            // a step smaller read as an afterthought.
             className="bg-field dark:bg-field max-h-32 min-h-18 resize-none rounded-xl pr-11 text-sm leading-relaxed placeholder:text-sm"
           />
           <button

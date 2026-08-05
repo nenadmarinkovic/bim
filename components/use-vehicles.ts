@@ -29,9 +29,6 @@ export function useVehicles(getViewport?: () => string | null): VehiclesState {
     };
 
     async function tick() {
-      // A hidden document draws nothing, so a position fetched now is only a
-      // radio wake and a parse whose result is stale before anyone sees it.
-      // visibilitychange restarts the loop.
       if (cancelled || document.hidden) return;
 
       const controller = new AbortController();
@@ -64,13 +61,8 @@ export function useVehicles(getViewport?: () => string | null): VehiclesState {
             error instanceof Error ? error.message : "positions unavailable",
         }));
       } finally {
-        // Hiding aborts this request and going back cancels the wait, so by the
-        // time this runs a newer poll may already own the chain. Only the
-        // request still holding it may extend it, or the two would run side by
-        // side at double the rate.
         const owns = inFlight === controller;
         if (owns) inFlight = null;
-        // Chained timeout, not an interval: a slow response must not stack.
         if (owns && !cancelled && !document.hidden) {
           timer = setTimeout(tick, POLL_MS);
         }
@@ -82,9 +74,7 @@ export function useVehicles(getViewport?: () => string | null): VehiclesState {
         stop();
         return;
       }
-      // Whatever was on screen when the phone went into a pocket is minutes
-      // old by the time it comes back out, so the first frame after returning
-      // is a fresh one rather than the tail of the old poll.
+
       if (!timer && !inFlight) tick();
     };
 

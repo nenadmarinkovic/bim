@@ -20,10 +20,7 @@ export async function generateMetadata({
     title: dict.meta.title,
     description: dict.meta.description,
     manifest: "/site.webmanifest",
-    // black-translucent is what lets the map run under the Dynamic Island once
-    // the app is installed; without it iOS reserves an opaque status-bar strip
-    // and safe-area-inset-top reports 0. It costs us the status bar glyph
-    // colour — always light — which globals.css compensates for.
+
     appleWebApp: {
       capable: true,
       title: "Bim",
@@ -52,10 +49,6 @@ export async function generateMetadata({
   };
 }
 
-// The browser resolves these itself, so the chrome is already the right colour
-// before any of our JavaScript runs. ThemeColorSync takes over at hydration for
-// the one case the media queries cannot know about: a theme picked by hand that
-// disagrees with the system preference.
 export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
@@ -89,8 +82,7 @@ export default async function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      {/* dvh, not vh: on phones the URL bar counts against the viewport, and a
-          vh-tall map leaves its bottom row of controls under the chrome. */}
+
       <body className="h-dvh overflow-hidden overscroll-none">
         <LocaleProvider locale={lang} dictionary={getDictionary(lang)}>
           <Providers>

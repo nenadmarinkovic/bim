@@ -1,6 +1,13 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { staticBody } from "@/lib/http/compress";
+
+const send = staticBody({
+  "content-type": "application/geo+json",
+  "cache-control": "public, max-age=3600",
+});
+
 type StationRecord = {
   diva: number;
   name: string;
@@ -45,7 +52,7 @@ async function loadGeoJson(): Promise<string | null> {
   return cached;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const geojson = await loadGeoJson();
 
   if (!geojson) {
@@ -55,10 +62,5 @@ export async function GET() {
     );
   }
 
-  return new Response(geojson, {
-    headers: {
-      "content-type": "application/geo+json",
-      "cache-control": "public, max-age=3600",
-    },
-  });
+  return send(request, geojson);
 }

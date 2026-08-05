@@ -35,10 +35,6 @@ export function VehicleCount({ className }: { className?: string }) {
   const ready = useMapReady();
   const busy = useBusy();
   const dict = useDict();
-
-  // A count over a map still drawing itself is a number with nothing under it,
-  // so the map comes first. The feed's own state is only worth reporting once
-  // there is a map to report it against — including a failure to reach it.
   if (!ready) {
     return (
       <p className={cn(className, "inline-flex items-center")} role="status">

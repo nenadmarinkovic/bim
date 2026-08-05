@@ -1,9 +1,10 @@
-import { vehiclesAt } from "@/lib/vehicles/feed";
+import { vehiclesFor } from "@/lib/vehicles/feed";
 import {
   MissingArtifactError,
   StaleArtifactError,
 } from "@/lib/vehicles/schedule";
 import { clientKey, retryAfter } from "@/lib/places/rate-limit";
+import { encoded } from "@/lib/http/compress";
 import type { VehiclesResponse } from "@/lib/vehicles/types";
 
 const MAX_PER_WINDOW = 240;
@@ -28,13 +29,15 @@ export async function GET(request: Request) {
     );
   }
 
-  const at = Date.now();
-
   try {
-    const vehicles = await vehiclesAt(at, parseViewport(new URL(request.url)));
+    const { at, vehicles } = await vehiclesFor(
+      Date.now(),
+      parseViewport(new URL(request.url)),
+    );
     const body: VehiclesResponse = { at, vehicles };
-    return Response.json(body, {
-      headers: { "cache-control": "no-store" },
+    return await encoded(request, JSON.stringify(body), {
+      "content-type": "application/json",
+      "cache-control": "no-store",
     });
   } catch (error) {
     if (

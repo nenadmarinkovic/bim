@@ -13,15 +13,8 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   const dict = getDictionary(lang);
 
   return (
-    // Fixed rather than sized off the body, so the map and everything anchored
-    // to it are measured from the viewport rather than from a chain of
-    // percentage heights.
     <div className="fixed inset-0">
       <MapView />
-
-      {/* On a phone the header hugs the left edge, clear of the search and menu
-          buttons in the opposite corner, and centres itself once the row has
-          the width to sit under nothing. */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-start gap-2 px-[max(0.75rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:pt-4 md:items-center">
         <div className="glass pointer-events-auto flex max-w-[calc(100%-5.25rem)] items-center gap-2 rounded-full px-3 py-1.5 sm:gap-2.5 md:max-w-full lg:gap-3 lg:px-4 lg:py-2">
           <h1 className="flex shrink-0 items-center gap-2.5 text-base font-bold tracking-tight text-foreground lg:text-lg">

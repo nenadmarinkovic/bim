@@ -1,10 +1,17 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { staticBody } from "./http/compress.ts";
+
 export function geoJsonRoute(file: string, what: string) {
   let cached: string | null = null;
 
-  return async function GET() {
+  const send = staticBody({
+    "content-type": "application/geo+json",
+    "cache-control": "public, max-age=86400",
+  });
+
+  return async function GET(request: Request) {
     if (!cached) {
       try {
         const raw = await readFile(
@@ -21,11 +28,6 @@ export function geoJsonRoute(file: string, what: string) {
       }
     }
 
-    return new Response(cached, {
-      headers: {
-        "content-type": "application/geo+json",
-        "cache-control": "public, max-age=86400",
-      },
-    });
+    return send(request, cached);
   };
 }

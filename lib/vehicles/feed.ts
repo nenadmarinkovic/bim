@@ -10,7 +10,7 @@ import {
 import { delaysForTrip, placeTrip } from "./position.ts";
 import { DIMENSIONS } from "./colors.ts";
 import { sweepMonitor } from "./monitor.ts";
-import type { Vehicle } from "./types.ts";
+import type { Vehicle, VehicleMode } from "./types.ts";
 
 const FEED_URL =
   "https://wiener-linien-gtfs-rt.zuugle-services.com/feed/wienerlinien-rt.pb";
@@ -191,10 +191,19 @@ function checkFreshness(
   }
 }
 
-export async function vehiclesAt(
-  nowMs = Date.now(),
-  view?: Viewport,
-): Promise<Vehicle[]> {
+type PlaceArgs = Parameters<typeof placeTrip>;
+
+type Placed = {
+  vehicle: Vehicle;
+  trip: PlaceArgs[0];
+  shape: PlaceArgs[1];
+  delays: PlaceArgs[2];
+  dayStart: number;
+  distance: number;
+  mode: VehicleMode;
+};
+
+async function placeAll(nowMs: number): Promise<Placed[]> {
   const [
     { schedule, shapes, underground, coverageEndMs },
     feedDelays,
@@ -238,7 +247,7 @@ export async function vehiclesAt(
   }
 
   const dayStarts = new Map<string, number>();
-  const vehicles: Vehicle[] = [];
+  const placed: Placed[] = [];
   const upcomingGtfsStops = new Set<string>();
 
   for (const run of schedule.runs) {
@@ -293,54 +302,125 @@ export async function vehiclesAt(
           )
         : false;
 
-      const lon = Number(state.lon.toFixed(5));
-      const lat = Number(state.lat.toFixed(5));
-      const inView =
-        view &&
-        lon >= view.west &&
-        lon <= view.east &&
-        lat >= view.south &&
-        lat <= view.north;
-      if (view && !inView) continue;
-
-      const local = inView
-        ? localPath(shape, state.distance, DIMENSIONS[mode].length / 2)
-        : null;
-
-      const ahead = local
-        ? placeTrip(trip, shape, delays, dayStart, nowMs + LOOKAHEAD_MS)
-        : null;
-
-      vehicles.push({
-        id: tripId,
-        line: route?.name ?? trip.r,
+      placed.push({
+        vehicle: {
+          id: tripId,
+          line: route?.name ?? trip.r,
+          mode,
+          towards: trip.h,
+          lon: Number(state.lon.toFixed(5)),
+          lat: Number(state.lat.toFixed(5)),
+          bearing: Math.round(state.bearing),
+          delay: Math.round(state.delay),
+          realtime: updates !== undefined,
+          certainty,
+          stopsFromReport: Number.isFinite(stopsFromReport)
+            ? stopsFromReport
+            : -1,
+          underground: inTunnel,
+        },
+        trip,
+        shape,
+        delays,
+        dayStart,
+        distance: state.distance,
         mode,
-        towards: trip.h,
-        lon: Number(state.lon.toFixed(5)),
-        lat: Number(state.lat.toFixed(5)),
-        bearing: Math.round(state.bearing),
-        delay: Math.round(state.delay),
-        realtime: updates !== undefined,
-        certainty,
-        stopsFromReport: Number.isFinite(stopsFromReport)
-          ? stopsFromReport
-          : -1,
-        underground: inTunnel,
-        ...(local
-          ? {
-              path: local.path,
-              pd: local.pd,
-              d: state.distance,
-              ...(ahead ? { dNext: ahead.distance } : {}),
-            }
-          : {}),
       });
     }
   }
 
   void primeMonitorTargets(upcomingGtfsStops);
 
-  return vehicles;
+  return placed;
+}
+
+const PLACEMENT_TTL_MS = 1_000;
+
+let placements: { at: number; placed: Placed[] } | null = null;
+let placingAt = 0;
+let placing: Promise<Placed[]> | null = null;
+
+async function placedAt(
+  nowMs: number,
+): Promise<{ at: number; placed: Placed[] }> {
+  if (placements && Math.abs(nowMs - placements.at) < PLACEMENT_TTL_MS) {
+    return placements;
+  }
+
+  if (placing && Math.abs(nowMs - placingAt) < PLACEMENT_TTL_MS) {
+    return { at: placingAt, placed: await placing };
+  }
+
+  placingAt = nowMs;
+  placing = placeAll(nowMs)
+    .then((placed) => {
+      placements = { at: nowMs, placed };
+      return placed;
+    })
+    .finally(() => {
+      placing = null;
+    });
+
+  return { at: nowMs, placed: await placing };
+}
+
+export async function vehiclesFor(
+  nowMs = Date.now(),
+  view?: Viewport,
+): Promise<{ at: number; vehicles: Vehicle[] }> {
+  const { at, placed } = await placedAt(nowMs);
+
+  const vehicles: Vehicle[] = [];
+
+  for (const entry of placed) {
+    const { vehicle } = entry;
+    const inView =
+      view &&
+      vehicle.lon >= view.west &&
+      vehicle.lon <= view.east &&
+      vehicle.lat >= view.south &&
+      vehicle.lat <= view.north;
+    if (view && !inView) continue;
+
+    const local = inView
+      ? localPath(
+          entry.shape,
+          entry.distance,
+          DIMENSIONS[entry.mode].length / 2,
+        )
+      : null;
+
+    const ahead = local
+      ? placeTrip(
+          entry.trip,
+          entry.shape,
+          entry.delays,
+          entry.dayStart,
+          at + LOOKAHEAD_MS,
+        )
+      : null;
+
+    vehicles.push(
+      local
+        ? {
+            ...vehicle,
+            path: local.path,
+            pd: local.pd,
+            d: entry.distance,
+            ...(ahead ? { dNext: ahead.distance } : {}),
+          }
+        : vehicle,
+    );
+  }
+
+  return { at, vehicles };
+}
+
+export async function vehiclesAt(
+  nowMs = Date.now(),
+  view?: Viewport,
+): Promise<Vehicle[]> {
+  return (await vehiclesFor(nowMs, view)).vehicles;
 }
 
 let nextTargets: number[] = [];

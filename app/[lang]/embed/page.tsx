@@ -23,11 +23,6 @@ export default async function Embed({ params }: PageProps<"/[lang]/embed">) {
     <div className="relative h-full w-full">
       <MapView embed parents={parents} />
 
-      {/* Held back off a timer rather than the map's own load event: nothing
-          here may sit over the canvas, and an element that does — even a nearly
-          transparent one — lets the browser stop painting it, which stalls the
-          frame loop mapbox loads on. The name arriving a beat late is the
-          cheaper trade than a map that never finishes. */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-start gap-2 px-[max(0.75rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-4 sm:pt-4 md:items-center">
         <div className="glass animate-in fade-in fill-mode-both pointer-events-auto flex max-w-[calc(100%-3.25rem)] items-center gap-2 rounded-full px-3 py-1.5 duration-700 [animation-delay:700ms] sm:gap-2.5 md:max-w-full lg:gap-3 lg:px-4 lg:py-2">
           <h1 className="flex shrink-0 items-center gap-2.5 text-base font-bold tracking-tight text-foreground lg:text-lg">
