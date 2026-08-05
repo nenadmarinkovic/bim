@@ -138,7 +138,11 @@
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
   --section: #f4f4f4;
-  --glass-fill: color-mix(in oklch, var(--popover) 88%, transparent);
+  --glass-fill: oklch(98.5% 0.004 250 / 0.62);
+  --glass-fill-strong: oklch(98.5% 0.004 250 / 0.8);
+  --glass-edge: oklch(20% 0.024 258 / 0.1);
+  --glass-blur: blur(22px) saturate(1.35);
+  --glass-shadow: 0 14px 34px -14px oklch(20% 0.05 258 / 0.24);
   --glass-solid: var(--popover);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -174,7 +178,10 @@
   --ring: #7b86a8;
   --section: oklch(0.85 0.02 265 / 10%);
   --glass-tint: color-mix(in oklch, var(--sheet) 80%, #000000);
-  --glass-fill: color-mix(in oklch, var(--glass-tint) 92%, transparent);
+  --glass-fill: color-mix(in oklch, var(--sheet) 66%, transparent);
+  --glass-fill-strong: color-mix(in oklch, var(--sheet) 86%, transparent);
+  --glass-edge: oklch(100% 0 0 / 0.12);
+  --glass-shadow: 0 14px 34px -14px oklch(12% 0.03 262 / 0.5);
   --glass-solid: var(--glass-tint);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -257,54 +264,23 @@ span.text-brand.italic {
 
 .glass {
   background: var(--glass-fill);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid color-mix(in oklch, var(--foreground) 13%, transparent);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.04),
-    0 10px 30px -8px rgb(0 0 0 / 0.16),
-    inset 0 1px 0 rgb(255 255 255 / 0.5);
-}
-
-.dark .glass {
-  border-color: rgb(255 255 255 / 0.1);
-  box-shadow:
-    0 10px 30px -8px rgb(0 0 0 / 0.6),
-    inset 0 1px 0 rgb(255 255 255 / 0.08);
-}
-
-/* A popup that sits over the panel rather than over the map: it needs to be
-   read against the glass behind it, so it stays opaque instead of blurring
-   what is already blurred. */
-.glass-solid {
-  background: var(--glass-solid);
-  border: 1px solid color-mix(in oklch, var(--foreground) 13%, transparent);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.05),
-    0 12px 32px -8px rgb(0 0 0 / 0.22);
-}
-
-.dark .glass-solid {
-  border-color: rgb(255 255 255 / 0.1);
-  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.7);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
 }
 
 .glass-sheet {
-  background: color-mix(in oklch, var(--popover) 72%, transparent);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-}
-
-.dark .glass-sheet {
   background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
 }
 
+.glass-solid {
+  background: var(--glass-fill);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
 
-/* Installed on iOS the map paints under the status bar, and the clock and
-   battery are drawn in white whatever we do. Over the dark basemap they read
-   fine; over the light one they vanish, so the light theme gets a gradient in
-   the safe-area strip. Above everything and inert, so a sheet or dialog opening
-   underneath cannot take the glyphs back down to unreadable. */
 @media (display-mode: standalone) {
   body::before {
     content: "";
@@ -328,12 +304,12 @@ span.text-brand.italic {
 
 @media (prefers-reduced-transparency: reduce) {
   .glass,
+  .glass-solid,
   .glass-sheet,
   .bim-popup .mapboxgl-popup-content,
   .dark .bim-popup .mapboxgl-popup-content {
-    background: var(--popover);
+    background: var(--glass-solid);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 }
 
@@ -346,26 +322,15 @@ span.text-brand.italic {
 
 .bim-popup .mapboxgl-popup-content {
   background: var(--glass-fill);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: var(--glass-blur);
   color: var(--popover-foreground);
-  border: 1px solid color-mix(in oklch, var(--foreground) 9%, transparent);
+  border: 1px solid var(--glass-edge);
   border-radius: var(--radius-md);
-  box-shadow:
-    0 1px 2px rgb(0 0 0 / 0.04),
-    0 10px 30px -8px rgb(0 0 0 / 0.16),
-    inset 0 1px 0 rgb(255 255 255 / 0.5);
+  box-shadow: var(--glass-shadow);
   font-family: var(--font-sans);
   font-size: 0.8125rem;
   line-height: 1.45;
   padding: 1rem;
-}
-
-.dark .bim-popup .mapboxgl-popup-content {
-  border-color: rgb(255 255 255 / 0.1);
-  box-shadow:
-    0 10px 30px -8px rgb(0 0 0 / 0.6),
-    inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 
 .bim-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
@@ -696,8 +661,10 @@ span.text-brand.italic {
   width: 1rem;
   height: 1rem;
   background-color: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
 }
 .bim-popup .mapboxgl-popup-close-button:hover {
   background: var(--muted);
