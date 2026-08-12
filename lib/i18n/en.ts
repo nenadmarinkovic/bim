@@ -1,9 +1,6 @@
-// The English dictionary is the shape every other locale is checked against.
-// Plain data only: it crosses the server/client boundary as part of the RSC
-// payload, where a function would not survive.
 export const en = {
   meta: {
-    title: "Bim — live transit map for Vienna",
+    title: "Bim — Live transit map for Vienna",
     description:
       "An unofficial live map of the Wiener Linien network, built on open data.",
   },
@@ -176,7 +173,7 @@ export const en = {
       "A wrong departure, a missing entrance, a question about how something works…",
     send: "Send",
     sending: "Sending…",
-    sent: "Thanks — got it. I will reply to the address you gave.",
+    sent: "Thanks, got it. I will reply to the address you gave.",
     errors: {
       email: "That address does not look right. Could you check it?",
       message: "A few more words would help.",
@@ -189,16 +186,16 @@ export const en = {
   contribute: {
     title: "Contribute",
     subtitle: "Bim is open source. You do not need to write code to help.",
-    lead: "If something on the map looks wrong, or a station is missing a detail, you can fix it yourself — or just tell me.",
+    lead: "If something on the map looks wrong, or a station is missing a detail, you can fix it yourself. Or just tell me.",
     osmTitle: "Add a station entrance",
     osmBody:
-      "The station doors on this map come from OpenStreetMap: what they are called, and whether you can get in without stairs. Plenty are still missing. If you know one, you can add it there, and it shows up here the next time the data is rebuilt.",
+      "The station doors here come from OpenStreetMap: their names, and whether you can get in without stairs. Plenty are still missing. Anyone can add one there, and it shows on the map at the next rebuild.",
     codeTitle: "Report something wrong",
     codeBody:
       "A departure that does not match the platform, a station in the wrong place, anything that looks off. GitHub is the best place for it.",
     writeTitle: "Write to me",
     askBody:
-      "All messages are welcome, especially if something is wrong or does not work properly.",
+      "All messages are welcome, especially if something is wrong or does not work.",
     openIssues: "Open an issue",
     editOsm: "Edit in OpenStreetMap",
   },
@@ -227,8 +224,8 @@ export const en = {
       "Departures and lines from Wiener Linien open data, the S-Bahn from ÖBB. Track geometry from a community GTFS conversion (CC BY 4.0). The city layers from Stadt Wien. Station entrances from OpenStreetMap (ODbL).",
     purpose:
       "Bim shows the network. It does not plan journeys, and it is not affiliated with Wiener Linien.",
-    openSource: "Open-source",
-    projectBy: "project by",
+    openSource: "Open source",
+    projectBy: "work in progress by",
   },
 };
 

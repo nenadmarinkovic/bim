@@ -183,7 +183,7 @@ export const de: Dictionary = {
       "Eine falsche Abfahrt, ein fehlender Zugang, eine Frage dazu wie etwas funktioniert…",
     send: "Senden",
     sending: "Wird gesendet…",
-    sent: "Danke — angekommen. Ich antworte an die Adresse, die Sie angegeben haben.",
+    sent: "Danke, angekommen. Ich antworte an die Adresse, die Sie angegeben haben.",
     errors: {
       email: "Diese Adresse sieht nicht richtig aus. Bitte nachschauen?",
       message: "Ein paar Worte mehr wären hilfreich.",
@@ -198,16 +198,16 @@ export const de: Dictionary = {
     title: "Mitmachen",
     subtitle:
       "Bim ist Open Source. Man muss nicht programmieren können, um zu helfen.",
-    lead: "Wenn auf der Karte etwas falsch aussieht oder einer Station ein Detail fehlt, können Sie es selbst ausbessern — oder es mir einfach sagen.",
+    lead: "Wenn auf der Karte etwas falsch aussieht oder einer Station ein Detail fehlt, können Sie es selbst ausbessern. Oder es mir einfach sagen.",
     osmTitle: "Einen Stationszugang ergänzen",
     osmBody:
-      "Die Zugänge auf dieser Karte kommen aus OpenStreetMap: wie sie heißen, und ob man ohne Stufen hineinkommt. Viele fehlen noch. Wenn Sie einen kennen, können Sie ihn dort eintragen, und beim nächsten Datenlauf ist er hier zu sehen.",
+      "Die Zugänge hier kommen aus OpenStreetMap: wie sie heißen, und ob man ohne Stufen hineinkommt. Viele fehlen noch. In OpenStreetMap kann jeder einen eintragen, beim nächsten Datenlauf steht er auf der Karte.",
     codeTitle: "Etwas melden, das falsch ist",
     codeBody:
       "Eine Abfahrt, die nicht zum Bahnsteig passt, eine Station an der falschen Stelle, irgendetwas das nicht stimmt. Am besten auf GitHub.",
     writeTitle: "Schreiben Sie mir",
     askBody:
-      "Alle Nachrichten sind willkommen, besonders wenn etwas falsch ist oder nicht richtig funktioniert.",
+      "Alle Nachrichten sind willkommen, besonders wenn etwas falsch ist oder nicht funktioniert.",
     openIssues: "Issue eröffnen",
     editOsm: "In OpenStreetMap bearbeiten",
   },
@@ -237,6 +237,6 @@ export const de: Dictionary = {
     purpose:
       "Bim zeigt das Netz. Es plant keine Fahrten und steht in keiner Verbindung zu Wiener Linien.",
     openSource: "Open-Source-Projekt",
-    projectBy: "von",
+    projectBy: "in Arbeit, von",
   },
 };
