@@ -208,7 +208,6 @@ export const en = {
     dataTitle: "Where the data comes from",
     estimate:
       "Every vehicle on this map is an estimate, not a live position. Wiener Linien does not publish where its vehicles are.",
-    moreInfo: "For more:",
     title: "Bim",
     subtitle: "Unofficial live map of the Wiener Linien network.",
     lead: "Each one is placed from its timetable, shifted by the delay reported at nearby stops, and slid along the real track geometry.",

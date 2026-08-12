@@ -161,30 +161,26 @@ export function SiteNav({
                 <p className={BODY}>{dict.about.purpose}</p>
               </Panel>
 
-              <div className={cn(BODY, "grid gap-0.5 pt-1")}>
-                <p>
-                  <a
-                    href={REPO}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className={LINK}
-                  >
-                    {dict.about.openSource}
-                  </a>{" "}
-                  {dict.about.projectBy} Nenad Marinković.
-                </p>
-                <p>
-                  {dict.about.moreInfo}{" "}
-                  <a
-                    href={SITE}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className={LINK}
-                  >
-                    {SITE.replace("https://", "")}
-                  </a>
-                </p>
-              </div>
+              <p className={cn(BODY, "pt-1")}>
+                <a
+                  href={REPO}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className={LINK}
+                >
+                  {dict.about.openSource}
+                </a>{" "}
+                {dict.about.projectBy}{" "}
+                <a
+                  href={SITE}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className={LINK}
+                >
+                  Nenad Marinković
+                </a>
+                .
+              </p>
             </div>
           </div>
 

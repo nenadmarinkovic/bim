@@ -217,7 +217,6 @@ export const de: Dictionary = {
     dataTitle: "Woher die Daten kommen",
     estimate:
       "Jedes Fahrzeug auf dieser Karte ist eine Schätzung, keine Live-Position. Wiener Linien veröffentlicht nicht, wo seine Fahrzeuge sind.",
-    moreInfo: "Mehr unter:",
     title: "Bim",
     subtitle: "Inoffizielle Live-Karte des Wiener-Linien-Netzes.",
     lead: "Jedes wird aus seinem Fahrplan gesetzt, um die an nahen Haltestellen gemeldete Verspätung verschoben und entlang der echten Gleisgeometrie bewegt.",
