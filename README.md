@@ -343,6 +343,14 @@ are read on the server per request and can live in the service environment.
 Without the first, place descriptions are omitted; without the second, they are
 shown but not spoken. Nothing else changes either way.
 
+The contact form posts to `/api/contact`, which relays the message over Brevo's
+transactional API to `CONTACT_RECIPIENT_EMAIL`, with the sender's address as
+the reply-to. It needs `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` (a sender or
+domain verified in Brevo) and `CONTACT_RECIPIENT_EMAIL`; `BREVO_SENDER_NAME` is
+the display name and defaults to Bim. With any of the three missing the form
+says it is not configured rather than swallowing the message. Submissions are
+capped at five per minute per address and a hidden `website` field drops bots.
+
 ### Being embedded
 
 `?embed=1` renders the map as a figure inside someone else's page: no site nav,

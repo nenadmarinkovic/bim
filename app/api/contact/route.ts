@@ -1,3 +1,4 @@
+import { emailConfigured, escapeHtml, sendEmail } from "@/lib/brevo";
 import { clientKey, retryAfter } from "@/lib/places/rate-limit";
 
 const MAX_PER_WINDOW = 5;
@@ -71,14 +72,26 @@ export async function POST(request: Request) {
     return Response.json({ error: "message" }, { status: 400 });
   }
 
-  const key = process.env.BREVO_API_KEY;
-
-  if (!key) {
+  if (!emailConfigured()) {
     console.info(
-      `[contact] no BREVO_API_KEY — message not sent (${contact.locale}, ${contact.message.length} chars)`,
+      `[contact] email not configured — message not sent (${contact.locale}, ${contact.message.length} chars)`,
     );
     return Response.json({ error: "unconfigured" }, { status: 503 });
   }
 
-  return Response.json({ error: "unconfigured" }, { status: 503 });
+  const sent = await sendEmail({
+    to: [{ email: process.env.CONTACT_RECIPIENT_EMAIL!.trim() }],
+    replyTo: { email: contact.email },
+    subject: `Bim contact: ${contact.email}`,
+    text: `${contact.message}\n\n—\nFrom: ${contact.email}\nLocale: ${contact.locale}\nReceived: ${contact.receivedAt}`,
+    html: `<p style="white-space:pre-wrap">${escapeHtml(contact.message)}</p>
+<hr />
+<p>From: <a href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a><br />Locale: ${escapeHtml(contact.locale)}<br />Received: ${escapeHtml(contact.receivedAt)}</p>`,
+  });
+
+  if (!sent) {
+    return Response.json({ error: "send" }, { status: 502 });
+  }
+
+  return Response.json({ ok: true });
 }
