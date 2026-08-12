@@ -24,9 +24,6 @@ area explains what is missing rather than failing. The base style is Mapbox
 Standard, whose `lightPreset` follows the colour theme — `day` or `night`,
 rather than two separate styles.
 
-Type is Hanken Grotesk with Newsreader italic for brand accents, self-hosted
-from `public/fonts` and sharing the token scale used in nomos.
-
 ## What the map draws
 
 | Layer               | Source                                    | Default |
