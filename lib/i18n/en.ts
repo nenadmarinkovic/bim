@@ -207,26 +207,26 @@ export const en = {
     howTitle: "How a vehicle gets placed",
     dataTitle: "Where the data comes from",
     estimate:
-      "Every vehicle on this map is an estimate, not a live position. Wiener Linien does not publish where its vehicles are.",
+      "Wiener Linien does not publish where its vehicles are. So every vehicle here is an estimate.",
     title: "Bim",
-    subtitle: "Unofficial live map of the Wiener Linien network.",
-    lead: "Each one is placed from its timetable, shifted by the delay reported at nearby stops, and slid along the real track geometry.",
+    subtitle: "Unofficial live map of Vienna's public transport.",
+    lead: "A vehicle starts on its timetable. Nearby stops report how late it is, so it shifts. Then it slides along the real tracks.",
     accuracy:
-      "That lands within roughly one stop-to-stop segment: near exact on the U-Bahn, looser for a tram in traffic.",
+      "That gets it right to within a stop or so. Near exact on the U-Bahn. Looser for a tram in traffic.",
     trustTitle: "How much to trust a vehicle",
     trustBody:
-      "Wiener Linien measures departures at only part of the network. Click any vehicle to see whether its position was measured at a stop, interpolated between reporting stops, or is running on the timetable alone.",
+      "Only part of the network reports departures. Click a vehicle to see what it is running on: a measurement at a stop, a guess between two of them, or the timetable alone.",
     trustSbahn:
-      "The S-Bahn is run by ÖBB, which publishes no live data for it, so those trains always follow the timetable.",
+      "The S-Bahn is run by ÖBB, who publish nothing live. Those trains always follow the timetable.",
     exploreTitle: "What else you can do",
     exploreBody:
-      "Click a station to read its next departures, its entrances, and which of them are step-free. Tap a line on the board to trace where it goes. Click a vehicle to draw its whole route and follow it across the city.",
+      "Click a station for its next departures and its entrances, step-free ones marked. Tap a line to trace where it goes. Click a vehicle to draw its route and follow it.",
     exploreLayers:
-      "The settings panel adds more of the city: districts, bike paths, pedestrian zones, roadworks, drinking fountains and public toilets. Landmarks come with a short written description, which you can listen to or ask about.",
+      "Settings adds the rest of the city: districts, bike paths, pedestrian zones, roadworks, fountains and public toilets. Landmarks come with a short description you can listen to or ask about.",
     dataNote:
-      "Departures and lines from Wiener Linien open data, the S-Bahn from ÖBB. Track geometry from a community GTFS conversion (CC BY 4.0). Districts, bike paths, pedestrian zones, roadworks, fountains and public toilets from Stadt Wien. Station entrances from OpenStreetMap (ODbL).",
+      "Departures and lines from Wiener Linien open data, the S-Bahn from ÖBB. Track geometry from a community GTFS conversion (CC BY 4.0). The city layers from Stadt Wien. Station entrances from OpenStreetMap (ODbL).",
     purpose:
-      "Bim shows the network rather than planning journeys, and is not affiliated with Wiener Linien.",
+      "Bim shows the network. It does not plan journeys, and it is not affiliated with Wiener Linien.",
     openSource: "Open-source",
     projectBy: "project by",
   },

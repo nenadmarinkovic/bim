@@ -216,26 +216,26 @@ export const de: Dictionary = {
     howTitle: "Wie ein Fahrzeug platziert wird",
     dataTitle: "Woher die Daten kommen",
     estimate:
-      "Jedes Fahrzeug auf dieser Karte ist eine Schätzung, keine Live-Position. Wiener Linien veröffentlicht nicht, wo seine Fahrzeuge sind.",
+      "Wiener Linien veröffentlicht nicht, wo seine Fahrzeuge sind. Jedes Fahrzeug hier ist deshalb eine Schätzung.",
     title: "Bim",
-    subtitle: "Inoffizielle Live-Karte des Wiener-Linien-Netzes.",
-    lead: "Jedes wird aus seinem Fahrplan gesetzt, um die an nahen Haltestellen gemeldete Verspätung verschoben und entlang der echten Gleisgeometrie bewegt.",
+    subtitle: "Inoffizielle Live-Karte der Wiener Öffis.",
+    lead: "Ein Fahrzeug startet auf seinem Fahrplan. Nahe Haltestellen melden die Verspätung, also verschiebt es sich. Dann gleitet es entlang der echten Gleise.",
     accuracy:
-      "Das trifft auf etwa einen Abschnitt zwischen zwei Haltestellen genau: bei der U-Bahn beinahe exakt, bei einer Straßenbahn im Verkehr ungenauer.",
+      "Das stimmt auf etwa eine Haltestelle genau. Bei der U-Bahn beinahe exakt. Bei einer Straßenbahn im Verkehr ungenauer.",
     trustTitle: "Wie verlässlich ist ein Fahrzeug",
     trustBody:
-      "Wiener Linien misst Abfahrten nur an einem Teil des Netzes. Klicken Sie ein Fahrzeug an, um zu sehen, ob seine Position an einer Haltestelle gemessen, zwischen meldenden Haltestellen interpoliert oder allein aus dem Fahrplan abgeleitet wurde.",
+      "Nur ein Teil des Netzes meldet Abfahrten. Klicken Sie ein Fahrzeug an, und Sie sehen, worauf es fährt: auf einer Messung an der Haltestelle, auf einer Schätzung dazwischen oder allein auf dem Fahrplan.",
     trustSbahn:
-      "Die S-Bahn fährt die ÖBB, die dafür keine Live-Daten veröffentlicht. Diese Züge folgen daher immer dem Fahrplan.",
+      "Die S-Bahn fährt die ÖBB, die nichts Live veröffentlicht. Diese Züge folgen immer dem Fahrplan.",
     exploreTitle: "Was Sie sonst tun können",
     exploreBody:
-      "Klicken Sie eine Station an, um die nächsten Abfahrten zu lesen, dazu ihre Zugänge und welche davon stufenlos sind. Tippen Sie eine Linie in der Anzeige an, um ihren Weg zu verfolgen. Klicken Sie ein Fahrzeug an, um seine ganze Route zu zeichnen und ihm durch die Stadt zu folgen.",
+      "Klicken Sie eine Station an: nächste Abfahrten und Zugänge, stufenlose sind markiert. Tippen Sie eine Linie an, um ihren Weg zu verfolgen. Klicken Sie ein Fahrzeug an, um seine Route zu zeichnen und ihm zu folgen.",
     exploreLayers:
-      "Über die Einstellungen kommt mehr von der Stadt dazu: Bezirke, Radwege, Fußgängerzonen, Baustellen, Trinkbrunnen und öffentliche WC-Anlagen. Zu Sehenswürdigkeiten gibt es eine kurze Beschreibung, die Sie anhören oder zu der Sie nachfragen können.",
+      "Die Einstellungen bringen den Rest der Stadt: Bezirke, Radwege, Fußgängerzonen, Baustellen, Trinkbrunnen und öffentliche WC-Anlagen. Zu Sehenswürdigkeiten gibt es eine kurze Beschreibung zum Anhören oder Nachfragen.",
     dataNote:
-      "Abfahrten und Linien aus den offenen Daten der Wiener Linien, die S-Bahn von den ÖBB. Gleisgeometrie aus einer GTFS-Konvertierung der Community (CC BY 4.0). Bezirke, Radwege, Fußgängerzonen, Baustellen, Trinkbrunnen und öffentliche WC-Anlagen von der Stadt Wien. Stationszugänge aus OpenStreetMap (ODbL).",
+      "Abfahrten und Linien aus den offenen Daten der Wiener Linien, die S-Bahn von den ÖBB. Gleisgeometrie aus einer GTFS-Konvertierung der Community (CC BY 4.0). Die Stadt-Ebenen von der Stadt Wien. Stationszugänge aus OpenStreetMap (ODbL).",
     purpose:
-      "Bim zeigt das Netz, plant aber keine Fahrten, und steht in keiner Verbindung zu Wiener Linien.",
+      "Bim zeigt das Netz. Es plant keine Fahrten und steht in keiner Verbindung zu Wiener Linien.",
     openSource: "Open-Source-Projekt",
     projectBy: "von",
   },
