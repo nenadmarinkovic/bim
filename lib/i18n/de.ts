@@ -30,6 +30,12 @@ export const de: Dictionary = {
     alignNorth: "Nach Norden ausrichten",
 
     centre: "Auf den Stephansdom zentrieren",
+    locate: "Meinen Standort anzeigen",
+    locateStop: "Nicht mehr folgen",
+    locateDenied:
+      "Der Standortzugriff ist für diese App aus. In den Geräteeinstellungen wieder einschalten.",
+    locateUnavailable: "Ihr Standort ließ sich nicht ermitteln.",
+    locateOutside: "Sie sind außerhalb des Netzes, das die Karte zeigt.",
     dataSources: "Datenquellen",
     improve: "Diese Karte verbessern",
     routeStart: "Start",

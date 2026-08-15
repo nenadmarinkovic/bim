@@ -27,6 +27,12 @@ export const en = {
     zoomOut: "Zoom out",
     alignNorth: "Align north",
     centre: "Centre on Stephansdom",
+    locate: "Show my location",
+    locateStop: "Stop following me",
+    locateDenied:
+      "Location is switched off for this app. Turn it back on in your device settings.",
+    locateUnavailable: "Could not work out where you are.",
+    locateOutside: "You are outside the network the map covers.",
     dataSources: "Data sources",
     improve: "Improve this map",
     routeStart: "Start",

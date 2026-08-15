@@ -788,6 +788,10 @@ export function MapView({
   const dict = useRef(dictionary);
   const lang = useRef<Locale>(locale);
 
+  // Stable on purpose: the controls hang a geolocation watch off this, and a
+  // fresh identity would tear the watch down on every vehicle poll.
+  const getMap = useCallback(() => map.current, []);
+
   useEffect(() => {
     if (resolvedTheme) theme.current = resolvedTheme;
   }, [resolvedTheme]);
@@ -1345,7 +1349,7 @@ export function MapView({
         )}
       </div>
       <MapControls
-        getMap={() => map.current}
+        getMap={getMap}
         className="absolute right-[max(0.75rem,env(safe-area-inset-right))] bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+2.75rem)] z-10 sm:right-4 sm:bottom-16"
       />
       <MapAttribution className="absolute right-[max(0.75rem,env(safe-area-inset-right))] bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 sm:right-4 sm:bottom-4" />
