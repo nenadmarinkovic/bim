@@ -54,6 +54,16 @@ Searching (⌘K, ⌘F, or the search button) is a client-side pass over the same
 station index the map draws, matched on the normalised name, with the last five
 picks kept in `localStorage`.
 
+The last button in the control stack asks the browser where you are and puts a
+dot there, following it until you drag the map off it. It is Mapbox's own
+`GeolocateControl` wearing our button rather than its default chrome, so the
+accuracy circle and the heading cone come with it. Installed to a home screen
+changes none of this — a PWA is the same secure origin, and the permission is
+remembered per install. What it cannot do is watch you in the background: the
+browser stops the watch when the app is not on screen. A fix outside the
+network says so instead of moving, because the camera is bounded to Vienna and
+has nowhere to fly.
+
 Places are off by default because they cost a model call. With
 `MISTRAL_API_KEY` set, clicking a POI writes two sentences about it — what it
 is and something the map cannot show — cached in `data/place-descriptions.json`
